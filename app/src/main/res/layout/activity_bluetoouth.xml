@@ -19,6 +19,12 @@
         android:layout_marginTop="16dp"/>
 
     <Button
+        android:id="@+id/init"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="init" />
+
+    <Button
         android:id="@+id/t0"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -41,5 +47,29 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="3" />
+
+    <Button
+        android:id="@+id/page1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="sendPage" />
+
+    <Button
+        android:id="@+id/page37"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="sendPage" />
+
+    <Button
+        android:id="@+id/heart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="heart" />
+
+    <Button
+        android:id="@+id/fast"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="fast" />
 
 </LinearLayout>

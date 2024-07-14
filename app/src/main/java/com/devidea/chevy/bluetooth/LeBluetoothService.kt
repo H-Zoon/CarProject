@@ -1,6 +1,10 @@
+/*
 package com.devidea.chevy.bluetooth
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.*
 import android.bluetooth.le.ScanCallback
@@ -11,28 +15,46 @@ import kotlinx.coroutines.*
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.ParcelUuid
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.devidea.chevy.MainActivity
+import com.devidea.chevy.MainActivity.Companion.CHANNEL_ID
+import com.devidea.chevy.MainActivity2
+import com.devidea.chevy.R
 import com.devidea.chevy.carsystem.CarModel
+import kotlinx.coroutines.channels.Channel
 import java.util.Timer
 import java.util.TimerTask
 import java.util.UUID
 
-
 class LeBluetoothService : Service() {
 
-    private val tag = "BLE"
+    private val job = Job()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+    private val messageChannel = Channel<ByteArray>(Channel.UNLIMITED)
+
+    private val TAG = "LeBluetoothService"
     private val mBinder = LocalBinder()
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mBluetoothDevice: BluetoothDevice? = null
     private var mBluetoothGatt: BluetoothGatt? = null
     private var mBluetoothManager: BluetoothManager? = null
-    private val mHandler = Handler(Looper.getMainLooper())
     private var mHaveTlDevice = false
     private var mConnectionState = BTState.DISCONNECTED
-    private var mIsConnecttingPeriod = false
+    private var mIsConnectingPeriod = false
     private var mBleServiceCallback: BleServiceCallback? = null
     private var scanFilterList: List<ScanFilter>? = null
     private var scanSettingBuilder: ScanSettings.Builder? = null
+
+    private fun hasPermissions(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
+    }
 
     companion object {
         const val BT_CONNECT_TIMEOUT = 20000
@@ -44,45 +66,54 @@ class LeBluetoothService : Service() {
         const val TOURE_CHARACTERISTIC_WRITE = "0000ff02-0000-1000-8000-00805f9b34fb"
         val UUID_HEART_RATE_MEASUREMENT: UUID =
             UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT)
-        private var target_chara: BluetoothGattCharacteristic? = null
+        private var target_ch_write: BluetoothGattCharacteristic? = null
+        private var target_ch_notify: BluetoothGattCharacteristic? = null
+        private var target_toure_write: BluetoothGattCharacteristic? = null
+        private var target_toure_notify: BluetoothGattCharacteristic? = null
+        private var target_HC08: BluetoothGattCharacteristic? = null
+        private var target_HEART_RATE: BluetoothGattCharacteristic? = null
+    }
+
+    init {
+        scope.launch {
+            for (message in messageChannel) {
+                sendMessageInternal(message)
+                delay(1000)
+            }
+        }
     }
 
     private val mGattCallback = object : BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            Log.i(tag, "onConnectionStateChange: $status -> $newState")
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.i(tag, "Connected to GATT server.")
-                val requestMtu = gatt.requestMtu(185)
-                Log.d(tag, "requestMtu to 185 result: $requestMtu")
-                if (requestMtu || !gatt.discoverServices()) {
-                    Log.d(tag, "Attempting to start service discovery")
-                }
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                onBTStateChange(BTState.DISCONNECTED)
-                if (mIsConnecttingPeriod) {
-                    runBlocking {
-                        delay(1000)
-                        connect(mBluetoothDevice)
-                    }
-                }
+            Log.i(
+                TAG,
+                "onConnectionStateChange: ${BTState.fromState(status)} -> ${
+                    BTState.fromState(newState)
+                }"
+            )
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> handleGattConnected(gatt)
+                BluetoothProfile.STATE_DISCONNECTED -> handleGattDisconnected(gatt)
             }
         }
 
+        @SuppressLint("MissingPermission")
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             super.onMtuChanged(gatt, mtu, status)
-            Log.d(tag, "onMtuChanged: $mtu")
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(tag, "change MTU succeed = $mtu")
-                BluetoothModel.onMtuChanged(mtu)
+                Log.d(TAG, "change MTU succeed = $mtu")
+                BluetoothModel.mBleUsingMtu = mtu
                 if (gatt.discoverServices()) {
-                    Log.i(tag, "Attempting to start service discovery")
+                    Log.i(TAG, "Attempting to start service discovery")
                 }
             }
         }
 
+        @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            Log.i(tag, "onServicesDiscovered: $status")
-            if (status != BluetoothGatt.GATT_SUCCESS && mIsConnecttingPeriod) {
+            Log.i(TAG, "onServicesDiscovered: $status")
+            if (status != BluetoothGatt.GATT_SUCCESS && mIsConnectingPeriod) {
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
                         initialize()
@@ -91,11 +122,10 @@ class LeBluetoothService : Service() {
                 }, 2000)
             }
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                displayGattServices(getSupportedGattServices())
+                findGattServicesTarget(getSupportedGattServices())
                 onBTStateChange(BTState.CONNECTED)
-                CarModel.devModule.onBTConnected()
             } else {
-                Log.w(tag, "onServicesDiscovered received: $status")
+                Log.w(TAG, "onServicesDiscovered received: $status")
                 runBlocking {
                     delay(1000)
                     gatt.discoverServices()
@@ -108,7 +138,7 @@ class LeBluetoothService : Service() {
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
-            Log.i(tag, "onCharacteristicRead: $status")
+            Log.i(TAG, "onCharacteristicRead: $status")
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 onRecvCharacteristic(characteristic)
             }
@@ -120,7 +150,7 @@ class LeBluetoothService : Service() {
             status: Int
         ) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                Log.e(tag, "onDescriptorWrite failed")
+                Log.e(TAG, "onDescriptorWrite failed")
             }
         }
 
@@ -128,12 +158,12 @@ class LeBluetoothService : Service() {
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
         ) {
-            Log.i(tag, "onCharacteristicChanged from: ")
+            Log.i(TAG, "onCharacteristicChanged from: ")
             onRecvCharacteristic(characteristic)
         }
 
         override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
-            Log.d(tag, "rssi = $rssi")
+            Log.d(TAG, "rssi = $rssi")
         }
 
         override fun onCharacteristicWrite(
@@ -142,8 +172,40 @@ class LeBluetoothService : Service() {
             status: Int
         ) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
-                Log.e(tag, "onCharacteristicWrite failed")
+                Log.e(TAG, "onCharacteristicWrite failed")
             }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun handleGattConnected(gatt: BluetoothGatt) {
+        Log.i(TAG, "Connected to GATT server.")
+        if (hasPermissions(Manifest.permission.BLUETOOTH_CONNECT)) {
+            val requestMtu = gatt.requestMtu(185)
+            Log.d(TAG, "requestMtu to 185 result: $requestMtu")
+            if (requestMtu || !gatt.discoverServices()) {
+                Log.d(TAG, "Attempting to start service discovery")
+            }
+        }
+    }
+
+    private fun handleGattDisconnected(gatt: BluetoothGatt) {
+        onBTStateChange(BTState.DISCONNECTED)
+        if (mIsConnectingPeriod) {
+            reconnect()
+        }
+    }
+
+    private fun reconnect() {
+        mBluetoothDevice?.let {
+            scope.launch {
+                delay(1000) // 재연결 시도 전 잠시 대기
+                if (mConnectionState != BTState.CONNECTED) {
+                    connect(it)
+                }
+            }
+        } ?: run {
+            Log.e(TAG, "Bluetooth device is null. Cannot reconnect.")
         }
     }
 
@@ -156,7 +218,7 @@ class LeBluetoothService : Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.i(tag, "onUnbind close.")
+        Log.i(TAG, "onUnbind close.")
         scanLeDevice(false)
         disconnectBTGatt()
         closeBTGatt()
@@ -177,20 +239,21 @@ class LeBluetoothService : Service() {
 
     @SuppressLint("MissingPermission")
     fun connect(bluetoothDevice: BluetoothDevice?): Boolean {
-        val bluetoothAdapter = mBluetoothAdapter ?: return false
         bluetoothDevice ?: return false
         closeBTGatt()
-        Log.d(tag, "Trying a connection with BT addr: ${bluetoothDevice.address}")
+        Log.d(TAG, "Trying a connection with BT addr: ${bluetoothDevice.address}")
         mBluetoothGatt = bluetoothDevice.connectGatt(this, false, mGattCallback)
         mBluetoothGatt ?: return false
         onBTStateChange(BTState.CONNECTED)
         return true
     }
 
+    @SuppressLint("MissingPermission")
     private fun disconnectBTGatt() {
         mBluetoothGatt?.disconnect()
     }
 
+    @SuppressLint("MissingPermission")
     private fun closeBTGatt() {
         mBluetoothGatt?.close()
         mBluetoothGatt = null
@@ -201,27 +264,45 @@ class LeBluetoothService : Service() {
     }
 
     fun isInConnecttingPeriod(): Boolean {
-        return mIsConnecttingPeriod
+        return mIsConnectingPeriod
     }
 
+    // 메시지를 큐에 추가하는 함수
     @SuppressLint("MissingPermission")
     fun sendMessage(data: ByteArray) {
+        scope.launch {
+            messageChannel.send(data)
+        }
+    }
+
+    // 실제로 메시지를 전송하는 함수
+    @SuppressLint("MissingPermission")
+    private fun sendMessageInternal(data: ByteArray) {
         if (isBTConnected()) {
-            if (mBluetoothGatt == null || target_chara == null) {
-                Log.d(tag, "send message but BluetoothGatt or target_chara == null")
+            if (mBluetoothGatt == null || target_ch_write == null) {
+                Log.d(TAG, "send message but BluetoothGatt or target_chara == null")
                 return
+            } else {
+                val byteArray = byteArrayOf(
+                    -1, 85, 3, 3, 14, 0, 20
+                )
+                val newData = ByteArray(data.size)
+                System.arraycopy(data, 0, newData, 0, data.size)
+                if (newData.contentEquals(byteArray)) {
+                    target_toure_notify?.value = newData
+                    writeCharacteristic(target_toure_notify!!)
+                } else {
+                    target_ch_write?.value = newData
+                    writeCharacteristic(target_ch_write!!)
+                //}
             }
-            val newData = ByteArray(data.size)
-            System.arraycopy(data, 0, newData, 0, data.size)
-            target_chara!!.value = newData
-            writeCharacteristic(target_chara!!)
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun writeCharacteristic(characteristic: BluetoothGattCharacteristic) {
         if (!mBluetoothGatt!!.writeCharacteristic(characteristic)) {
-            Log.e(tag, "writeCharacteristic failed!!!")
+            Log.e(TAG, "writeCharacteristic failed!!!")
         }
     }
 
@@ -230,7 +311,7 @@ class LeBluetoothService : Service() {
         if (UUID_HEART_RATE_MEASUREMENT == characteristic.uuid) {
             val flag = if (characteristic.properties and 1 != 0) 18 else 17
             val heartRate = characteristic.getIntValue(flag, 1)
-            Log.d(tag, "Received heart rate: $heartRate")
+            Log.d(TAG, "Received heart rate: $heartRate")
             return
         }
         val value = characteristic.value ?: return
@@ -272,15 +353,15 @@ class LeBluetoothService : Service() {
     }
 
     fun requestConnection() {
-        Log.i(tag, "requestConnection manually")
-        if (mIsConnecttingPeriod) {
+        Log.i(TAG, "requestConnection manually")
+        if (mIsConnectingPeriod) {
             return
         }
         scanThenConnect()
     }
 
     private fun scanThenConnect() {
-        Log.i(tag, "scanThenConnect")
+        Log.i(TAG, "scanThenConnect")
         if (initialize()) {
             scanLeDevice(false)
             scanLeDevice(true)
@@ -288,7 +369,7 @@ class LeBluetoothService : Service() {
     }
 
     fun disconnectDevice() {
-        Log.i(tag, "disconnectDevice")
+        Log.i(TAG, "disconnectDevice")
         scanLeDevice(false)
         disconnectBTGatt()
     }
@@ -313,9 +394,6 @@ class LeBluetoothService : Service() {
     }
 
     private fun buildScanSettings(): ScanSettings? {
-        /*if (scanSettingBuilder != null) {
-            return null
-        }*/
         scanSettingBuilder = ScanSettings.Builder()
         scanSettingBuilder?.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         scanSettingBuilder?.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
@@ -323,23 +401,13 @@ class LeBluetoothService : Service() {
         return scanSettingBuilder?.build()
     }
 
-    private fun buildUUIDs(): Array<UUID> {
-        return arrayOf(
-            UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb"),
-            UUID.fromString(TOURE_CHARACTERISTIC_NOTIFY),
-            UUID.fromString(TOURE_CHARACTERISTIC_WRITE),
-            UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb"),
-            UUID.fromString(CH_CHARACTERISTIC_WRITE)
-        )
-    }
-
     @SuppressLint("MissingPermission")
     fun scanLeDevice(enable: Boolean) {
-        Log.i(tag, "scanLeDevice = $enable")
+        Log.i(TAG, "scanLeDevice = $enable")
         val bluetoothAdapter = mBluetoothAdapter ?: return
         if (enable) {
-            mHandler.removeCallbacks(mEndScanRunnable)
-            mHandler.postDelayed(mEndScanRunnable, BT_SCAN_PERIOD.toLong())
+            //scope.coroutineContext.cancelChildren()
+            startScanTimeout()
             mHaveTlDevice = false
             onBTStateChange(BTState.SCANNING)
 
@@ -353,65 +421,136 @@ class LeBluetoothService : Service() {
                 }
             }
         } else {
-            val scanner = bluetoothAdapter.bluetoothLeScanner
-            if (scanner != null) {
-                scanner.stopScan(mBLEScanCallback)
-            }
-            mHandler.removeCallbacks(mEndScanRunnable)
+            bluetoothAdapter.bluetoothLeScanner?.stopScan(mBLEScanCallback)
+            //scope.coroutineContext.cancelChildren()  // Cancel scan timeout coroutine
         }
     }
 
-    override fun onDestroy() {
-        Log.d(tag, "onDestroy")
-        closeBTGatt()
-        super.onDestroy()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-    }
-
-    fun onBTStateChange(state: BTState) {
-        if (mConnectionState == state) {
-            return
-        }
-        Log.d(tag, "onBTStateChange: $state")
-        mConnectionState = state
-        mBleServiceCallback?.onBTStateChange(state)
-        if (mConnectionState == BTState.CONNECTED) {
-            mIsConnecttingPeriod = false
-            mHandler.removeCallbacks(mConnectTimeoutRunnable)
+    private fun startScanTimeout() {
+        scope.launch {
+            delay(BT_SCAN_PERIOD.toLong())
+            endScan()
         }
     }
 
-    private val mConnectTimeoutRunnable = Runnable {
-        mIsConnecttingPeriod = false
-        Log.d(tag, "Connect BT timeout!!!")
-        if (!isBTConnected()) {
-            onBTStateChange(BTState.DISCONNECTED)
-            BluetoothModel.clearBTMode()
-        }
-    }
-
-    private val mEndScanRunnable = Runnable {
+    @SuppressLint("MissingPermission")
+    private fun endScan() {
         mBluetoothAdapter?.bluetoothLeScanner?.stopScan(mBLEScanCallback)
         if (mConnectionState == BTState.SCANNING && !mHaveTlDevice) {
             onBTStateChange(BTState.NOT_FOUND)
         }
     }
 
+    fun onBTStateChange(state: BTState) {
+        if (mConnectionState == state) {
+            return
+        }
+        Log.d(TAG, "onBTStateChange: $state")
+        mConnectionState = state
+        mBleServiceCallback?.onBTStateChange(state)
+        updateNotification(state)  // 알림 업데이트
+        if (mConnectionState == BTState.CONNECTED) {
+            mIsConnectingPeriod = false
+            CarModel.devModule.onBTConnected()
+        } else if (mConnectionState == BTState.DISCONNECTED) {
+            mIsConnectingPeriod = true
+        }
+    }
+
+    private fun updateNotification(state: BTState) {
+        val notificationIntent = Intent(this, MainActivity2::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stateText = when (state) {
+            BTState.CONNECTED -> "Connected"
+            BTState.DISCONNECTED -> "Disconnected"
+            BTState.SCANNING -> "Scanning"
+            BTState.NOT_FOUND -> "Not Found"
+            BTState.CONNECTING -> "CONNECTING"
+        }
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("LeBluetoothService")
+            .setContentText("Bluetooth State: $stateText")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(1, notification)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        initialize()
+        startForegroundService()
+        //startConnectToDevice()
+    }
+
+    private fun startForegroundService() {
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("LeBluetoothService")
+            .setContentText("Initializing Bluetooth LE Service")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        startForeground(1, notification)
+    }
+
+    override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
+        scope.cancel()  // Cancel all coroutines
+        closeBTGatt()
+        super.onDestroy()
+    }
+
+
+    private fun startConnectTimeout() {
+        scope.launch {
+            delay(BT_CONNECT_TIMEOUT.toLong())
+            onConnectTimeout()
+        }
+    }
+
+    private fun onConnectTimeout() {
+        mIsConnectingPeriod = false
+        Log.d(TAG, "Connect BT timeout!!!")
+        if (!isBTConnected()) {
+            onBTStateChange(BTState.DISCONNECTED)
+            BluetoothModel.clearBTMode()
+        }
+    }
+
     private val mBLEScanCallback = object : ScanCallback() {
+        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             result?.let {
-                GlobalScope.launch(Dispatchers.IO) {
+                scope.launch {
+                    startConnectTimeout()
                     try {
                         val device = result.device
                         val name = device.name
                         val address = device.address
-                        Log.i(tag, "device found name: $name")
-                        Log.i(tag, "device found addr: $address")
+                        Log.i(TAG, "device found name: $name")
+                        Log.i(TAG, "device found addr: $address")
                         if ((name != null && name == BluetoothModel.BT_NAME1) || (name != null && name == BluetoothModel.BT_NAME2)) {
-                            Log.i(tag, "sinjet device found!")
+                            Log.i(TAG, "sinjet device found!")
                             mHaveTlDevice = true
                             scanLeDevice(false)
                             if (address == null) {
@@ -422,95 +561,47 @@ class LeBluetoothService : Service() {
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e(tag, e.toString())
+                        Log.e(TAG, e.toString())
                     }
                 }
             }
         }
 
         override fun onScanFailed(errorCode: Int) {
-            Log.e(tag, "BLE scan failed with error code $errorCode")
+            Log.e(TAG, "BLE scan failed with error code $errorCode")
         }
     }
 
-    fun displayGattServices(gattServices: List<BluetoothGattService>?) {
-        /*gattServices ?: return
-        for (gattService in gattServices) {
-            val characteristics = gattService.characteristics
-            if (lookforCh(characteristics)) return
-            if (lookforToure(characteristics)) return
-            if (lookforHc(characteristics)) return
-        }*/
-
-        for (gattService in gattServices!!) {
-            val characteristics = gattService.characteristics
-            a(characteristics)
-        }
-    }
-
-    private fun a(list: List<BluetoothGattCharacteristic>): Boolean {
-        var b = false
-        for (characteristic in list) {
-            val uuid = characteristic.uuid.toString()
-
-            if (uuid == CH_CHARACTERISTIC_WRITE) {
-                setCharacteristicNotification(characteristic, true)
-                readCharacteristic(characteristic)
-                target_chara = characteristic
-                b = true
+    fun findGattServicesTarget(gattServices: List<BluetoothGattService>?) {
+        gattServices?.forEach { gattService ->
+            gattService.characteristics.forEach { characteristic ->
+                if (characteristic.uuid.toString() == CH_CHARACTERISTIC_WRITE) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_ch_write = characteristic
+                } else if (characteristic.uuid.toString() == CH_CHARACTERISTIC_NOTIFY) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_ch_notify = characteristic
+                } else if (characteristic.uuid.toString() == TOURE_CHARACTERISTIC_WRITE) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_toure_write = characteristic
+                } else if (characteristic.uuid.toString() == TOURE_CHARACTERISTIC_NOTIFY) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_toure_notify = characteristic
+                } else if (characteristic.uuid.toString() == HC08_SERVICE_UUID) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_HC08 = characteristic
+                } else if (characteristic.uuid == UUID_HEART_RATE_MEASUREMENT) {
+                    setCharacteristicNotification(characteristic, true)
+                    readCharacteristic(characteristic)
+                    target_HEART_RATE = characteristic
+                }
             }
         }
-        return b
-    }
-
-    private fun lookforCh(list: List<BluetoothGattCharacteristic>): Boolean {
-        var notifyFound = false
-        var writeFound = false
-        for (characteristic in list) {
-            val uuid = characteristic.uuid.toString()
-            if (uuid == "0000ffe1-0000-1000-8000-00805f9b34fb") {
-                setCharacteristicNotification(characteristic, true)
-                notifyFound = true
-            }
-            if (uuid == CH_CHARACTERISTIC_WRITE) {
-                setCharacteristicNotification(characteristic, true)
-                readCharacteristic(characteristic)
-                target_chara = characteristic
-                writeFound = true
-            }
-        }
-        return notifyFound && writeFound
-    }
-
-    private fun lookforHc(list: List<BluetoothGattCharacteristic>): Boolean {
-        for (characteristic in list) {
-            if (characteristic.uuid.toString() == "0000ffe1-0000-1000-8000-00805f9b34fb") {
-                setCharacteristicNotification(characteristic, true)
-                readCharacteristic(characteristic)
-                target_chara = characteristic
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun lookforToure(list: List<BluetoothGattCharacteristic>): Boolean {
-        var notifyFound = false
-        var writeFound = false
-        for (characteristic in list) {
-            val uuid = characteristic.uuid.toString()
-            if (uuid == TOURE_CHARACTERISTIC_NOTIFY) {
-                setCharacteristicNotification(characteristic, true)
-                notifyFound = true
-            }
-            if (uuid == TOURE_CHARACTERISTIC_WRITE) {
-                setCharacteristicNotification(characteristic, true)
-                readCharacteristic(characteristic)
-                target_chara = characteristic
-                writeFound = true
-            }
-        }
-        return notifyFound && writeFound
     }
 
     interface BleServiceCallback {
@@ -525,3 +616,4 @@ class LeBluetoothService : Service() {
         }
     }
 }
+*/

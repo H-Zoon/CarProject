@@ -16,7 +16,7 @@ class ControlModule {
         private const val ON = 1
         private const val tag = "car"
     }
-    private var mControllingItem = ControlFuncs.CAR_INVALID_FUN
+    private var mControllingItem = ControlFuncs.CAR_TRUNK_OPEN
     private var mIsSettingPassword = false
     private var mIsVerifySucceed = false
     private var mPassword = ""
@@ -36,7 +36,7 @@ class ControlModule {
         packHudMsgAndSend(bArr, bArr.size)
     }
 
-    fun onPasswordEnter(str: String) {
+    fun onPasswordEnter(str: String = "123456") {
         Log.i(tag, "onPasswordEnter $str setting psw? $mIsSettingPassword")
         if (mIsSettingPassword) {
             onSettingPasswordEnter(str)

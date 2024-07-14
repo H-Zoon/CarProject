@@ -7,6 +7,10 @@ import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToureDevCodec
 import com.devidea.chevy.datas.Data
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.util.Locale
 import kotlin.experimental.and
@@ -26,13 +30,8 @@ class DeviceModule {
 
     private val mNaviCodec = ToDeviceCodec()
     private var isTimeSync = false
-    private var mToureCodec: ToureDevCodec? = null
+    var mToureCodec = ToureDevCodec()
     var initOKFromMcu = 0
-    private val m_appInitOkRunnable = Runnable {
-        if (initOKFromMcu == 1 || BluetoothModel.isConnected()) {
-            mToureCodec?.sendInit(1)
-        }
-    }
 
     private var mStrVinFirstHalf = ""
     private var mStrVinSecondHalf = ""
@@ -94,19 +93,13 @@ class DeviceModule {
     }
 
     fun sendHeartbeat() {
-        if (mToureCodec == null) {
-            mToureCodec = ToureDevCodec()
-        }
-        mToureCodec?.sendHeartbeat()
+        mToureCodec.sendHeartbeat()
     }
 
     fun onBTConnected() {
-        if (mToureCodec == null) {
-            mToureCodec = ToureDevCodec()
-        }
-        initOKFromMcu = 0
-        handleAppInitOK()
-        syncTime()
+        //initOKFromMcu = 0
+        //handleAppInitOK()
+        //syncTime()
     }
 
     fun handleAppInitOK() {
@@ -114,7 +107,8 @@ class DeviceModule {
             return
         }
         Log.d("ing", "send initOK")
-        mToureCodec?.sendInit(1)
+        mToureCodec.sendInit(1)
+        //mNaviCodec.sendCurrentTime()
     }
 
     fun onBTDisconnected() {
@@ -137,11 +131,12 @@ class DeviceModule {
     }
 
     private fun onRecvCommonMsg(bArr: ByteArray, i: Int) {
+        Log.d(tag, "recv msg $bArr")
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
                     initOKFromMcu = 1
-                    mToureCodec?.sendConnectECU(0)
+                    mToureCodec.sendConnectECU(0)
                 }
             }
 
@@ -251,9 +246,7 @@ class DeviceModule {
         }
     }
 
-    fun getDoorState():
-
-            IntArray {
+    fun getDoorState(): IntArray {
         return intArrayOf(mLeftFront, mRightFront, mLeftRear, mRightRear, mTrunk)
     }
 

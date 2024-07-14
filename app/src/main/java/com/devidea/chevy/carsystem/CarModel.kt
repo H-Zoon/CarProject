@@ -1,32 +1,17 @@
-package com.devidea.chevy.carsystem;
+package com.devidea.chevy.carsystem
 
 import ModelMsgHandler
 import android.os.Bundle
 
 object CarModel {
-
-    const val MCU_MSG_LENGTH = 1024
-    private var bCheckingVersion = false
-    private var carModel: CarModel? = null
-    private const val tag = "Dispatcher"
-
+    private const val TAG = "CarModel"
     var devModule: DeviceModule = DeviceModule()
     var tpmsModule: TpmsModule = TpmsModule()
     var controlModule: ControlModule = ControlModule()
 
-    //private var mUpgradeInfo: UpgradeInfo? = null
-    private var apkUrl: String? = null
-    private var oldResult = 0
     private var mMsgEndPos = 0
     private var mMsgLen = 0
     var mMsgBuf = ByteArray(1024)
-
-
-    /*fun onAppStartup() {
-        val obtainMessage = modelMsgHandler.obtainMessage()
-        obtainMessage.what = 1
-        modelMsgHandler.sendMessage(obtainMessage)
-    }*/
 
     fun onRecvMsgFromDevice(bArr: ByteArray?, length: Int) {
         if (length == 0 || bArr == null) {

@@ -1,6 +1,9 @@
 package com.devidea.chevy
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,8 +37,14 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.ui.theme.CarProjectTheme
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        const val CHANNEL_ID = "LeBluetoothServiceChannel"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         setContent {
             CarProjectTheme {

@@ -5,6 +5,8 @@ import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
@@ -15,6 +17,15 @@ class MainActivity2 : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
+
+        val serviceChannel = NotificationChannel(
+            MainActivity.CHANNEL_ID,
+            "LeBluetoothService Channel",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(serviceChannel)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
@@ -44,7 +55,7 @@ class MainActivity2 : AppCompatActivity() {
             }
         }
         // 블루투스 초기화 (선택적)
-        BluetoothModel.initBTModel()
+        BluetoothModel.initBTModel(this)
 
         // 연결 버튼
         findViewById<Button>(R.id.connectButton).setOnClickListener {
@@ -53,7 +64,8 @@ class MainActivity2 : AppCompatActivity() {
 
         // 해제 버튼
         findViewById<Button>(R.id.disconnectButton).setOnClickListener {
-            disconnectBluetooth()
+            //disconnectBluetooth()
+            CarModel.devModule.handleAppInitOK()
         }
 
         findViewById<Button>(R.id.t0).setOnClickListener {
@@ -70,6 +82,21 @@ class MainActivity2 : AppCompatActivity() {
 
         findViewById<Button>(R.id.t3).setOnClickListener {
             CarModel.tpmsModule.sendPairTpms(3)
+        }
+        findViewById<Button>(R.id.page1).setOnClickListener {
+            CarModel.devModule.mToureCodec.sendAppPage(1)
+        }
+
+        findViewById<Button>(R.id.page37).setOnClickListener {
+            CarModel.devModule.mToureCodec.sendAppPage(37)
+        }
+
+        findViewById<Button>(R.id.heart).setOnClickListener {
+            CarModel.devModule.sendHeartbeat()
+        }
+
+        findViewById<Button>(R.id.fast).setOnClickListener {
+            CarModel.devModule.mToureCodec.sendStartFastDetect()
         }
     }
 

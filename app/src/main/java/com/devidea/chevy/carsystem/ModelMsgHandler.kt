@@ -47,9 +47,9 @@ class ModelMsgHandler(private val models: CarModel) {
                 }
             }
 
-            3 -> {} // Do nothing
+            3 -> models.devModule.onRecvMsg(bArr2, bArr2.size) // Do nothing
             4 -> models.tpmsModule.onRecvTPMS(bArr2)
-            5, 6 -> models.controlModule.onRecvMsg(bArr2, bArr2.size)
+            5, 6, 55 -> models.controlModule.onRecvMsg(bArr2, bArr2.size)
             /*52 -> {
                 ImageSender.getInstance().onRecvMessage(bArr2, i)
                 if (bArr2[1] == 49.toByte()) {
