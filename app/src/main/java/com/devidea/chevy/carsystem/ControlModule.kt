@@ -1,7 +1,5 @@
 package com.devidea.chevy.carsystem
 
-import android.content.Context
-import android.os.Build
 import android.util.Log
 import com.devidea.chevy.bluetooth.BluetoothModel
 
@@ -14,7 +12,7 @@ class ControlModule {
         private const val CMD_WINDOWS = 2
         private const val OFF = 0
         private const val ON = 1
-        private const val tag = "car"
+        private const val TAG = "ControlModule"
     }
     private var mControllingItem = ControlFuncs.CAR_TRUNK_OPEN
     private var mIsSettingPassword = false
@@ -31,13 +29,13 @@ class ControlModule {
     }
 
     private fun makeHUDSetMsgAndSend() {
-        Log.d(tag, "send button +:$mIncState -:$mDecState ok:$mOkState")
+        Log.d(TAG, "send button +:$mIncState -:$mDecState ok:$mOkState")
         val bArr = byteArrayOf(0, mIncState.toByte(), mDecState.toByte(), mOkState.toByte())
         packHudMsgAndSend(bArr, bArr.size)
     }
 
     fun onPasswordEnter(str: String = "123456") {
-        Log.i(tag, "onPasswordEnter $str setting psw? $mIsSettingPassword")
+        Log.i(TAG, "onPasswordEnter $str setting psw? $mIsSettingPassword")
         if (mIsSettingPassword) {
             onSettingPasswordEnter(str)
             return
@@ -57,10 +55,35 @@ class ControlModule {
             else -> -1 to -1
         }
         if (cmd != -1 && state != -1) {
-            Log.i(tag, "send controlCmd: $cmd action: $state")
+            Log.i(TAG, "send controlCmd: $cmd action: $state")
             sendControlCmd(cmd, state, str)
         }
         mControllingItem = ControlFuncs.CAR_INVALID_FUN
+    }
+
+    fun sendControlMessage(conMsg: ControlFuncs) {
+
+        val (cmd, state) = when (conMsg) {
+            ControlFuncs.CAR_LOCK -> CMD_LOCK to OFF
+            ControlFuncs.CAR_POWER_OFF -> CMD_POWER to OFF
+            ControlFuncs.CAR_POWER_ON -> CMD_POWER to ON
+            ControlFuncs.CAR_SKYLIGHT_OPEN -> CMD_SKYLIGHT to ON
+            ControlFuncs.CAR_TRUNK_OPEN -> CMD_TRUNK to ON
+            ControlFuncs.CAR_UNLOCK -> CMD_LOCK to ON
+            ControlFuncs.CAR_WINDOW_CLOSE -> CMD_WINDOWS to OFF
+            ControlFuncs.CAR_WINDOW_OPEN -> CMD_WINDOWS to ON
+            else -> -1 to -1
+        }
+        if (cmd != -1 && state != -1) {
+            Log.i(TAG, "send controlCmd: $cmd action: $state")
+            //sendControlCmd(cmd, state, str)
+
+            val bArr = ByteArray(2)
+            bArr[0] = cmd.toByte()
+            bArr[1] = state.toByte()
+            packAndSendMsg(bArr, bArr.size)
+        }
+        //mControllingItem = ControlFuncs.CAR_INVALID_FUN
     }
 
 
@@ -70,13 +93,13 @@ class ControlModule {
     }
 
     fun onRecvMsg(bArr: ByteArray, length: Int) {
-        Log.i(tag, "onRecv ${String.format("%02X ", bArr[1])}")
+        //Log.i(tag, "onRecv ${String.format("%02X ", bArr[1])}")
         when (bArr[1].toInt()) {
             6 -> onRecvHUDSetMsg(bArr, length)
                     -96 -> onPswVerifyResult(bArr[2].toInt())
                     -95 -> onPswCanSet(bArr[2].toInt())
                     -94 -> {
-                Log.i(tag, "onSet psw result")
+                Log.i(TAG, "onSet psw result")
                 onSetPswResult(bArr[2].toInt(), "123456")
             }
             -93 -> onNeedVerifyPsw()
@@ -119,17 +142,17 @@ class ControlModule {
     }
 
     private fun onNeedVerifyPsw() {
-        Log.i(tag, "onNeedVerifyPsw")
+        Log.i(TAG, "onNeedVerifyPsw")
         mIsCarControlSupport = true
         sendVerifyPsw(mPassword)
     }
 
     private fun onSetPswResult(result: Int, password: String) {
-        Log.i(tag, "onSetPswResult: $result psw: $password")
+        Log.i(TAG, "onSetPswResult: $result psw: $password")
     }
 
     private fun onPswCanSet(result: Int) {
-        Log.i(tag, "onCanSetPassword: $result")
+        Log.i(TAG, "onCanSetPassword: $result")
         when {
             result == 0 -> {
                 mIsSettingPassword = true
@@ -142,7 +165,7 @@ class ControlModule {
     }
 
     private fun onPswVerifyResult(result: Int) {
-        Log.i(tag, "onPswVerifyResult: $result")
+        Log.i(TAG, "onPswVerifyResult: $result")
         mIsVerifySucceed = result == 0
         if (mIsVerifySucceed) {
             mIsCarControlSupport = true
@@ -162,7 +185,7 @@ class ControlModule {
             8 -> "잘못된 비밀번호가 너무 많습니다. 한 시간 후에 다시 시도해 주세요."
             else -> ""
         }
-        Log.d(tag, "onExcuteCmdErr : $message")
+        Log.d(TAG, "onExcuteCmdErr : $message")
     }
 
     private fun onNewCmdAvalible() {
@@ -177,7 +200,7 @@ class ControlModule {
             CMD_TRUNK -> if (state == ON) "트렁크를 여는 중" else "명령을 실행 중"
             else -> "명령을 실행 중"
         }
-        Log.d(tag, "onCmdExcuteState : $message")
+        Log.d(TAG, "onCmdExcuteState : $message")
     }
 
     private fun sendRequestSetPsw() {
@@ -239,7 +262,7 @@ class ControlModule {
     }
 
     private fun packHudMsgAndSend(bArr: ByteArray, length: Int) {
-        Log.d(tag, "send hud msg buf0:${bArr[0].toInt()} buf1:${bArr[1].toInt()}")
+        Log.d(TAG, "send hud msg buf0:${bArr[0].toInt()} buf1:${bArr[1].toInt()}")
         val bArr2 = ByteArray(length + 5)
         bArr2[0] = -1
         bArr2[1] = 85

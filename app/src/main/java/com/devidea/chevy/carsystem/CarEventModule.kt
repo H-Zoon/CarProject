@@ -1,21 +1,15 @@
 package com.devidea.chevy.carsystem;
 
-import android.content.Context
 import android.util.Log
-import com.devidea.chevy.App
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToureDevCodec
 import com.devidea.chevy.datas.Data
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.util.Locale
 import kotlin.experimental.and
 
-class DeviceModule {
+class CarEventModule {
 
     companion object {
         const val MSG_NO_INFO_TIMEOUT = 100
@@ -23,15 +17,14 @@ class DeviceModule {
         const val TEMPERATURE_RANGE_MIN = 0
         const val VOLTAGE_RANGE_MAX = 15.0f
         const val VOLTAGE_RANGE_MIN = 10.0f
-        private const val tag = "DeviceModule"
+        private const val TAG = "CarEventModule"
     }
 
-    private var mObdData: OBDData? = OBDData()
+    private var mObdData: OBDData = OBDData()
 
-    private val mNaviCodec = ToDeviceCodec()
+    val mNaviCodec = ToDeviceCodec()
     private var isTimeSync = false
     var mToureCodec = ToureDevCodec()
-    var initOKFromMcu = 0
 
     private var mStrVinFirstHalf = ""
     private var mStrVinSecondHalf = ""
@@ -85,30 +78,12 @@ class DeviceModule {
         return i2.toByte()
     }
 
-    fun getObdData(): OBDData {
-        if (mObdData == null) {
-            mObdData = OBDData()
-        }
-        return mObdData!!
-    }
-
     fun sendHeartbeat() {
         mToureCodec.sendHeartbeat()
     }
 
-    fun onBTConnected() {
-        //initOKFromMcu = 0
-        //handleAppInitOK()
-        //syncTime()
-    }
-
     fun handleAppInitOK() {
-        if (initOKFromMcu == 1 || !BluetoothModel.isConnected()) {
-            return
-        }
-        Log.d("ing", "send initOK")
         mToureCodec.sendInit(1)
-        //mNaviCodec.sendCurrentTime()
     }
 
     fun onBTDisconnected() {
@@ -116,9 +91,6 @@ class DeviceModule {
     }
 
     fun syncTime() {
-        if (isTimeSync) {
-            return
-        }
         mNaviCodec.sendCurrentTime()
     }
 
@@ -131,11 +103,10 @@ class DeviceModule {
     }
 
     private fun onRecvCommonMsg(bArr: ByteArray, i: Int) {
-        Log.d(tag, "recv msg $bArr")
+        Log.d(TAG, "recv msg ${bArr.joinToString()}")
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
-                    initOKFromMcu = 1
                     mToureCodec.sendConnectECU(0)
                 }
             }
@@ -208,17 +179,11 @@ class DeviceModule {
                 14.toByte() -> if (i > 5) handlePid(161, bArr[2], bArr[3], bArr[4], bArr[5])
                 15.toByte() -> when (bArr[2]) {
                     0.toByte() -> {
-                        Log.d("BT:", "!!!!!!!on start fast detect!!!!")
+                        Log.e("BT:", "!!!!!!!on start fast detect!!!!")
                     }
 
                     1.toByte() -> {
-                        Log.d(" BT ", "!!!!!!!on end fast detect!!!!")
-                        val pidDataList =
-                            CarModel.devModule.getObdData().getPidDataList()
-                        if (pidDataList != null && pidDataList.isNotEmpty()) {
-                        } else {
-
-                        }
+                        Log.e(" BT ", "!!!!!!!on end fast detect!!!!")
                     }
                 }
 
@@ -259,7 +224,7 @@ class DeviceModule {
         mLeftRear = i3
         mRightRear = i4
         mTrunk = i5
-        Log.d(tag, "onDoorState:$i,$i2,$i3,$i4,$i5")
+        Log.d(TAG, "onDoorState:$i,$i2,$i3,$i4,$i5")
         var str = ""
         var i6 = 0
         if (i == 1) {
@@ -338,9 +303,7 @@ class DeviceModule {
         Log.d("meter_gear", makeGearText(i3, i4))
     }
 
-    private fun makeGearText(i: Int, i2: Int):
-
-            String {
+    private fun makeGearText(i: Int, i2: Int): String {
         return when (i) {
             1 -> "P"
             2 -> "R"
@@ -355,40 +318,40 @@ class DeviceModule {
 
     private fun handleAllPid(bArr: ByteArray, i: Int) {
         val i2 = bArr[0].toInt() and 255
-        val xjpiddata = getObdData().mSupportPIDMap[i2] ?: return
+        val pidMapData = mObdData.mSupportPIDMap[i2] ?: return
         if (i == 2) {
-            xjpiddata.A = if (i2 == 13) {
+            pidMapData.A = if (i2 == 13) {
                 (bArr[1].toInt() and 255) *
                         (SpeedAdjustArr[0] and 255.toByte()) / 100
             } else {
                 bArr[1].toInt() and 255
             }
         } else if (i == 3) {
-            xjpiddata.A = if (i2 == 13) {
+            pidMapData.A = if (i2 == 13) {
                 (bArr[1].toInt() and 255) * (SpeedAdjustArr[0] and 255.toByte()) / 100
             } else {
                 bArr[1].toInt() and 255
             }
-            xjpiddata.B = bArr[2].toInt() and 255
+            pidMapData.B = bArr[2].toInt() and 255
         } else if (i == 4) {
-            xjpiddata.A = if (i2 == 13) {
+            pidMapData.A = if (i2 == 13) {
                 (bArr[1].toInt() and 255) *
                         (SpeedAdjustArr[0] and 255.toByte()) / 100
             } else {
                 bArr[1].toInt() and 255
             }
-            xjpiddata.B = bArr[2].toInt() and 255
-            xjpiddata.C = bArr[3].toInt() and 255
+            pidMapData.B = bArr[2].toInt() and 255
+            pidMapData.C = bArr[3].toInt() and 255
         } else if (i == 5) {
-            xjpiddata.A = if (i2 == 13) {
+            pidMapData.A = if (i2 == 13) {
                 (bArr[1].toInt() and 255) *
                         (SpeedAdjustArr[0] and 255.toByte()) / 100
             } else {
                 bArr[1].toInt() and 255
             }
-            xjpiddata.B = bArr[2].toInt() and 255
-            xjpiddata.C = bArr[3].toInt() and 255
-            xjpiddata.D = bArr[4].toInt() and 255
+            pidMapData.B = bArr[2].toInt() and 255
+            pidMapData.C = bArr[3].toInt() and 255
+            pidMapData.D = bArr[4].toInt() and 255
         }
     }
 
@@ -400,7 +363,7 @@ class DeviceModule {
         val i2 = bArr[0].toInt() and 255
         if (i2 == 255) {
             Log.d("ing", "clear old err")
-            getObdData().getDectectedErrObdList().clear()
+            mObdData.getDectectedErrObdList().clear()
         } else if (i2 == 0) {
             Log.d("obd_search_listview_obd", "refresh")
         } else {
@@ -431,8 +394,8 @@ class DeviceModule {
                 bArr3[3] = int2Byte((b2.toInt() and 240) shr 4)
                 bArr3[4] = int2Byte(b2.toInt() and 15)
                 val str = String(bArr3)
-                if (!getObdData().getDectectedErrObdList().contains(str)) {
-                    getObdData().getDectectedErrObdList().add(str)
+                if (!mObdData.getDectectedErrObdList().contains(str)) {
+                    mObdData.getDectectedErrObdList().add(str)
                 }
             }
         }
@@ -477,16 +440,16 @@ class DeviceModule {
             Log.d("system_cooling_value", "N/A")
         }
         val iArr = intArrayOf(-1, -1, -1, -1)
-        if (getObdData().mSupportPIDMap[60]?.support == 1) {
+        if (mObdData.mSupportPIDMap[60]?.support == 1) {
             iArr[0] = i5
         }
-        if (getObdData().mSupportPIDMap[61]?.support == 1) {
+        if (mObdData.mSupportPIDMap[61]?.support == 1) {
             iArr[1] = i6
         }
-        if (getObdData().mSupportPIDMap[62]?.support == 1) {
+        if (mObdData.mSupportPIDMap[62]?.support == 1) {
             iArr[2] = i7
         }
-        if (getObdData().mSupportPIDMap[63]?.support == 1) {
+        if (mObdData.mSupportPIDMap[63]?.support == 1) {
             iArr[3] = i8
         }
         var str = ""
@@ -514,7 +477,7 @@ class DeviceModule {
     }
 
     private fun handlePid(i: Int, b: Byte, b2: Byte, b3: Byte, b4: Byte) {
-        getObdData().handlePid(i, b, b2, b3, b4)
+        mObdData.handlePid(i, b, b2, b3, b4)
     }
 
     fun handleVoltage(i: Int) {
@@ -624,7 +587,7 @@ class DeviceModule {
     }
 
     private fun onCarLockFunctionState(i: Int, i2: Int) {
-        Log.d(tag, "onCarLockFunc:$i,$i2")
+        Log.d(TAG, "onCarLockFunc:$i,$i2")
         if (mGearFunOnoffVisible == 0) {
             Log.d("gear_d_lock", "변속기 단수 확인!")
             mGearFunOnoffVisible = 1

@@ -9,9 +9,10 @@ class PID {
 }
 
 class OBDData {
+    val TAG = "OBDData"
     var isFastDetectionShowAll = false
     private val mDetectedDataList: MutableList<String> = mutableListOf()
-    private val mPidDataList: MutableList<PID> = ArrayList()
+    //private val mPidDataList: MutableList<PID> = ArrayList()
 
     @SuppressLint("UseSparseArrays")
     private val mPidMap: HashMap<Int, XJPID> = HashMap()
@@ -25,9 +26,9 @@ class OBDData {
         initPidDataMap()
     }
 
-    fun getPidDataList(): List<PID> {
+    /*fun getPidDataList(): List<PID> {
         return mPidDataList
-    }
+    }*/
 
 
     private fun initPidMap() {
@@ -167,10 +168,10 @@ class OBDData {
         var status = "--|--"
 
         constructor()
-        constructor(number: Int, PID: Int, discription: String, unit: String = "") {
+        constructor(number: Int, PID: Int, description: String, unit: String = "") {
             this.number = number
             this.PID = PID
-            this.discription = discription
+            this.discription = description
             this.unit = unit
         }
     }
@@ -183,38 +184,46 @@ class OBDData {
         var support = -1
     }
 
-    fun handlePid(i: Int, b: Byte, b2: Byte, b3: Byte, b4: Byte) {
-        Log.e("dyt", "start")
-        val i2 = b.toInt() and 255
-        val i3 = i + 0
-        var i4 = 7
-        while (i4 >= 0) {
-            val i6 = (7 - i4) + i3
-            Log.e(" dyt ", "1 id = $i6")
-            val xjpiddata = mSupportPIDMap[i6]
-            xjpiddata?.support = if ((1 shl i4) and i2 == 0) 0 else 1
-            i4--
+    fun handlePid(basePidIndex: Int, byte1: Byte, byte2: Byte, byte3: Byte, byte4: Byte) {
+        Log.e(TAG, "handlePid() call")
+
+        val firstByteInt = byte1.toInt() and 255
+        var bitPositions = 7
+
+        // 처리 첫 번째 바이트 (byte1)
+        while (bitPositions >= 0) {
+            val pidIndex = (7 - bitPositions) + basePidIndex
+            Log.e(TAG, "1 id = $pidIndex")
+            val pidData = mSupportPIDMap[pidIndex]
+            pidData?.support = if ((1 shl bitPositions) and firstByteInt == 0) 0 else 1
+            bitPositions--
         }
-        val i7 = b2.toInt() and 255
-        val i8 = i3 + 8
-        for (i9 in 7 downTo 0) {
-            val i10 = (7 - i9) + i8
-            Log.e(" dyt ", "2 id = $i10")
-            mSupportPIDMap[i10]?.support = if ((1 shl i9) and i7 != 0) 1 else 0
+
+        val secondByteInt = byte2.toInt() and 255
+        val secondBaseIndex = basePidIndex + 8
+        for (bitPosition in 7 downTo 0) {
+            val pidIndex = (7 - bitPosition) + secondBaseIndex
+            Log.e(TAG, "2 id = $pidIndex")
+            mSupportPIDMap[pidIndex]?.support =
+                if ((1 shl bitPosition) and secondByteInt != 0) 1 else 0
         }
-        val i11 = b3.toInt() and 255
-        val i12 = i8 + 8
-        for (i13 in 7 downTo 0) {
-            val i14 = (7 - i13) + i12
-            Log.e(" dyt ", "3 id = $i14")
-            mSupportPIDMap[i14]?.support = if ((1 shl i13) and i11 != 0) 1 else 0
+
+        val thirdByteInt = byte3.toInt() and 255
+        val thirdBaseIndex = secondBaseIndex + 8
+        for (bitPosition in 7 downTo 0) {
+            val pidIndex = (7 - bitPosition) + thirdBaseIndex
+            Log.e(TAG, "3 id = $pidIndex")
+            mSupportPIDMap[pidIndex]?.support =
+                if ((1 shl bitPosition) and thirdByteInt != 0) 1 else 0
         }
-        val i15 = b4.toInt() and 255
-        val i16 = i12 + 8
-        for (i17 in 7 downTo 0) {
-            val i18 = (7 - i17) + i16
-            Log.e(" dyt ", "4 id = $i18")
-            mSupportPIDMap[i18]?.support = if ((1 shl i17) and i15 != 0) 1 else 0
+
+        val fourthByteInt = byte4.toInt() and 255
+        val fourthBaseIndex = thirdBaseIndex + 8
+        for (bitPosition in 7 downTo 0) {
+            val pidIndex = (7 - bitPosition) + fourthBaseIndex
+            Log.e(TAG, "4 id = $pidIndex")
+            mSupportPIDMap[pidIndex]?.support =
+                if ((1 shl bitPosition) and fourthByteInt != 0) 1 else 0
         }
     }
 

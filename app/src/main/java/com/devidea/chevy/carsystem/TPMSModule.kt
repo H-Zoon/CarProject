@@ -6,7 +6,7 @@ import com.devidea.chevy.datas.Data
 import com.devidea.chevy.datas.TireData
 
 // 자동차 TPMS 데이터를 관리하는 클래스
-class TpmsModule {
+class TPMSModule {
     private var mIsPairing = false
     private val mTireData = Array(4) { TireData() }
     private var mIsRecvedTireData = false

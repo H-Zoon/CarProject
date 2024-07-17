@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -22,6 +21,7 @@ import com.devidea.chevy.MainActivity
 import com.devidea.chevy.MainActivity.Companion.CHANNEL_ID
 import com.devidea.chevy.R
 import java.util.UUID
+
 
 class LeBTService : Service() {
 
@@ -76,6 +76,7 @@ class LeBTService : Service() {
     }
 
     private var bluetoothGatt: BluetoothGatt? = null
+
     companion object {
         private const val TAG = "BluetoothLE"
         /*private val SERVICE_UUID = UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb")
@@ -87,8 +88,10 @@ class LeBTService : Service() {
 */
 
         private val SERVICE_UUID = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")
-        private val CHARACTERISTIC_NOTIFY_UUID = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb")
-        private val CHARACTERISTIC_WRITE_UUID = UUID.fromString("0000ffe2-0000-1000-8000-00805f9b34fb")
+        private val CHARACTERISTIC_NOTIFY_UUID =
+            UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb")
+        private val CHARACTERISTIC_WRITE_UUID =
+            UUID.fromString("0000ffe2-0000-1000-8000-00805f9b34fb")
         private val DESCRIPTOR_UUID = UUID.fromString("00002901-0000-1000-8000-00805f9b34fb")
     }
 
@@ -125,6 +128,14 @@ class LeBTService : Service() {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun disconnect() {
+        bluetoothGatt?.disconnect()
+        bluetoothGatt?.close()
+        bluetoothGatt = null
+    }
+
+
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -154,16 +165,18 @@ class LeBTService : Service() {
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Services discovered.")
-                /*al service = gatt.getService(SERVICE_UUID)
-                val characteristicNotify = service.getCharacteristic(CHARACTERISTIC_NOTIFY_UUID)
-                gatt.setCharacteristicNotification(characteristicNotify, true)*/
 
-                val characteristic = gatt.getService(SERVICE_UUID)?.getCharacteristic(CHARACTERISTIC_NOTIFY_UUID)
-                //val read = gatt.getService(SERVICE_UUID)?.getCharacteristic(READ)
+                val characteristic =
+                    gatt.getService(SERVICE_UUID)?.getCharacteristic(CHARACTERISTIC_NOTIFY_UUID)
+
+                val characteristic2 =
+                    gatt.getService(SERVICE_UUID)?.getCharacteristic(CHARACTERISTIC_WRITE_UUID)
 
                 characteristic?.let {
                     gatt.setCharacteristicNotification(it, true)
-                    val descriptor = it.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                    gatt.setCharacteristicNotification(characteristic2, true)
+                    val descriptor =
+                        it.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
                     descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                     gatt.writeDescriptor(descriptor)
                     gatt.readCharacteristic(characteristic)

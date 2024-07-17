@@ -1,19 +1,52 @@
 package com.devidea.chevy
 
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.carsystem.CarModel
+import com.devidea.chevy.carsystem.ControlFuncs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity2 : AppCompatActivity() {
+
+    fun packAndMsg(bArr: ByteArray, i: Int) {
+        var i2: Int
+        val bArr2 = ByteArray(i + 5)
+        bArr2[0] = -1
+        bArr2[1] = 85
+        var i3 = 2
+        bArr2[2] = (i + 1).toByte()
+        bArr2[3] = 55
+        System.arraycopy(bArr, 0, bArr2, 4, i)
+        var i4 = 0
+        while (true) {
+            i2 = i + 4
+            if (i3 >= i2) {
+                break
+            }
+            i4 += bArr2[i3].toInt() and 255
+            i3++
+        }
+        bArr2[i2] = (i4 and 255).toByte()
+        BluetoothModel.sendMessage(bArr2)
+        val sb = StringBuilder(i)
+        val length = bArr.size
+        for (i5 in 0 until length) {
+            sb.append(String.format("%02X ", bArr[i5]))
+        }
+        Log.d("mcu_upgrade", "onSend: $sb")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
@@ -54,19 +87,45 @@ class MainActivity2 : AppCompatActivity() {
                 builder.show()
             }
         }
-        // 블루투스 초기화 (선택적)
+
         BluetoothModel.initBTModel(this)
 
         // 연결 버튼
         findViewById<Button>(R.id.connectButton).setOnClickListener {
-            connectBluetooth()
+            BluetoothModel.connectBT()
         }
 
         // 해제 버튼
         findViewById<Button>(R.id.disconnectButton).setOnClickListener {
-            //disconnectBluetooth()
-            CarModel.devModule.handleAppInitOK()
+            BluetoothModel.disconnectBT()
         }
+
+        findViewById<Button>(R.id.init).setOnClickListener {
+            CarModel.carEventModule.handleAppInitOK()
+        }
+
+        findViewById<Button>(R.id.time).setOnClickListener {
+            CarModel.carEventModule.syncTime()
+        }
+
+        findViewById<Button>(R.id.sub).setOnClickListener {
+            val bArr = byteArrayOf(0x10, 0x00)
+            val i = 2 // bArr의 길이
+            packAndMsg(bArr, i)
+        }
+
+        findViewById<Button>(R.id.sub2).setOnClickListener {
+            val bArr = byteArrayOf(0x12)
+            val i = 1 // bArr의 길이
+            packAndMsg(bArr, i)
+        }
+
+        findViewById<Button>(R.id.heart).setOnClickListener {
+            CoroutineScope(Dispatchers.Main).launch {
+                CarModel.carEventModule.sendHeartbeat()
+            }
+        }
+
 
         findViewById<Button>(R.id.t0).setOnClickListener {
             CarModel.tpmsModule.sendPairTpms(0)
@@ -83,28 +142,11 @@ class MainActivity2 : AppCompatActivity() {
         findViewById<Button>(R.id.t3).setOnClickListener {
             CarModel.tpmsModule.sendPairTpms(3)
         }
-        findViewById<Button>(R.id.page1).setOnClickListener {
-            CarModel.devModule.mToureCodec.sendAppPage(1)
+        findViewById<Button>(R.id.t_open).setOnClickListener {
+            CarModel.controlModule.sendControlMessage(conMsg = ControlFuncs.CAR_TRUNK_OPEN)
         }
 
-        findViewById<Button>(R.id.page37).setOnClickListener {
-            CarModel.devModule.mToureCodec.sendAppPage(37)
-        }
 
-        findViewById<Button>(R.id.heart).setOnClickListener {
-            CarModel.devModule.sendHeartbeat()
-        }
 
-        findViewById<Button>(R.id.fast).setOnClickListener {
-            CarModel.devModule.mToureCodec.sendStartFastDetect()
-        }
-    }
-
-    private fun connectBluetooth() {
-        BluetoothModel.connectBT() // 블루투스 연결
-    }
-
-    private fun disconnectBluetooth() {
-        BluetoothModel.disconnectBT() // 블루투스 해제
     }
 }

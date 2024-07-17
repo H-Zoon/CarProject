@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
-import com.devidea.chevy.App
 import com.devidea.chevy.carsystem.CarModel
 
 object BluetoothModel {
@@ -39,15 +38,13 @@ object BluetoothModel {
     private val mBleServiceCallback = object : LeBTService.BleServiceCallback {
         override fun onBTStateChange(state: BTState) {
             Log.d(TAG, "onBTStateChange: $btState -> $state")
-            if(state == BTState.CONNECTED && btState != state){
-                //CarModel.devModule.handleAppInitOK()
-                Log.d(TAG, "is connected")
+            if (btState != state) {
+                btState = state
             }
-            btState = state
         }
 
         override fun onReceived(data: ByteArray, length: Int) {
-            CarModel.onRecvMsgFromDevice(data, length)
+            CarModel.revMsgBufferHandler(data, length)
         }
     }
 
@@ -70,6 +67,7 @@ object BluetoothModel {
     // 블루투스를 해제합니다.
     fun disconnectBT() {
         //btWorkingHandler.sendBTMessage(BTWorkingHandler.BTMessage.DisconnectBT)
+        leBTService?.disconnect()
     }
 
 
