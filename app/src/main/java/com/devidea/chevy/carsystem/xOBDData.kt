@@ -10,9 +10,8 @@ class PID {
 
 class OBDData {
     val TAG = "OBDData"
-    var isFastDetectionShowAll = false
     private val mDetectedDataList: MutableList<String> = mutableListOf()
-    //private val mPidDataList: MutableList<PID> = ArrayList()
+    private val mPidDataList: MutableList<PID> = ArrayList()
 
     @SuppressLint("UseSparseArrays")
     private val mPidMap: HashMap<Int, XJPID> = HashMap()
@@ -26,9 +25,9 @@ class OBDData {
         initPidDataMap()
     }
 
-    /*fun getPidDataList(): List<PID> {
+    fun getPidDataList(): List<PID> {
         return mPidDataList
-    }*/
+    }
 
 
     private fun initPidMap() {

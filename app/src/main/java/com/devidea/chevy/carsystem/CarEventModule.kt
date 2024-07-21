@@ -60,13 +60,9 @@ class CarEventModule {
     var mGearFunOnoffVisible = 0
     var mGearDLock = 0
     var mGearPUnlock = 0
-    var strMCUUUID: String? = null
-    var moduleUpgradeMethod = 0
     var carVIN = ""
 
-    private fun int2Byte(i: Int):
-
-            Byte {
+    private fun int2Byte(i: Int): Byte {
         val i2 = when {
             i in 0..9 -> i + 48
             i in 10..15 -> i + 65
@@ -263,17 +259,11 @@ class CarEventModule {
     private fun handCarInfo(i: Int, i2: Int, i3: Int, i4: Int) {
         if (mHandBrake != i) {
             mHandBrake = i
-            Log.d(
-                "handCarInfo", (if (i == 1) 1
-                else 0).toString()
-            )
+            Log.d("handCarInfo", (if (i == 1) 1 else 0).toString())
         }
         if (mSeatbelt != i2) {
             mSeatbelt = i2
-            Log.d(
-                "mSeatbelt", (if (i2 == 0) 1
-                else 0).toString()
-            )
+            Log.d("mSeatbelt", (if (i2 == 0) 1 else 0).toString())
         }
         if (mGear == i3 && mGearNum == i4) {
             return
@@ -333,6 +323,7 @@ class CarEventModule {
             pidMapData.C = bArr[3].toInt() and 255
             pidMapData.D = bArr[4].toInt() and 255
         }
+        mObdData.mSupportPIDMap[i2] = pidMapData
     }
 
     private fun getDevType(i: Int) {

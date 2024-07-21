@@ -9,6 +9,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.carsystem.CarModel
+import com.devidea.chevy.codec.ToureDevCodec
 
 class CarStateActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,7 +23,7 @@ class CarStateActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.fast).setOnClickListener {
-            CarModel.carEventModule.mToureCodec.sendStartFastDetect()
+            ToureDevCodec.sendStartFastDetect()
         }
 
         //CarModel.carEventModule.mObdData.

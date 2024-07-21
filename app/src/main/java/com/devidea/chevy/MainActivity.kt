@@ -34,6 +34,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.ui.theme.CarProjectTheme
 
 class MainActivity : ComponentActivity() {
@@ -44,8 +45,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
+
+        val serviceChannel = NotificationChannel(
+            CHANNEL_ID,
+            "LeBluetoothService Channel",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
+        BluetoothModel.initBTModel(this)
+
         setContent {
             CarProjectTheme {
                 /*Scaffold(modifier = Modifier.fillMaxSize()) {

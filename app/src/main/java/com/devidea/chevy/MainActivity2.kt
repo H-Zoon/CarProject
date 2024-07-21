@@ -64,6 +64,8 @@ class MainActivity2 : AppCompatActivity() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(serviceChannel)
 
+        BluetoothModel.initBTModel(this)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 val builder = AlertDialog.Builder(this)
@@ -92,7 +94,7 @@ class MainActivity2 : AppCompatActivity() {
             }
         }
 
-        BluetoothModel.initBTModel(this)
+
 
         // 연결 버튼
         findViewById<Button>(R.id.connectButton).setOnClickListener {

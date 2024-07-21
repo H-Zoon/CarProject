@@ -39,6 +39,7 @@ object BluetoothModel {
         override fun onBTStateChange(state: BTState) {
             Log.d(TAG, "onBTStateChange: $btState -> $state")
             if (btState != state) {
+                leBTService?.updateNotification(state)
                 btState = state
             }
         }
@@ -56,7 +57,6 @@ object BluetoothModel {
 
     // 블루투스를 연결합니다.
     fun connectBT() {
-        //btWorkingHandler.sendBTMessage(BTWorkingHandler.BTMessage.ConnectBT)
         if (btState == BTState.CONNECTED) {
             Log.d("BluetoothModel::", "already connect")
         } else {
@@ -66,7 +66,6 @@ object BluetoothModel {
 
     // 블루투스를 해제합니다.
     fun disconnectBT() {
-        //btWorkingHandler.sendBTMessage(BTWorkingHandler.BTMessage.DisconnectBT)
         leBTService?.disconnect()
     }
 
@@ -84,14 +83,5 @@ object BluetoothModel {
             val byteArray = chunk.copyOf()
             leBTService?.sendMessage(byteArray)
         }
-    }
-
-    // 블루투스 모드를 초기화합니다.
-    fun clearBTMode() {
-    }
-
-    // 블루투스가 연결되어 있는지 확인합니다.
-    fun isConnected(): Boolean {
-        return btState == BTState.CONNECTED
     }
 }
