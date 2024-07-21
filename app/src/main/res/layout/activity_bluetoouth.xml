@@ -80,4 +80,10 @@
         android:layout_height="wrap_content"
         android:text="t_open" />
 
+    <Button
+        android:id="@+id/navi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="navi" />
+
 </LinearLayout>

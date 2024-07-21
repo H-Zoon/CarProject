@@ -18,8 +18,8 @@ class ControlModule {
     private var mIsSettingPassword = false
     private var mIsVerifySucceed = false
     private var mPassword = ""
-    private var mIsCarControlSupport = false
-    private var mIncState = 0
+    private var mIsCarControlSupport = true
+    private var mIncState = 1
     private var mDecState = 0
     private var mOkState = 0
     private var isShowCantSetPswNow = false
@@ -28,7 +28,7 @@ class ControlModule {
         return mIsCarControlSupport
     }
 
-    private fun makeHUDSetMsgAndSend() {
+    fun makeHUDSetMsgAndSend() {
         Log.d(TAG, "send button +:$mIncState -:$mDecState ok:$mOkState")
         val bArr = byteArrayOf(0, mIncState.toByte(), mDecState.toByte(), mOkState.toByte())
         packHudMsgAndSend(bArr, bArr.size)
@@ -261,15 +261,30 @@ class ControlModule {
         BluetoothModel.sendMessage(bArr2)
     }
 
-    private fun packHudMsgAndSend(bArr: ByteArray, length: Int) {
-        Log.d(TAG, "send hud msg buf0:${bArr[0].toInt()} buf1:${bArr[1].toInt()}")
-        val bArr2 = ByteArray(length + 5)
+    private fun packHudMsgAndSend(bArr: ByteArray, i: Int) {
+        val sb = StringBuilder()
+        sb.append("send hud msg buf0:")
+        var i2 = 0
+        sb.append(bArr[0].toInt())
+        sb.append(" buf1:")
+        sb.append(bArr[1].toInt())
+        val bArr2 = ByteArray(i + 5)
         bArr2[0] = -1
         bArr2[1] = 85
-        bArr2[2] = (length + 1).toByte()
+        var i3 = 2
+        bArr2[2] = (i + 1).toByte()
         bArr2[3] = 6
-        System.arraycopy(bArr, 0, bArr2, 4, length)
-        bArr2[length + 4] = bArr2.drop(2).take(length + 2).sumOf { it.toInt() and 255 }.toByte()
-        BluetoothModel.sendMessage(bArr2)
+        System.arraycopy(bArr, 0, bArr2, 4, i)
+        while (true) {
+            val i4 = i + 4
+            if (i3 < i4) {
+                i2 += bArr2[i3].toInt() and 255
+                i3++
+            } else {
+                bArr2[i4] = (i2 and 255).toByte()
+                BluetoothModel.sendMessage(bArr2)
+                return
+            }
+        }
     }
 }

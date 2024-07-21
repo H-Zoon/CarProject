@@ -12,10 +12,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.carsystem.CarModel
-import com.devidea.chevy.carsystem.ControlFuncs
+import com.devidea.chevy.codec.ToDeviceCodec
+import com.devidea.chevy.codec.ToureDevCodec
+import com.devidea.chevy.datas.NaviData.AMapTrafficStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 class MainActivity2 : AppCompatActivity() {
 
@@ -101,11 +105,11 @@ class MainActivity2 : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.init).setOnClickListener {
-            CarModel.carEventModule.handleAppInitOK()
+            ToureDevCodec.sendInit(1)
         }
 
         findViewById<Button>(R.id.time).setOnClickListener {
-            CarModel.carEventModule.syncTime()
+            ToDeviceCodec.sendCurrentTime()
         }
 
         findViewById<Button>(R.id.sub).setOnClickListener {
@@ -122,7 +126,10 @@ class MainActivity2 : AppCompatActivity() {
 
         findViewById<Button>(R.id.heart).setOnClickListener {
             CoroutineScope(Dispatchers.Main).launch {
-                CarModel.carEventModule.sendHeartbeat()
+                while (true) {
+                    ToureDevCodec.sendHeartbeat()
+                    delay(2000L)
+                }
             }
         }
 
@@ -143,10 +150,68 @@ class MainActivity2 : AppCompatActivity() {
             CarModel.tpmsModule.sendPairTpms(3)
         }
         findViewById<Button>(R.id.t_open).setOnClickListener {
-            CarModel.controlModule.sendControlMessage(conMsg = ControlFuncs.CAR_TRUNK_OPEN)
+            //CarModel.controlModule.sendControlMessage(conMsg = ControlFuncs.CAR_TRUNK_OPEN)
+            CarModel.controlModule.makeHUDSetMsgAndSend()
         }
 
+        fun createTrafficStatus(length: Int, index: Int, status: Int): AMapTrafficStatus {
+            val trafficStatus = AMapTrafficStatus()
+            trafficStatus.length = length
+            trafficStatus.linkIndex = index
+            trafficStatus.status = status
+            return trafficStatus
+        }
 
+        fun handleTrafficStatusUpdate(trafficStatuses : MutableList<AMapTrafficStatus>) {
+            Log.i("traffic", "trafficStatusList len:" + trafficStatuses.size)
+            val bArr = ByteArray(trafficStatuses.size * 4)
+            var i = 0
+            var str = "status content:"
+            for (aMapTrafficStatus in trafficStatuses) {
+                str = str + (("""
+ len:${aMapTrafficStatus.length}""".toString() + " index:" + aMapTrafficStatus.linkIndex).toString() + " status:" + aMapTrafficStatus.status)
+                val i2 = i * 4
+                bArr[i2] = aMapTrafficStatus.status.toByte()
+                val length: Int = aMapTrafficStatus.length
+                bArr[i2 + 1] = (length and 255).toByte()
+                bArr[i2 + 2] = ((65280 and length) shr 8).toByte()
+                bArr[i2 + 3] = ((length and 16711680) shr 16).toByte()
+                i++
+            }
+            Log.i("traffic", str)
+            //this.trafficData = bArr
+            ToDeviceCodec.sendTrafficStatus(bArr)
+        }
+
+        findViewById<Button>(R.id.navi).setOnClickListener {
+            ToDeviceCodec.sendnaviInfo(1,2)
+            /*val trafficStatuses: MutableList<AMapTrafficStatus> = ArrayList()
+            trafficStatuses.add(createTrafficStatus(30612, 0, 1))
+            trafficStatuses.add(createTrafficStatus(247, 179, 2))
+            trafficStatuses.add(createTrafficStatus(4386, 180, 1))
+            trafficStatuses.add(createTrafficStatus(282, 214, 0))
+            trafficStatuses.add(createTrafficStatus(24, 215, 2))
+            trafficStatuses.add(createTrafficStatus(614743, 216, 1))
+            trafficStatuses.add(createTrafficStatus(307, 1277, 2))
+            trafficStatuses.add(createTrafficStatus(62125, 1279, 1))
+            trafficStatuses.add(createTrafficStatus(482, 1406, 4))
+            trafficStatuses.add(createTrafficStatus(966, 1407, 3))
+            trafficStatuses.add(createTrafficStatus(20927, 1408, 1))
+            trafficStatuses.add(createTrafficStatus(479, 1447, 3))
+            trafficStatuses.add(createTrafficStatus(243683, 1448, 1))
+            trafficStatuses.add(createTrafficStatus(2304, 1724, 2))
+            trafficStatuses.add(createTrafficStatus(782862, 1726, 1))
+            trafficStatuses.add(createTrafficStatus(389, 2517, 2))
+            trafficStatuses.add(createTrafficStatus(5286, 2521, 1))
+            trafficStatuses.add(createTrafficStatus(208, 2528, 2))
+            trafficStatuses.add(createTrafficStatus(103, 2532, 3))
+            trafficStatuses.add(createTrafficStatus(201, 2534, 2))
+            trafficStatuses.add(createTrafficStatus(285, 2539, 3))
+            trafficStatuses.add(createTrafficStatus(85, 2546, 2))
+            trafficStatuses.add(createTrafficStatus(50433, 2548, 1))
+            trafficStatuses.add(createTrafficStatus(56, 2758, 0))
+            handleTrafficStatusUpdate(trafficStatuses)*/
+        }
 
     }
 }

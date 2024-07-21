@@ -2,7 +2,7 @@ package com.devidea.chevy.codec
 
 import com.devidea.chevy.bluetooth.BluetoothModel
 
-class ToureDevCodec {
+object ToureDevCodec {
     private fun packAndSendMsg(bArr: ByteArray, i: Int) {
         val bArr2 = ByteArray(i + 5)
         var i2 = 0

@@ -8,108 +8,35 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class ToDeviceCodec {
-    companion object {
-        const val HUD_PAGE_MAIN = 1
-        const val HUD_PAGE_SETTING = 4
-        const val HUD_PAGE_TPMS = 2
-        const val HUD_PAGE_VOLTAGE_TEMP = 3
+object ToDeviceCodec {
 
-        private fun packAndSendMsg(bArr: ByteArray, i: Int) {
-            val bArr2 = ByteArray(i + 5)
-            var i2 = 0
-            bArr2[0] = -1
-            bArr2[1] = 85
-            var i3 = 2
-            bArr2[2] = (i + 1).toByte()
-            bArr2[3] = 1
-            System.arraycopy(bArr, 0, bArr2, 4, i)
-            while (true) {
-                val i4 = i + 4
-                if (i3 < i4) {
-                    i2 += bArr2[i3].toInt() and 255
-                    i3++
-                } else {
-                    bArr2[i4] = (i2 and 255).toByte()
-                    BluetoothModel.sendMessage(bArr2)
-                    return
-                }
-            }
-        }
+    const val HUD_PAGE_MAIN = 1
+    const val HUD_PAGE_SETTING = 4
+    const val HUD_PAGE_TPMS = 2
+    const val HUD_PAGE_VOLTAGE_TEMP = 3
 
-        @JvmStatic
-        fun sendJumpPage(i: Int) {
-            val bArr = byteArrayOf(0, i.toByte())
-            packAndSendMsg(8, bArr, bArr.size)
-        }
-
-        @JvmStatic
-        fun sendChangeSetting(i: Int, i2: Int) {
-            val bArr = byteArrayOf(1, i.toByte(), i2.toByte())
-            packAndSendMsg(8, bArr, bArr.size)
-        }
-
-        @JvmStatic
-        fun sendAdjustHeight(i: Int) {
-            val bArr = byteArrayOf(2, i.toByte())
-            packAndSendMsg(8, bArr, bArr.size)
-        }
-
-        @JvmStatic
-        fun sendTrafficStatus(bArr: ByteArray) {
-            val bArr2 = ByteArray(bArr.size + 1)
-            bArr2[0] = 49
-            System.arraycopy(bArr, 0, bArr2, 1, bArr.size)
-            packAndSendMsg(52, bArr2, bArr2.size)
-        }
-
-        @JvmStatic
-        fun sendNotification(i: Int, str: String?, str2: String?) {
-            var i2 = str?.toByteArray()?.size ?: 0
-            if (i2 > 255) {
-                i2 = 255
-            }
-            var i3 = str2?.toByteArray()?.size ?: 0
-            if (i3 > 255) {
-                i3 = 255
-            }
-            val i4 = i2 + 4
-            val bArr = ByteArray(i4 + i3)
-            bArr[0] = 52
-            bArr[1] = i.toByte()
-            bArr[2] = i2.toByte()
-            str?.toByteArray()?.let {
-                System.arraycopy(it, 0, bArr, 3, i2)
-            }
-            bArr[i2 + 3] = i3.toByte()
-            str2?.toByteArray()?.let {
-                System.arraycopy(it, 0, bArr, i4, i3)
-            }
-            packAndSendMsg(52, bArr, bArr.size)
-        }
-
-        private fun packAndSendMsg(i: Int, bArr: ByteArray, i2: Int) {
-            val bArr2 = ByteArray(i2 + 5)
-            var i3 = 0
-            bArr2[0] = -1
-            bArr2[1] = 85
-            var i4 = 2
-            bArr2[2] = (i2 + 1).toByte()
-            bArr2[3] = i.toByte()
-            System.arraycopy(bArr, 0, bArr2, 4, i2)
-            while (true) {
-                val i5 = i2 + 4
-                if (i4 < i5) {
-                    i3 += bArr2[i4].toInt() and 255
-                    i4++
-                } else {
-                    bArr2[i5] = (i3 and 255).toByte()
-                    BluetoothModel.sendMessage(bArr2)
-                    return
-                }
+    private fun packAndSendMsg(i: Int, bArr: ByteArray, i2: Int) {
+        val bArr2 = ByteArray(i2 + 5)
+        var i3 = 0
+        bArr2[0] = -1
+        bArr2[1] = 85
+        var i4 = 2
+        bArr2[2] = (i2 + 1).toByte()
+        bArr2[3] = i.toByte()
+        System.arraycopy(bArr, 0, bArr2, 4, i2)
+        while (true) {
+            val i5 = i2 + 4
+            if (i4 < i5) {
+                i3 += bArr2[i4].toInt() and 255
+                i4++
+            } else {
+                bArr2[i5] = (i3 and 255).toByte()
+                BluetoothModel.sendMessage(bArr2)
+                return
             }
         }
     }
+
 
     private fun packAndSendMsg(bArr: ByteArray, i: Int) {
         val bArr2 = ByteArray(i + 5)
@@ -131,6 +58,56 @@ class ToDeviceCodec {
                 return
             }
         }
+    }
+    @JvmStatic
+    fun sendJumpPage(i: Int) {
+        val bArr = byteArrayOf(0, i.toByte())
+        packAndSendMsg(8, bArr, bArr.size)
+    }
+
+    @JvmStatic
+    fun sendChangeSetting(i: Int, i2: Int) {
+        val bArr = byteArrayOf(1, i.toByte(), i2.toByte())
+        packAndSendMsg(8, bArr, bArr.size)
+    }
+
+    @JvmStatic
+    fun sendAdjustHeight(i: Int) {
+        val bArr = byteArrayOf(2, i.toByte())
+        packAndSendMsg(8, bArr, bArr.size)
+    }
+
+    @JvmStatic
+    fun sendTrafficStatus(bArr: ByteArray) {
+        val bArr2 = ByteArray(bArr.size + 1)
+        bArr2[0] = 49
+        System.arraycopy(bArr, 0, bArr2, 1, bArr.size)
+        packAndSendMsg(52, bArr2, bArr2.size)
+    }
+
+    @JvmStatic
+    fun sendNotification(i: Int, str: String?, str2: String?) {
+        var i2 = str?.toByteArray()?.size ?: 0
+        if (i2 > 255) {
+            i2 = 255
+        }
+        var i3 = str2?.toByteArray()?.size ?: 0
+        if (i3 > 255) {
+            i3 = 255
+        }
+        val i4 = i2 + 4
+        val bArr = ByteArray(i4 + i3)
+        bArr[0] = 52
+        bArr[1] = i.toByte()
+        bArr[2] = i2.toByte()
+        str?.toByteArray()?.let {
+            System.arraycopy(it, 0, bArr, 3, i2)
+        }
+        bArr[i2 + 3] = i3.toByte()
+        str2?.toByteArray()?.let {
+            System.arraycopy(it, 0, bArr, i4, i3)
+        }
+        packAndSendMsg(52, bArr, bArr.size)
     }
 
     fun sendnaviInfo(i: Int, i2: Int) {
@@ -279,8 +256,9 @@ class ToDeviceCodec {
         packAndSendMsg(bArr, bArr.size)
 
 
-            val bArr2 = byteArrayOf(0xFF.toByte(), 0x55, 6, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x1F.toByte())
-            packAndSendMsg(bArr2, bArr2.size)
+        val bArr2 =
+            byteArrayOf(0xFF.toByte(), 0x55, 6, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x1F.toByte())
+        packAndSendMsg(bArr2, bArr2.size)
 
     }
 }

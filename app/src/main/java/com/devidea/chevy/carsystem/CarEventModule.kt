@@ -21,10 +21,7 @@ class CarEventModule {
     }
 
     private var mObdData: OBDData = OBDData()
-
-    val mNaviCodec = ToDeviceCodec()
     private var isTimeSync = false
-    var mToureCodec = ToureDevCodec()
 
     private var mStrVinFirstHalf = ""
     private var mStrVinSecondHalf = ""
@@ -78,23 +75,6 @@ class CarEventModule {
         return i2.toByte()
     }
 
-    fun sendHeartbeat() {
-        mToureCodec.sendHeartbeat()
-    }
-
-    fun handleAppInitOK() {
-        mToureCodec.sendInit(1)
-    }
-
-    fun onBTDisconnected() {
-        isTimeSync = false
-    }
-
-    fun syncTime() {
-        mNaviCodec.sendCurrentTime()
-    }
-
-
     fun onRecvMsg(bArr: ByteArray, i: Int) {
         when (bArr[0]) {
             1.toByte() -> onRecvHudMsg(bArr)
@@ -107,7 +87,7 @@ class CarEventModule {
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
-                    mToureCodec.sendConnectECU(0)
+                    ToureDevCodec.sendConnectECU(0)
                 }
             }
 
@@ -199,11 +179,11 @@ class CarEventModule {
                     if (bArr[9].toInt() != -1 || bArr[8].toInt() != -1) {
                         mileage = Data.byte2int(bArr[9], bArr[8])
                     }
-                    Log.d("car ", "mileage:$mileage")
+                    Log.d(TAG, "mileage:$mileage")
                     handleMileage(mileage)
                     if (i > 12) {
                         val remainGas = Data.byte2int(bArr[12])
-                        Log.d("car ", "valid remainGas:$remainGas")
+                        Log.d(TAG, "valid remainGas:$remainGas")
                         handleRemainGas(remainGas)
                     }
                 }
@@ -470,7 +450,7 @@ class CarEventModule {
     private fun onRecvHudMsg(bArr: ByteArray) {
         if (bArr[1] == 7.toByte()) {
             when (bArr[2]) {
-                0.toByte() -> syncTime()
+                0.toByte() -> ToDeviceCodec.sendCurrentTime()
                 1.toByte() -> isTimeSync = true
             }
         }
