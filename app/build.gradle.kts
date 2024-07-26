@@ -53,7 +53,12 @@ android {
 }
 
 dependencies {
+
+    //implementation (libs.androidx.hilt.lifecycle.viewmodel)
+    implementation (libs.androidx.hilt.navigation.compose)
+
     implementation(libs.hilt.android)
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.ktx)

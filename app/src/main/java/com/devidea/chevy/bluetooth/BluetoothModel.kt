@@ -4,9 +4,17 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.media.tv.TvContract.Channels.Logo
 import android.os.IBinder
 import android.util.Log
 import com.devidea.chevy.carsystem.CarModel
+import com.devidea.chevy.codec.ToDeviceCodec
+import com.devidea.chevy.codec.ToureDevCodec
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 object BluetoothModel {
     private const val TAG = "BluetoothModel"
@@ -15,6 +23,7 @@ object BluetoothModel {
     private const val HIGH_SPEED_BT_MTU = 185
     const val BT_NAME1 = "Sinjet"
     const val BT_NAME2 = "ChanganMazda"
+    private var scanJob: Job? = null
 
     private var btState = BTState.DISCONNECTED
 
@@ -41,6 +50,18 @@ object BluetoothModel {
             if (btState != state) {
                 leBTService?.updateNotification(state)
                 btState = state
+                if (btState == BTState.CONNECTED) {
+                    ToureDevCodec.sendInit(1)
+                    ToDeviceCodec.sendCurrentTime()
+                   /* scanJob = CoroutineScope(Dispatchers.IO).launch {
+                        while (true) {
+                            delay(3000L)
+                            ToureDevCodec.sendHeartbeat()
+                        }
+                    }*/
+                } else if (btState == BTState.DISCONNECTED) {
+                    scanJob?.cancel()
+                }
             }
         }
 

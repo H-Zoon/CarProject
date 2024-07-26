@@ -19,18 +19,21 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devidea.chevy.App
+import com.devidea.chevy.App.Companion.CHANNEL_ID
 import com.devidea.chevy.MainActivity
-import com.devidea.chevy.MainActivity.Companion.CHANNEL_ID
 import com.devidea.chevy.R
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 
-class LeBTService : Service() {
+class LeBTService: Service() {
 
     var mBleServiceCallback: BleServiceCallback? = null
     val mBinder = LocalBinder()
@@ -56,7 +59,7 @@ class LeBTService : Service() {
     }
 
     private fun startForegroundService() {
-        val notificationIntent = Intent(this, App.ApplicationContext()::class.java)
+        val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -75,7 +78,7 @@ class LeBTService : Service() {
     }
 
     internal fun updateNotification(state: BTState) {
-        val notificationIntent = Intent(this, App.ApplicationContext()::class.java)
+        val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -96,7 +99,7 @@ class LeBTService : Service() {
             .setContentText("Bluetooth State: $stateText")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
         val notificationManager =
@@ -123,7 +126,7 @@ class LeBTService : Service() {
             UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb")
         private val CHARACTERISTIC_WRITE_UUID =
             UUID.fromString("0000ffe2-0000-1000-8000-00805f9b34fb")
-        private val DESCRIPTOR_UUID = UUID.fromString("00002901-0000-1000-8000-00805f9b34fb")
+        private val DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 
     @SuppressLint("MissingPermission")
@@ -226,7 +229,10 @@ class LeBTService : Service() {
 
         @SuppressLint("MissingPermission")
         @Suppress("DEPRECATION")
-        private fun setCharacteristicNotification(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+        private fun setCharacteristicNotification(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic
+        ) {
             gatt.setCharacteristicNotification(characteristic, true)
 
             val descriptor = characteristic.getDescriptor(DESCRIPTOR_UUID)
@@ -238,7 +244,10 @@ class LeBTService : Service() {
                     gatt.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
                 }
                 gatt.readCharacteristic(characteristic)
-            } ?: Log.e(TAG, "setCharacteristicNotification: Descriptor not found for ${characteristic.uuid}")
+            } ?: Log.e(
+                TAG,
+                "setCharacteristicNotification: Descriptor not found for ${characteristic.uuid}"
+            )
         }
 
         /**
@@ -283,7 +292,7 @@ class LeBTService : Service() {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            Log.d(TAG, "Characteristic changed: ${value.joinToString()}")
+            //Log.d(TAG, "Characteristic changed: ${value.joinToString()}")
             mBleServiceCallback?.onReceived(value, value.size)
         }
 
@@ -308,12 +317,17 @@ class LeBTService : Service() {
         val service = bluetoothGatt?.getService(SERVICE_UUID)
         val characteristic = service?.getCharacteristic(CHARACTERISTIC_WRITE_UUID)
 
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
-            characteristic?.value = value
-            bluetoothGatt?.writeCharacteristic(characteristic)
-        } else {
-            if (characteristic != null) {
-                bluetoothGatt?.writeCharacteristic(characteristic, value, value.size)
+        if (characteristic != null) {
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+                characteristic.value = value
+                bluetoothGatt?.writeCharacteristic(characteristic)
+            } else {
+
+                bluetoothGatt?.writeCharacteristic(
+                    characteristic,
+                    value,
+                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                )
             }
         }
     }

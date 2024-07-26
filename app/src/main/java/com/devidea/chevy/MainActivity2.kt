@@ -11,19 +11,25 @@ import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.carsystem.CarModel
+import com.devidea.chevy.carsystem.pid.OBDData
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToureDevCodec
 import com.devidea.chevy.datas.NaviData.AMapTrafficStatus
+import com.devidea.chevy.viewmodel.CarViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-
+@AndroidEntryPoint
 class MainActivity2 : AppCompatActivity() {
-
-    fun packAndMsg(bArr: ByteArray, i: Int) {
+    @Inject
+    lateinit var viewModel: CarViewModel
+    /* fun packAndMsg(bArr: ByteArray, i: Int) {
         var i2: Int
         val bArr2 = ByteArray(i + 5)
         bArr2[0] = -1
@@ -49,22 +55,12 @@ class MainActivity2 : AppCompatActivity() {
             sb.append(String.format("%02X ", bArr[i5]))
         }
         Log.d("mcu_upgrade", "onSend: $sb")
-    }
+    }*/
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
-
-        val serviceChannel = NotificationChannel(
-            MainActivity.CHANNEL_ID,
-            "LeBluetoothService Channel",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(serviceChannel)
-
-        BluetoothModel.initBTModel(this)
+        val a = CarEventModule(viewModel)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
@@ -94,126 +90,137 @@ class MainActivity2 : AppCompatActivity() {
             }
         }
 
-
-
         // 연결 버튼
         findViewById<Button>(R.id.connectButton).setOnClickListener {
-            BluetoothModel.connectBT()
-        }
+            a.handleAllPid(byteArrayOf(1, 0, 7, -27, 0), 5)
+            a.handlePid(5, 1, 0, 7, -27)
 
-        // 해제 버튼
-        findViewById<Button>(R.id.disconnectButton).setOnClickListener {
-            BluetoothModel.disconnectBT()
-        }
+            a.handleAllPid(byteArrayOf(3, 2, 0), 3)
+            a.handlePid(3, 3, 2, 0, 0)
 
-        findViewById<Button>(R.id.init).setOnClickListener {
-            ToureDevCodec.sendInit(1)
-        }
+            a.handleAllPid(byteArrayOf(4, 81), 2)
+            a.handlePid(2, 4, 81, 0, 0)
 
-        findViewById<Button>(R.id.time).setOnClickListener {
-            ToDeviceCodec.sendCurrentTime()
-        }
+            a.handleAllPid(byteArrayOf(5, -128), 2)
+            a.handlePid(2, 5, -128, 0, 0)
 
-        findViewById<Button>(R.id.sub).setOnClickListener {
-            val bArr = byteArrayOf(0x10, 0x00)
-            val i = 2 // bArr의 길이
-            packAndMsg(bArr, i)
-        }
+            a.handleAllPid(byteArrayOf(6, -128), 2)
+            a.handlePid(2, 6, -128, 0, 0)
 
-        findViewById<Button>(R.id.sub2).setOnClickListener {
-            val bArr = byteArrayOf(0x12)
-            val i = 1 // bArr의 길이
-            packAndMsg(bArr, i)
-        }
+            a.handleAllPid(byteArrayOf(7, 123), 2)
+            a.handlePid(2, 7, 123, 0, 0)
 
-        findViewById<Button>(R.id.heart).setOnClickListener {
-            CoroutineScope(Dispatchers.Main).launch {
-                while (true) {
-                    ToureDevCodec.sendHeartbeat()
-                    delay(2000L)
-                }
+            a.handleAllPid(byteArrayOf(10, -114), 2)
+            a.handlePid(2, 10, -114, 0, 0)
+
+            a.handleAllPid(byteArrayOf(11, 39), 2)
+            a.handlePid(2, 11, 39, 0, 0)
+
+            a.handleAllPid(byteArrayOf(12, 12, -122), 3)
+            a.handlePid(3, 12, 12, -122, 0)
+
+            a.handleAllPid(byteArrayOf(13, 0), 2)
+            a.handlePid(2, 13, 0, 0, 0)
+
+            a.handleAllPid(byteArrayOf(14, -117), 2)
+            a.handlePid(2, 14, -117, 0, 0)
+
+            a.handleAllPid(byteArrayOf(15, 101), 2)
+            a.handlePid(2, 15, 101, 0, 0)
+
+            a.handleAllPid(byteArrayOf(16, 1, -126), 3)
+            a.handlePid(3, 16, 1, -126, 0)
+
+            a.handleAllPid(byteArrayOf(17, 54), 2)
+            a.handlePid(2, 17, 54, 0, 0)
+
+            a.handleAllPid(byteArrayOf(19, 3), 2)
+            a.handlePid(2, 19, 3, 0, 0)
+
+            a.handleAllPid(byteArrayOf(21, 126, -1), 3)
+            a.handlePid(3, 21, 126, -1, 0)
+
+            a.handleAllPid(byteArrayOf(28, 30), 2)
+            a.handlePid(2, 28, 30, 0, 0)
+
+            a.handleAllPid(byteArrayOf(31, 1, -60), 3)
+            a.handlePid(3, 31, 1, -60, 0)
+
+            a.handleAllPid(byteArrayOf(33, 0, 0), 3)
+            a.handlePid(3, 33, 0, 0, 0)
+
+            a.handleAllPid(byteArrayOf(35, 1, 23), 3)
+            a.handlePid(3, 35, 1, 23, 0)
+
+            a.handleAllPid(byteArrayOf(46, 0), 2)
+            a.handlePid(2, 46, 0, 0, 0)
+
+            a.handleAllPid(byteArrayOf(47, -4), 2)
+            a.handlePid(2, 47, -4, 0, 0)
+
+            a.handleAllPid(byteArrayOf(48, -1), 2)
+            a.handlePid(2, 48, -1, 0, 0)
+
+            a.handleAllPid(byteArrayOf(49, 47, -49), 3)
+            a.handlePid(3, 49, 47, -49, 0)
+
+            a.handleAllPid(byteArrayOf(50, 0, 6), 3)
+            a.handlePid(3, 50, 0, 6, 0)
+
+            a.handleAllPid(byteArrayOf(51, 100), 2)
+            a.handlePid(2, 51, 100, 0, 0)
+
+            a.handleAllPid(byteArrayOf(52, -128, -117, 127, -12), 5)
+            a.handlePid(5, 52, -128, -117, 127)
+
+            a.handleAllPid(byteArrayOf(60, 22, -18), 3)
+            a.handlePid(3, 60, 22, -18, 0)
+
+            a.handleAllPid(byteArrayOf(65, 0, 5, -95, -27), 5)
+            a.handlePid(5, 65, 0, 5, -95)
+
+            a.handleAllPid(byteArrayOf(66, 49, 66), 3)
+            a.handlePid(3, 66, 49, 66, 0)
+
+            a.handleAllPid(byteArrayOf(67, 0, 61), 3)
+            a.handlePid(3, 67, 0, 61, 0)
+
+            a.handleAllPid(byteArrayOf(68, -128, 0), 3)
+            a.handlePid(3, 68, -128, 0, 0)
+
+            a.handleAllPid(byteArrayOf(69, 28), 2)
+            a.handlePid(2, 69, 28, 0, 0)
+
+            a.handleAllPid(byteArrayOf(70, 76), 2)
+            a.handlePid(2, 70, 76, 0, 0)
+
+            a.handleAllPid(byteArrayOf(71, 54), 2)
+            a.handlePid(2, 71, 54, 0, 0)
+
+            a.handleAllPid(byteArrayOf(73, 51), 2)
+            a.handlePid(2, 73, 51, 0, 0)
+
+            a.handleAllPid(byteArrayOf(74, 26), 2)
+            a.handlePid(2, 74, 26, 0, 0)
+
+            a.handleAllPid(byteArrayOf(76, 38), 2)
+            a.handlePid(2, 76, 38, 0, 0)
+
+            a.handleAllPid(byteArrayOf(79, 0, 0, 0, 0), 5)
+            a.handlePid(5, 79, 0, 0, 0)
+
+            a.handleAllPid(byteArrayOf(81, 1), 2)
+            a.handlePid(2, 81, 1, 0, 0)
+
+
+            a.mObdData.mSupportPIDMap.forEach { (key, value) ->
+                println("PID Index: $key, Data: $value")
+            }
+            a.mObdData.showPid()
+            val b = a.mObdData.getPidDataList()
+            for (item in b) {
+                println("Name: ${item.strName}, Value: ${item.strValue}")
             }
         }
-
-
-        findViewById<Button>(R.id.t0).setOnClickListener {
-            CarModel.tpmsModule.sendPairTpms(0)
-        }
-
-        findViewById<Button>(R.id.t1).setOnClickListener {
-            CarModel.tpmsModule.sendPairTpms(1)
-        }
-
-        findViewById<Button>(R.id.t2).setOnClickListener {
-            CarModel.tpmsModule.sendPairTpms(2)
-        }
-
-        findViewById<Button>(R.id.t3).setOnClickListener {
-            CarModel.tpmsModule.sendPairTpms(3)
-        }
-        findViewById<Button>(R.id.t_open).setOnClickListener {
-            //CarModel.controlModule.sendControlMessage(conMsg = ControlFuncs.CAR_TRUNK_OPEN)
-            CarModel.controlModule.makeHUDSetMsgAndSend()
-        }
-
-        fun createTrafficStatus(length: Int, index: Int, status: Int): AMapTrafficStatus {
-            val trafficStatus = AMapTrafficStatus()
-            trafficStatus.length = length
-            trafficStatus.linkIndex = index
-            trafficStatus.status = status
-            return trafficStatus
-        }
-
-        fun handleTrafficStatusUpdate(trafficStatuses : MutableList<AMapTrafficStatus>) {
-            Log.i("traffic", "trafficStatusList len:" + trafficStatuses.size)
-            val bArr = ByteArray(trafficStatuses.size * 4)
-            var i = 0
-            var str = "status content:"
-            for (aMapTrafficStatus in trafficStatuses) {
-                str = str + (("""
- len:${aMapTrafficStatus.length}""".toString() + " index:" + aMapTrafficStatus.linkIndex).toString() + " status:" + aMapTrafficStatus.status)
-                val i2 = i * 4
-                bArr[i2] = aMapTrafficStatus.status.toByte()
-                val length: Int = aMapTrafficStatus.length
-                bArr[i2 + 1] = (length and 255).toByte()
-                bArr[i2 + 2] = ((65280 and length) shr 8).toByte()
-                bArr[i2 + 3] = ((length and 16711680) shr 16).toByte()
-                i++
-            }
-            Log.i("traffic", str)
-            //this.trafficData = bArr
-            ToDeviceCodec.sendTrafficStatus(bArr)
-        }
-
-        findViewById<Button>(R.id.navi).setOnClickListener {
-            ToDeviceCodec.sendnaviInfo(1,2)
-            /*val trafficStatuses: MutableList<AMapTrafficStatus> = ArrayList()
-            trafficStatuses.add(createTrafficStatus(30612, 0, 1))
-            trafficStatuses.add(createTrafficStatus(247, 179, 2))
-            trafficStatuses.add(createTrafficStatus(4386, 180, 1))
-            trafficStatuses.add(createTrafficStatus(282, 214, 0))
-            trafficStatuses.add(createTrafficStatus(24, 215, 2))
-            trafficStatuses.add(createTrafficStatus(614743, 216, 1))
-            trafficStatuses.add(createTrafficStatus(307, 1277, 2))
-            trafficStatuses.add(createTrafficStatus(62125, 1279, 1))
-            trafficStatuses.add(createTrafficStatus(482, 1406, 4))
-            trafficStatuses.add(createTrafficStatus(966, 1407, 3))
-            trafficStatuses.add(createTrafficStatus(20927, 1408, 1))
-            trafficStatuses.add(createTrafficStatus(479, 1447, 3))
-            trafficStatuses.add(createTrafficStatus(243683, 1448, 1))
-            trafficStatuses.add(createTrafficStatus(2304, 1724, 2))
-            trafficStatuses.add(createTrafficStatus(782862, 1726, 1))
-            trafficStatuses.add(createTrafficStatus(389, 2517, 2))
-            trafficStatuses.add(createTrafficStatus(5286, 2521, 1))
-            trafficStatuses.add(createTrafficStatus(208, 2528, 2))
-            trafficStatuses.add(createTrafficStatus(103, 2532, 3))
-            trafficStatuses.add(createTrafficStatus(201, 2534, 2))
-            trafficStatuses.add(createTrafficStatus(285, 2539, 3))
-            trafficStatuses.add(createTrafficStatus(85, 2546, 2))
-            trafficStatuses.add(createTrafficStatus(50433, 2548, 1))
-            trafficStatuses.add(createTrafficStatus(56, 2758, 0))
-            handleTrafficStatusUpdate(trafficStatuses)*/
-        }
-
     }
 }

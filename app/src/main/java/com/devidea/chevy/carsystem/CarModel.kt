@@ -1,10 +1,15 @@
 package com.devidea.chevy.carsystem
 
 import android.util.Log
+import com.devidea.chevy.codec.ToureDevCodec
+import com.devidea.chevy.eventbus.Event
+import com.devidea.chevy.eventbus.EventBus
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object CarModel {
     private const val TAG = "CarModel"
-    var carEventModule: CarEventModule = CarEventModule()
     var tpmsModule: TPMSModule = TPMSModule()
     var controlModule: ControlModule = ControlModule()
 
@@ -82,30 +87,31 @@ object CarModel {
 
     private fun msgBranchingHandler(bArr: ByteArray) {
         val header = bArr[0].toInt()
-        Log.e(TAG, "header : $header, massage : ${bArr.joinToString()}")
-
-        when (header) {
-            1 -> carEventModule.onRecvMsg(bArr, bArr.size)
-            //8 -> AppModel.getInstance().onRecvMsg(bArr2, bArr2.size)
-            63 -> {
-                if (bArr.size > 2 && bArr[1] == 16.toByte()) {
-                    val cArr = CharArray(bArr.size - 2) { bArr[it + 2].toChar() }
-                    //AppModel.getInstance().setAgencyCode(String(cArr))
+        //Log.e(TAG, "header : $header, massage : ${bArr.joinToString()}")
+        CoroutineScope(Dispatchers.Main).launch {
+            when (header) {
+                1 ->  EventBus.post(Event.carStateEvent(bArr))
+                //8 -> AppModel.getInstance().onRecvMsg(bArr2, bArr2.size)
+                63 -> {
+                    if (bArr.size > 2 && bArr[1] == 16.toByte()) {
+                        val cArr = CharArray(bArr.size - 2) { bArr[it + 2].toChar() }
+                        //AppModel.getInstance().setAgencyCode(String(cArr))
+                    }
                 }
-            }
 
-            3 -> carEventModule.onRecvMsg(bArr, bArr.size) // Do nothing
-            4 -> tpmsModule.onRecvTPMS(bArr)
-            5, 6 -> controlModule.onRecvMsg(bArr, bArr.size)
-            /*52 -> {
+                3 -> EventBus.post(Event.carStateEvent(bArr))
+                4 -> tpmsModule.onRecvTPMS(bArr)
+                5, 6 -> controlModule.onRecvMsg(bArr, bArr.size)
+                /*52 -> {
                 ImageSender.getInstance().onRecvMessage(bArr2, i)
                 if (bArr2[1] == 49.toByte()) {
                     NaviModel.getInstance().onRequestTrafficData()
                 }
             }*/
-            //53 -> PhoneModel.getIns(SinjetApplication.getInstance()).onRecvMsg(bArr2, bArr2.size)
-            //54 -> DynamicFontModel.getInstance().onRecvDynamicFontMsg(bArr2)
-            /*55, 56, 57 -> {
+                //53 -> PhoneModel.getIns(SinjetApplication.getInstance()).onRecvMsg(bArr2, bArr2.size)
+                //54 -> DynamicFontModel.getInstance().onRecvDynamicFontMsg(bArr2)
+                55 -> ToureDevCodec.sendHeartbeat()
+                /*55, 56, 57 -> {
                 CarModel.getInstance().devModule.setMCUUpgradeMethod(1)
                 McuUpgradeModel.getInstance().onRecvUpgradeMsg(bArr2, i)
             }
@@ -118,6 +124,7 @@ object CarModel {
                     )
                 }
             }*/
+            }
         }
     }
 }
