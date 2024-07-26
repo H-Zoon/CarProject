@@ -36,7 +36,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.ui.theme.CarProjectTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -68,15 +70,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MyApp() {
-    val context = LocalContext.current
     val navController = rememberNavController()
     NavHost(navController, startDestination = "home") {
         composable("home") { HomeScreen(navController) }
+        composable("details/0") { CarStatusScreen() }
+        composable("details/1") {
+            val context = LocalContext.current
+            val intent = Intent(context, MainActivity2::class.java)
+            context.startActivity(intent) }
         composable("details/{cardIndex}") { backStackEntry ->
-            /*val cardIndex = backStackEntry.arguments?.getString("cardIndex")
-            CarStatusView(cardIndex)
-*/
-            context.startActivity(Intent(context, MainActivity2::class.java))
+            val cardIndex = backStackEntry.arguments?.getString("cardIndex")
+            //DefaultDetailsScreen(cardIndex)
         }
     }
 }

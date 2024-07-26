@@ -55,17 +55,6 @@ class MainActivity2 : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
 
-        val serviceChannel = NotificationChannel(
-            MainActivity.CHANNEL_ID,
-            "LeBluetoothService Channel",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(serviceChannel)
-
-        BluetoothModel.initBTModel(this)
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
                 val builder = AlertDialog.Builder(this)

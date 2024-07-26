@@ -31,15 +31,12 @@
         <activity
             android:name=".NaviActivity"
             android:exported="false" />
-        <activity
-            android:name=".CarStateActivity"
-            android:exported="false" />
-        <!--
+
         <activity
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             android:name=".MainActivity2"
             android:exported="false" />
-        -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

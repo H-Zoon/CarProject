@@ -1,10 +1,11 @@
 package com.devidea.chevy.carsystem
 
 import android.util.Log
+import com.devidea.chevy.viewmodel.CarViewModel
 
 object CarModel {
     private const val TAG = "CarModel"
-    var carEventModule: CarEventModule = CarEventModule()
+    var carEventModule: CarEventModule = CarEventModule(CarViewModel())
     var tpmsModule: TPMSModule = TPMSModule()
     var controlModule: ControlModule = ControlModule()
 
@@ -85,7 +86,7 @@ object CarModel {
         Log.e(TAG, "header : $header, massage : ${bArr.joinToString()}")
 
         when (header) {
-            1 -> carEventModule.onRecvMsg(bArr, bArr.size)
+            1 ->carEventModule.onRecvMsg(bArr, bArr.size)
             //8 -> AppModel.getInstance().onRecvMsg(bArr2, bArr2.size)
             63 -> {
                 if (bArr.size > 2 && bArr[1] == 16.toByte()) {

@@ -1,5 +1,6 @@
 package com.devidea.chevy.carsystem;
 
+import com.devidea.chevy.viewmodel.CarViewModel
 import android.util.Log
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.codec.ToDeviceCodec
@@ -7,9 +8,10 @@ import com.devidea.chevy.codec.ToureDevCodec
 import com.devidea.chevy.datas.Data
 import java.text.DecimalFormat
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.experimental.and
 
-class CarEventModule {
+class CarEventModule @Inject constructor(private val viewModel: CarViewModel) {
 
     companion object {
         const val MSG_NO_INFO_TIMEOUT = 100
@@ -25,42 +27,13 @@ class CarEventModule {
 
     private var mStrVinFirstHalf = ""
     private var mStrVinSecondHalf = ""
-    var mRotate = 0
-    var mLeftFront = 0
-    var mRightFront = 0
-    var mLeftRear = 0
-    var mRightRear = 0
-    var mTrunk = 0
-    var mRemainGas = -1
-    var mMileage = -1
-    var mHandBrake = -1
-    var mSeatbelt = -1
-    var mGear = -1
-    var mGearNum = -1
+
+    sealed class DoorState {
+        data object Closed : DoorState()
+        data object Open : DoorState()
+    }
+
     var SpeedAdjustArr = byteArrayOf(100, 102, 104, 106, 108, 110, 111, 112, 113, 114)
-    var mErrCount = -1
-    var mVoltage = -1
-    var mSolarTermDoor = -1
-    var mWaterTemperature = -1
-    var mThreeCatalystTemperatureBankOne1 = -1
-    var mThreeCatalystTemperatureBankOne2 = -1
-    var mThreeCatalystTemperatureBankTwo1 = -1
-    var mThreeCatalystTemperatureBankTwo2 = -1
-    var mMemission = ""
-    var mMeterVoltage = -1
-    var mMeterRotate = -1
-    var mSpeed = -1
-    var mTemp = -1
-    var mTimeOfLastVoltageWarning = 0L
-    var mVoltageWarningTimes = 0
-    var mTimeOfLastWarnHandbrake = 0L
-    var mTimeOfLastWarnSeatbelt = 0L
-    var mTimeOfLastWarnTemperature = 0L
-    var mTemperatureWarnTimes = 0
-    var mGearFunOnoffVisible = 0
-    var mGearDLock = 0
-    var mGearPUnlock = 0
-    var carVIN = ""
 
     private fun int2Byte(i: Int): Byte {
         val i2 = when {
@@ -104,7 +77,7 @@ class CarEventModule {
                     System.arraycopy(bArr, 3, bArr3, 0, 8)
                     val str2 = String(bArr3)
                     mStrVinSecondHalf = str2
-                    carVIN = mStrVinFirstHalf + mStrVinSecondHalf
+                    viewModel.updateCarVIN(mStrVinFirstHalf + mStrVinSecondHalf)
                 }
             }
 
@@ -160,6 +133,7 @@ class CarEventModule {
 
                     1.toByte() -> {
                         Log.e(" BT ", "!!!!!!!on end fast detect!!!!")
+                        viewModel.updateObdData(mObdData)
                     }
                 }
 
@@ -187,90 +161,34 @@ class CarEventModule {
         }
     }
 
-    fun getDoorState(): IntArray {
-        return intArrayOf(mLeftFront, mRightFront, mLeftRear, mRightRear, mTrunk)
-    }
 
-    private fun handleDoorState(i: Int, i2: Int, i3: Int, i4: Int, i5: Int) {
-        if (mLeftFront == i && mRightFront == i2 && mLeftRear == i3 && mRightRear == i4 && mTrunk == i5) {
-            return
-        }
-        mLeftFront = i
-        mRightFront = i2
-        mLeftRear = i3
-        mRightRear = i4
-        mTrunk = i5
-        Log.d(TAG, "onDoorState:$i,$i2,$i3,$i4,$i5")
-        var str = ""
-        var i6 = 0
-        if (i == 1) {
-            str = "왼쪽 앞문 열림"
-            i6 = 1
-        }
-        if (i2 == 1) {
-            i6++
-            str = "오른쪽 앞문 열림"
-        }
-        if (i3 == 1) {
-            i6++
-            str = "왼쪽 뒷문 열림"
-        }
-        if (i4 == 1) {
-            i6++
-            str = "오른쪽 뒷문 열림"
-        }
-        if (i5 == 1) {
-            i6++
-            str = "트렁크 열림"
-        }
-        if (i6 > 0) {
-            if (i6 == 1) {
-                Log.d("CarEvent", str)
-            }
-        } else {
-            Log.d("CarEvent", "DoorOpen")
-        }
+    private fun handleDoorState(
+        leftFront: Int,
+        rightFront: Int,
+        leftRear: Int,
+        rightRear: Int,
+        trunk: Int
+    ) {
+        viewModel.updateLeftFront(if (leftFront == 1) DoorState.Open else DoorState.Closed)
+        viewModel.updateRightFront(if (rightFront == 1) DoorState.Open else DoorState.Closed)
+        viewModel.updateLeftRear(if (leftRear == 1) DoorState.Open else DoorState.Closed)
+        viewModel.updateRightRear(if (rightRear == 1) DoorState.Open else DoorState.Closed)
+        viewModel.updateTrunk(if (trunk == 1) DoorState.Open else DoorState.Closed)
     }
 
     private fun handleRemainGas(i: Int) {
-        if (mRemainGas != i) {
-            mRemainGas = i
-            val str = if (i < 0 || i >= 255) {
-                "N/A"
-            } else {
-                "${(i * 100) / 255}%"
-            }
-            Log.d("CarEvent", "GasLow")
-        }
+        viewModel.updateRemainGas(if (i < 0 || i >= 255) "N/A" else "${(i * 100) / 255}%")
     }
 
     private fun handleMileage(i: Int) {
-        if (mMileage != i) {
-            mMileage = i
-            val str = if (i >= 0) {
-                "$i Km"
-            } else {
-                "N/A"
-            }
-            Log.d("handleMileage", str)
-        }
+        viewModel.updateMileage(if (i >= 0) "$i Km" else "N/A")
     }
 
-    private fun handCarInfo(i: Int, i2: Int, i3: Int, i4: Int) {
-        if (mHandBrake != i) {
-            mHandBrake = i
-            Log.d("handCarInfo", (if (i == 1) 1 else 0).toString())
-        }
-        if (mSeatbelt != i2) {
-            mSeatbelt = i2
-            Log.d("mSeatbelt", (if (i2 == 0) 1 else 0).toString())
-        }
-        if (mGear == i3 && mGearNum == i4) {
-            return
-        }
-        mGear = i3
-        mGearNum = i4
-        Log.d("meter_gear", makeGearText(i3, i4))
+    private fun handCarInfo(parkingBrake: Int, seatbelt: Int, gear: Int, gearNum: Int) {
+        viewModel.updateHandBrake(parkingBrake == 1)
+        viewModel.updateSeatbelt(seatbelt == 1)
+        viewModel.updateGear(makeGearText(gear, gearNum))
+        viewModel.updateGearNum(gearNum)
     }
 
     private fun makeGearText(i: Int, i2: Int): String {
@@ -289,39 +207,44 @@ class CarEventModule {
     private fun handleAllPid(bArr: ByteArray, i: Int) {
         val i2 = bArr[0].toInt() and 255
         val pidMapData = mObdData.mSupportPIDMap[i2] ?: return
-        if (i == 2) {
-            pidMapData.A = if (i2 == 13) {
-                (bArr[1].toInt() and 255) *
-                        (SpeedAdjustArr[0] and 255.toByte()) / 100
-            } else {
-                bArr[1].toInt() and 255
+        when (i) {
+            2 -> {
+                pidMapData.A = if (i2 == 13) {
+                    (bArr[1].toInt() and 255) *
+                            (SpeedAdjustArr[0] and 255.toByte()) / 100
+                } else {
+                    bArr[1].toInt() and 255
+                }
             }
-        } else if (i == 3) {
-            pidMapData.A = if (i2 == 13) {
-                (bArr[1].toInt() and 255) * (SpeedAdjustArr[0] and 255.toByte()) / 100
-            } else {
-                bArr[1].toInt() and 255
+            3 -> {
+                pidMapData.A = if (i2 == 13) {
+                    (bArr[1].toInt() and 255) * (SpeedAdjustArr[0] and 255.toByte()) / 100
+                } else {
+                    bArr[1].toInt() and 255
+                }
+                pidMapData.B = bArr[2].toInt() and 255
             }
-            pidMapData.B = bArr[2].toInt() and 255
-        } else if (i == 4) {
-            pidMapData.A = if (i2 == 13) {
-                (bArr[1].toInt() and 255) *
-                        (SpeedAdjustArr[0] and 255.toByte()) / 100
-            } else {
-                bArr[1].toInt() and 255
+            4 -> {
+                pidMapData.A = if (i2 == 13) {
+                    (bArr[1].toInt() and 255) *
+                            (SpeedAdjustArr[0] and 255.toByte()) / 100
+                } else {
+                    bArr[1].toInt() and 255
+                }
+                pidMapData.B = bArr[2].toInt() and 255
+                pidMapData.C = bArr[3].toInt() and 255
             }
-            pidMapData.B = bArr[2].toInt() and 255
-            pidMapData.C = bArr[3].toInt() and 255
-        } else if (i == 5) {
-            pidMapData.A = if (i2 == 13) {
-                (bArr[1].toInt() and 255) *
-                        (SpeedAdjustArr[0] and 255.toByte()) / 100
-            } else {
-                bArr[1].toInt() and 255
+            5 -> {
+                pidMapData.A = if (i2 == 13) {
+                    (bArr[1].toInt() and 255) *
+                            (SpeedAdjustArr[0] and 255.toByte()) / 100
+                } else {
+                    bArr[1].toInt() and 255
+                }
+                pidMapData.B = bArr[2].toInt() and 255
+                pidMapData.C = bArr[3].toInt() and 255
+                pidMapData.D = bArr[4].toInt() and 255
             }
-            pidMapData.B = bArr[2].toInt() and 255
-            pidMapData.C = bArr[3].toInt() and 255
-            pidMapData.D = bArr[4].toInt() and 255
         }
         mObdData.mSupportPIDMap[i2] = pidMapData
     }
@@ -390,51 +313,33 @@ class CarEventModule {
     }
 
     private fun getCarConditionData(
-        i: Int, i2: Int, i3: Int, i4: Int, i5: Int, i6: Int, i7: Int, i8: Int
+        errCount: Int,
+        voltage: Int,
+        solarTermDoor: Int,
+        waterTemperature: Int,
+        bankOne1: Int,
+        bankOne2: Int,
+        bankTwo1: Int,
+        bankTwo2: Int
     ) {
-        mErrCount = i
-        mVoltage = i2
-        mSolarTermDoor = i3
-        mWaterTemperature = i4
-        mThreeCatalystTemperatureBankOne1 = i5
-        mThreeCatalystTemperatureBankOne2 = i6
-        mThreeCatalystTemperatureBankTwo1 = i7
-        mThreeCatalystTemperatureBankTwo2 = i8
-        val d = i2.toDouble()
-        Log.d("Voltage", String.format("%.1fV", d / 1000.0))
+        viewModel.updateErrCount(errCount)
+        viewModel.updateVoltage(String.format("%.1fV", voltage.toDouble() / 1000.0))
+        viewModel.updateSolarTermDoor(String.format("%.1f%%", solarTermDoor * 100 / 255.0))
+        viewModel.updateWaterTemperature(
+            if (waterTemperature > 0 && waterTemperature != 255) ("${waterTemperature - 40}°C") else ("N/A")
+        )
 
-        Log.d("system_air_intake_value", String.format("%.1f%%", i3 * 100 / 255.0))
-
-        if (i4 > 0 && i4 != 255) {
-            Log.d("system_cooling_value", "${i4 - 40}°C")
-        } else {
-            Log.d("system_cooling_value", "N/A")
-        }
-        val iArr = intArrayOf(-1, -1, -1, -1)
         if (mObdData.mSupportPIDMap[60]?.support == 1) {
-            iArr[0] = i5
+            viewModel.updateThreeCatalystTemperatureBankOne1(String.format(Locale.getDefault(), "%d°C", bankOne1))
         }
         if (mObdData.mSupportPIDMap[61]?.support == 1) {
-            iArr[1] = i6
+            viewModel.updateThreeCatalystTemperatureBankOne2(String.format(Locale.getDefault(), "%d°C", bankOne2))
         }
         if (mObdData.mSupportPIDMap[62]?.support == 1) {
-            iArr[2] = i7
+            viewModel.updateThreeCatalystTemperatureBankTwo1(String.format(Locale.getDefault(), "%d°C", bankTwo1))
         }
         if (mObdData.mSupportPIDMap[63]?.support == 1) {
-            iArr[3] = i8
-        }
-        var str = ""
-        for (i9 in iArr.indices) {
-            if (iArr[i9] != -1) {
-                str = String.format(Locale.getDefault(), "%d°C", iArr[i9])
-                break
-            }
-        }
-        Log.d("system_memissions_value", str)
-        mMemission = str
-        if (mErrCount <= 0) {
-            Log.d("car_condition_img_result", mErrCount.toString())
-
+            viewModel.updateThreeCatalystTemperatureBankTwo2(String.format(Locale.getDefault(), "%d°C", bankTwo2))
         }
     }
 
@@ -451,128 +356,59 @@ class CarEventModule {
         mObdData.handlePid(i, b, b2, b3, b4)
     }
 
-    fun handleVoltage(i: Int) {
-        if (mMeterVoltage == i) {
-            return
-        }
-        mMeterVoltage = i
+    private fun handleVoltage(i: Int) {
         val decimalFormat = DecimalFormat(".0")
         val f = i / 1000.0f
         if (f > 0.0f) {
-            if (mRotate > 350 && f < VOLTAGE_RANGE_MIN) {
-                onVoltageUnnormal(-1)
+            if (viewModel.mRotate.value > 350 && f < VOLTAGE_RANGE_MIN) {
+                Log.d("onVoltageUnnormal", "배터리 전압 너무 높음")
             } else if (f > VOLTAGE_RANGE_MAX) {
-                onVoltageUnnormal(1)
-            } else if (mVoltageWarningTimes > 0) {
-                mVoltageWarningTimes = 0
+                Log.d("onVoltageUnnormal", "배터리 전압 너무 낮음")
             }
-            Log.d("Voltage", "${decimalFormat.format(f)}V")
+
+            viewModel.updateMeterVoltage("${decimalFormat.format(f)}V")
         } else {
-            Log.d("Voltage", "N/A")
+            viewModel.updateMeterVoltage("N/A")
         }
     }
 
-    fun onVoltageUnnormal(i: Int) {
-        val currentTimeMillis = System.currentTimeMillis()
-        val j = mTimeOfLastVoltageWarning
-        if (j == 0L || currentTimeMillis - j > 180000) {
-            mTimeOfLastVoltageWarning = currentTimeMillis
-            mVoltageWarningTimes++
-            when (i) {
-                1 -> Log.d("onVoltageUnnormal", "배터리 전압 너무 높음")
-
-                -1 -> Log.d("onVoltageUnnormal", "배터리 전압 너무 낮음")
-            }
-        }
+    private fun handleRotate(rotate: Int) {
+        viewModel.updateRotate(rotate)
     }
 
-    fun handleRotate(i: Int) {
-        if (mMeterRotate == i) {
-            return
-        }
-        mMeterRotate = i
-        if (i < 0 || i > 8000) {
-            return
-        }
-        mRotate = i
-        Log.d("system_idling_value", "$i r/min")
-        Log.d("meter_rotate_value", mRotate.toString())
+    private fun handleSpeed(speed: Int) {
+        viewModel.updateSpeed(speed)
     }
 
-    fun handleSpeed(i: Int) {
-        if (mSpeed == i) {
-            return
-        }
-        mSpeed = i
-        if (i < 0 || i > 240) {
-            return
-        }
-        Log.d("meter_speed_meter", "$i")
-        if (i >= 1) {
-            onCarMoving()
-        }
-    }
 
-    fun onCarMoving() {
-        if (mHandBrake == 1 && (mTimeOfLastWarnHandbrake == 0L || System.currentTimeMillis() - mTimeOfLastWarnHandbrake > 15000)) {
-            mTimeOfLastWarnHandbrake = System.currentTimeMillis()
-            Log.d("onVoltageUnnormal", "사이드 브레이크 확인!")
-        }
-        if (mSeatbelt == 0) {
-            if (mTimeOfLastWarnSeatbelt == 0L || System.currentTimeMillis() - mTimeOfLastWarnSeatbelt > 30000) {
-                mTimeOfLastWarnSeatbelt = System.currentTimeMillis()
-                Log.d("onVoltageUnnormal", "안전밸트 확인!")
-            }
-        }
-    }
-
-    fun handleTemp(i: Int) {
-        if (mTemp == i) {
-            return
-        }
-        mTemp = i
-        if (i >= 0 && i != 255) {
-            val i2 = i - 40
-            Log.d("meter_temp_value", "$i2℃")
+    private fun handleTemp(temp: Int) {
+        val adjustedTemp = temp - 40
+        viewModel.updateTemp(adjustedTemp)
+        if (temp >= 0 && temp != 255) {
             when {
-                i2 < 0 -> onWaterTemperatureUnnormal(-1)
-                i2 > TEMPERATURE_RANGE_MAX -> onWaterTemperatureUnnormal(1)
-                mTemperatureWarnTimes > 0 -> mTemperatureWarnTimes = 0
+                adjustedTemp < 0 -> Log.d("onVoltageUnnormal", "수온 낮음!")
+                adjustedTemp > TEMPERATURE_RANGE_MAX -> Log.d("onVoltageUnnormal", "수온 높음!")
             }
         } else {
             Log.d("meter_temp_value", "N/A")
         }
     }
 
-    fun onWaterTemperatureUnnormal(i: Int) {
-        val currentTimeMillis = System.currentTimeMillis()
-        val j = mTimeOfLastWarnTemperature
-        if (j == 0L || currentTimeMillis - j > 180000) {
-            mTimeOfLastWarnTemperature = currentTimeMillis
-
-            when (i) {
-                -1 -> Log.d("onVoltageUnnormal", "수온 낮음!")
-                1 -> Log.d("onVoltageUnnormal", "수온 높음!")
-            }
-        }
-    }
-
     private fun onCarLockFunctionState(i: Int, i2: Int) {
         Log.d(TAG, "onCarLockFunc:$i,$i2")
-        if (mGearFunOnoffVisible == 0) {
+        if (viewModel.mGearFunOnoffVisible.value!! == 0) {
             Log.d("gear_d_lock", "변속기 단수 확인!")
-            mGearFunOnoffVisible = 1
+            viewModel.updateGearFunOnoffVisible(1)
         }
-        if (mGearPUnlock != i) {
-            mGearPUnlock = i
+        if (viewModel.mGearPUnlock.value != i) {
+            viewModel.updateGearPUnlock(i)
             Log.d(
                 "gear_d_lock", (if (i == 1) 1
                 else 0).toString()
             )
-
         }
-        if (mGearDLock != i2) {
-            mGearDLock = i2
+        if (viewModel.mGearDLock.value != i2) {
+            viewModel.updateGearDLock(i2)
             Log.d(
                 "gear_d_lock", (if (i2 == 1) 1
                 else 0).toString()
@@ -581,20 +417,20 @@ class CarEventModule {
     }
 
     fun onClkGearDLock() {
-        mGearDLock = if (mGearDLock == 1) 0
-        else 1
+        val newGearDLock = if (viewModel.mGearDLock.value == 1) 0 else 1
+        viewModel.updateGearDLock(newGearDLock)
         Log.d("gear_d_lock_onoff", "mGearDLock!")
-        sendGearFunSet(mGearDLock, mGearPUnlock)
+        sendGearFunSet(newGearDLock, viewModel.mGearPUnlock.value!!)
     }
 
     fun onClkGearPUnlock() {
-        mGearPUnlock = if (mGearPUnlock == 1) 0
-        else 1
+        val newGearPUnlock = if (viewModel.mGearPUnlock.value == 1) 0 else 1
+        viewModel.updateGearPUnlock(newGearPUnlock)
         Log.d("gear_p_unlock_onoff", "mGearPUnlock!")
-        sendGearFunSet(mGearDLock, mGearPUnlock)
+        sendGearFunSet(viewModel.mGearDLock.value!!, newGearPUnlock)
     }
 
-    fun sendGearFunSet(i: Int, i2: Int) {
+    private fun sendGearFunSet(i: Int, i2: Int) {
         val bArr = byteArrayOf(33, (i and 15 or (i2 and 15 shl 4)).toByte())
         packAndSendMsg(bArr, bArr.size)
     }
