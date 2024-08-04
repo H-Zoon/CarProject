@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.experimental.and
 
 class CarEventModule(private val viewModel: CarViewModel) {
@@ -72,7 +73,7 @@ class CarEventModule(private val viewModel: CarViewModel) {
     }
 
     private fun onRecvCommonMsg(bArr: ByteArray, i: Int) {
-        //Log.d(TAG, "recv msg ${bArr.joinToString()}")
+        Log.d(TAG, "recv msg ${bArr.joinToString()}")
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
