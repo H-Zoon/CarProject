@@ -153,8 +153,6 @@ class OBDData {
     }
 
     fun handlePid(basePidIndex: Int, byte1: Byte, byte2: Byte, byte3: Byte, byte4: Byte) {
-        Log.e(TAG, "handlePid() call")
-
         val firstByteInt = byte1.toInt() and 255
         var bitPositions = 7
 
