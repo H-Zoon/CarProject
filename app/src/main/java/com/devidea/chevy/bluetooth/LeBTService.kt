@@ -86,13 +86,7 @@ class LeBTService: Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val stateText = when (state) {
-            BTState.CONNECTED -> "Connected"
-            BTState.DISCONNECTED -> "Disconnected"
-            BTState.SCANNING -> "Scanning"
-            BTState.NOT_FOUND -> "Not Found"
-            BTState.CONNECTING -> "CONNECTING"
-        }
+        val stateText = state.description
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("LeBluetoothService")

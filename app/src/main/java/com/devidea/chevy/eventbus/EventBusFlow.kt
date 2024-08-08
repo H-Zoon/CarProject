@@ -1,13 +1,14 @@
 package com.devidea.chevy.eventbus
 
+import com.devidea.chevy.carsystem.CarEventModule
+import com.devidea.chevy.carsystem.pid.PIDListData
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-object EventBus {
+object EventBus : IEventBusBehavior<Event> {
     private val _events = MutableSharedFlow<Event>()
-    val events = _events.asSharedFlow()
-
-    suspend fun post(event: Event) {
+    override val events = _events.asSharedFlow()
+    override suspend fun post(event: Event) {
         _events.emit(event)
     }
 }

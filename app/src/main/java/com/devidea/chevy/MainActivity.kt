@@ -8,11 +8,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,12 +28,17 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +49,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.codec.ToDeviceCodec
@@ -62,7 +70,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        CarEventModule(viewModel)
         BluetoothModel.initBTModel(this)
 
         setContent {
@@ -87,7 +94,7 @@ class MainActivity : ComponentActivity() {
                                 Text("Connect to Bluetooth") // 버튼에 텍스트 추가
                             }
                             Spacer(modifier = Modifier.height(16.dp)) // 버튼과 MyApp 사이에 간격 추가
-                            MyApp()
+                            MyApp(viewModel)
                         }
                     },
                     bottomBar = {
@@ -102,15 +109,72 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MyApp() {
+fun BluetoothStatusScreen(viewModel: CarViewModel) {
+    val bluetoothState by viewModel.bluetoothState.collectAsState()
+
+    // UI to display the Bluetooth status
+    Text(text = bluetoothState.description)
+}
+
+@Composable
+fun BluetoothStatusScreen() {
+    Row(
+        modifier = Modifier
+            .padding(16.dp)
+            .background(color = Color.LightGray, shape = RoundedCornerShape(8.dp))
+    ) {
+        BluetoothStatusSection(title = "Title 1", content = "Part 1")
+        VerticalDivider(modifier = Modifier.height(20.dp))
+        BluetoothStatusSection(title = "Title 2", content = "Part 2")
+        VerticalDivider(modifier = Modifier.height(20.dp))
+        BluetoothStatusSection(title = "Title 3", content = "Part 3")
+    }
+}
+
+@Composable
+fun BluetoothStatusSection(title: String, content: String) {
+    Column(
+        modifier = Modifier
+            .padding(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Text(
+            text = content,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BluetoothStatusScreenPreview() {
+    BluetoothStatusScreen()
+}
+
+@Composable
+fun MyApp(viewModel: CarViewModel) {
     val navController = rememberNavController()
     NavHost(navController, startDestination = "home") {
-        composable("home") { HomeScreen(navController) }
+        composable("home") {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                BluetoothStatusScreen(viewModel)
+                BluetoothStatusScreen()
+                HomeScreen(navController)
+            }
+        }
         composable("details/0") { CarStatusScreen() }
         composable("details/1") {
             val context = LocalContext.current
             val intent = Intent(context, MainActivity2::class.java)
-            context.startActivity(intent) }
+            context.startActivity(intent)
+        }
         /*composable("details/{cardIndex}") { backStackEntry ->
             val cardIndex = backStackEntry.arguments?.getString("cardIndex")
             //DefaultDetailsScreen(cardIndex)
@@ -152,8 +216,9 @@ fun HomeScreen(navController: NavHostController) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
+    val viewModel = CarViewModel() // 임시 ViewModel 인스턴스 생성
     CarProjectTheme {
-        MyApp()
+        MyApp(viewModel = viewModel)
     }
 }
 

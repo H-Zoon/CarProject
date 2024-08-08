@@ -10,6 +10,8 @@ import android.util.Log
 import com.devidea.chevy.carsystem.CarModel
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToureDevCodec
+import com.devidea.chevy.eventbus.ViewEvent
+import com.devidea.chevy.eventbus.ViewEventBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,6 +50,7 @@ object BluetoothModel {
         override fun onBTStateChange(state: BTState) {
             Log.d(TAG, "onBTStateChange: $btState -> $state")
             if (btState != state) {
+                postViewEvent(ViewEvent.BluetoothState(state))
                 leBTService?.updateNotification(state)
                 btState = state
                 if (btState == BTState.CONNECTED) {
@@ -103,6 +106,12 @@ object BluetoothModel {
 
             val byteArray = chunk.copyOf()
             leBTService?.sendMessage(byteArray)
+        }
+    }
+
+    private fun postViewEvent(event: ViewEvent) {
+        CoroutineScope(Dispatchers.Main).launch {
+            ViewEventBus.post(event)
         }
     }
 }

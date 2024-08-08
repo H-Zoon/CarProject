@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.devidea.chevy.bluetooth.BluetoothModel
@@ -60,7 +61,7 @@ class MainActivity2 : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
-        val a = CarEventModule(viewModel)
+        val a = CarEventModule()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
@@ -87,6 +88,16 @@ class MainActivity2 : AppCompatActivity() {
                     requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), 3)
                 }
                 builder.show()
+            }
+        }
+
+        findViewById<Button>(R.id.sned_page).setOnClickListener {
+            CoroutineScope(Dispatchers.Main).launch {
+                for (i in 0..300) {
+                    Log.i("MAIN", i.toString())
+                    ToureDevCodec.sendAppPage(i)
+                    delay(200L)
+                }
             }
         }
 
