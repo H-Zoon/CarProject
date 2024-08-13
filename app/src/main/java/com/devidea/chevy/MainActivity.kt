@@ -1,13 +1,11 @@
 package com.devidea.chevy
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,9 +27,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,18 +39,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.codec.ToDeviceCodec
-import com.devidea.chevy.codec.ToureDevCodec
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -90,16 +86,8 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Button(onClick = { BluetoothModel.connectBT() }) {
-                                Text("Connect to Bluetooth") // 버튼에 텍스트 추가
-                            }
                             Spacer(modifier = Modifier.height(16.dp)) // 버튼과 MyApp 사이에 간격 추가
                             MyApp(viewModel)
-                        }
-                    },
-                    bottomBar = {
-                        BottomAppBar {
-                            Text("Bottom App Bar")
                         }
                     }
                 )
@@ -109,19 +97,58 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BluetoothStatusScreen(viewModel: CarViewModel) {
+fun BlueToothState(viewModel: CarViewModel) {
     val bluetoothState by viewModel.bluetoothState.collectAsState()
 
-    // UI to display the Bluetooth status
+    // 상태에 따라 컬러 필터 결정
+    val colorFilter = if (bluetoothState.state != 1) {
+        ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+    } else {
+        null // 컬러 상태에서는 필터를 적용하지 않음
+    }
+    Image(
+        painter = painterResource(id = R.drawable.asset_car), // 로컬 이미지 리소스 ID
+        contentDescription = "Grayscale Local Image",
+        modifier = Modifier.size(200.dp),
+        colorFilter = colorFilter
+    )
     Text(text = bluetoothState.description)
 }
 
 @Composable
-fun BluetoothStatusScreen() {
+fun BluetoothActionButton(viewModel: CarViewModel) {
+    val bluetoothState by viewModel.bluetoothState.collectAsState()
+
+    // 버튼의 텍스트와 클릭 동작을 분기
+    val buttonText = if (bluetoothState.state == 1) {
+        "Disable Bluetooth"
+    } else {
+        "Enable Bluetooth"
+    }
+
+    val onClickAction = if (bluetoothState.state == 1) {
+        { BluetoothModel.connectBT() }
+    } else {
+        { BluetoothModel.connectBT() }
+    }
+
+    // UI에서 버튼 표시
+    Button(
+        onClick = onClickAction,
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Text(text = buttonText)
+    }
+}
+
+@Composable
+fun CarInformationSummary() {
     Row(
         modifier = Modifier
             .padding(16.dp)
-            .background(color = Color.LightGray, shape = RoundedCornerShape(8.dp))
+            .fillMaxWidth()
+            .background(color = Color.LightGray, shape = RoundedCornerShape(8.dp)),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         BluetoothStatusSection(title = "Title 1", content = "Part 1")
         VerticalDivider(modifier = Modifier.height(20.dp))
@@ -152,7 +179,7 @@ fun BluetoothStatusSection(title: String, content: String) {
 @Preview(showBackground = true)
 @Composable
 fun BluetoothStatusScreenPreview() {
-    BluetoothStatusScreen()
+    CarInformationSummary()
 }
 
 @Composable
@@ -164,8 +191,9 @@ fun MyApp(viewModel: CarViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                BluetoothStatusScreen(viewModel)
-                BluetoothStatusScreen()
+                BlueToothState(viewModel)
+                BluetoothActionButton(viewModel)
+                CarInformationSummary()
                 HomeScreen(navController)
             }
         }
@@ -189,22 +217,25 @@ fun HomeScreen(navController: NavHostController) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        userScrollEnabled = false
     ) {
         items(4) { index ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .height(80.dp)
                     .clickable {
                         navController.navigate("details/$index")
                     },
                 shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.LightGray)
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Text(text = "Card $index", style = MaterialTheme.typography.bodyLarge)
                 }
