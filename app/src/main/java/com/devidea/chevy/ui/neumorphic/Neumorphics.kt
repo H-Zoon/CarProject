@@ -229,6 +229,7 @@ fun NeumorphicButton(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun NeumorphicCard(
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color(0xffe0e5ec),
     lightShadowColor: Color = Color(0xffffffff),
@@ -273,10 +274,12 @@ fun NeumorphicCard(
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        isPressedState = false
+                        if(isPressedState){
+                            isPressedState = false
+                            onClick?.invoke()
+                        }
                         true
                     }
-
                     else -> false
                 }
             },

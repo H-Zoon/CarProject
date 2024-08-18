@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,13 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BluetoothDisabled
-import androidx.compose.material.icons.filled.DataUsage
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,15 +37,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -57,7 +50,6 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.ui.neumorphic.NeumorphicBox
 import com.devidea.chevy.ui.neumorphic.NeumorphicCard
-import com.devidea.chevy.ui.neumorphic.NeumorphicSurface
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -86,7 +78,8 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(16.dp), // 적절한 패딩을 추가하여 UI 간격 설정
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Spacer(modifier = Modifier.height(16.dp)) // 버튼과 MyApp 사이에 간격 추가
                         MyApp(viewModel)
@@ -110,13 +103,21 @@ fun CarImage(viewModel: CarViewModel) {
 
     Image(
         painter = painterResource(id = R.drawable.asset_car), // 로컬 이미지 리소스 ID
-        contentDescription = "Grayscale Local Image", modifier = Modifier.size(200.dp), colorFilter = colorFilter
+        contentDescription = "Grayscale Local Image",
+        modifier = Modifier.size(200.dp),
+        colorFilter = colorFilter
     )
 }
 
 @Composable
 fun BluetoothActionComponent(viewModel: CarViewModel) {
     val bluetoothState by viewModel.bluetoothState.collectAsState()
+    val onClickAction = if (bluetoothState.state == 1) {
+        { BluetoothModel.connectBT() }
+    } else {
+        { BluetoothModel.connectBT() }
+    }
+
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -127,10 +128,11 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
             text = bluetoothState.description, style = MaterialTheme.typography.headlineLarge
         )
 
-        when (bluetoothState.state) {
-            1 -> {
-                val arrowImage = Icons.Default.BluetoothDisabled
-                IconButton(
+
+
+        val icon = when (bluetoothState.state) {
+            1 -> Icons.Default.Done
+                /*IconButton(
                     onClick = { BluetoothModel.disconnectBT() },
                     modifier = Modifier
                 ) {
@@ -140,44 +142,41 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
                         contentDescription = "Icon Button",
                         tint = MaterialTheme.colorScheme.primary
                     )
-                }
-            }
+                }*/
 
-            0, 4 -> {
-                val arrowImage = Icons.Default.Search
-                IconButton(
-                    onClick = { BluetoothModel.connectBT() },
-                    modifier = Modifier
-                ) {
-                    Icon(
-                        modifier = Modifier.size(48.dp),
-                        imageVector = arrowImage,
-                        contentDescription = "Icon Button",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
 
-            2, 3 -> {
-                CircularProgressIndicator(
+            0, 4 -> Icons.Default.Search
+
+            2, 3 -> Icons.Default.Build
+                /*CircularProgressIndicator(
                     color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 4.dp,
                     modifier = Modifier.size(48.dp)
+                )*/
+            else -> Icons.Default.Build
+        }
+
+        Icons.Default.Search
+
+        NeumorphicCard(
+            modifier = Modifier
+                .width(48.dp)
+                .height(48.dp),
+            onClick = { onClickAction() },
+            cornerRadius = 50.dp
+        ) {
+            IconButton(
+                onClick = { BluetoothModel.disconnectBT() },
+                modifier = Modifier
+            ) {
+                Icon(
+                    modifier = Modifier.size(30.dp),
+                    imageVector = icon, // 아이콘 리소스 사용
+                    contentDescription = "Icon Button",
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
-
-
-        /*NeumorphicSurface(
-            isClickable = true, onClick = onClickAction, modifier = Modifier
-                .padding(16.dp)
-                .width(120.dp)
-                .height(60.dp)
-        ) {
-            Text(
-                text = buttonText, color = Color.Black, fontSize = 15.sp, textAlign = TextAlign.Center
-            )
-        }*/
     }
 }
 
@@ -208,7 +207,9 @@ fun BluetoothStatusSection(title: String, content: String) {
         modifier = Modifier.padding(8.dp)
     ) {
         Text(
-            text = title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 4.dp)
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
         Text(
             text = content, style = MaterialTheme.typography.bodyMedium
@@ -228,7 +229,8 @@ fun MyApp(viewModel: CarViewModel) {
     NavHost(navController, startDestination = "home") {
         composable("home") {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 BluetoothActionComponent(viewModel = viewModel)
                 CarImage(viewModel = viewModel)
@@ -262,10 +264,8 @@ fun HomeScreen(navController: NavHostController) {
             NeumorphicCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .clickable {
-                        navController.navigate("details/$index")
-                    }
+                    .height(80.dp),
+                onClick = { navController.navigate("details/$index") }
             ) {
                 Row(
                     modifier = Modifier
