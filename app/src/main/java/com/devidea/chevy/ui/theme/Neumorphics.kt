@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.neumorphic
+package com.devidea.chevy.ui.theme
 
 import android.view.MotionEvent
 import androidx.compose.animation.core.animateDpAsState
@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,92 +31,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun NeumorphicSurface(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xffe0e5ec),
-    lightShadowColor: Color = Color(0xffffffff),
-    darkShadowColor: Color = Color(0xffa3b1c6),
-    cornerRadius: Dp = 16.dp,
-    shadowElevation: Dp = 10.dp,
-    pressedShadowOffset: Int = 5,
-    defaultShadowOffset: Int = 20,
-    pressedBlurRadius: Dp = 4.dp,
-    defaultBlurRadius: Dp = 10.dp,
-    isClickable: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit
-) {
-    val isPressedState = if (isClickable) remember { mutableStateOf(false) } else null
-
-    val offset by animateIntAsState(targetValue = if (isClickable && isPressedState?.value == true) pressedShadowOffset else defaultShadowOffset)
-    val blur by animateDpAsState(targetValue = if (isClickable && isPressedState?.value == true) pressedBlurRadius else defaultBlurRadius)
-
-    Box(
-        modifier = if (isClickable) {
-            modifier
-                .pointerInteropFilter { motionEvent ->
-                    when (motionEvent.action) {
-                        MotionEvent.ACTION_DOWN -> {
-                            isPressedState?.value = true
-                            true
-                        }
-
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                            isPressedState?.value = false
-                            if (motionEvent.action == MotionEvent.ACTION_UP) {
-                                onClick?.invoke()
-                            }
-                            true
-                        }
-
-                        else -> false
-                    }
-                }
-        } else {
-            modifier
-        }.background(
-            brush = Brush.verticalGradient(
-                colors = listOf(lightShadowColor, backgroundColor)
-            ),
-            shape = RoundedCornerShape(cornerRadius)
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset { IntOffset(0, -offset) }
-                .blur(blur, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                .background(lightShadowColor, RoundedCornerShape(cornerRadius))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset { IntOffset(0, offset) }
-                .blur(blur, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                .background(darkShadowColor, RoundedCornerShape(cornerRadius))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    color = backgroundColor,
-                    shape = RoundedCornerShape(cornerRadius)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-fun NeumorphicSurface(
-    modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xffe0e5ec),
-    lightShadowColor: Color = Color(0xffffffff),
-    darkShadowColor: Color = Color(0xffa3b1c6),
+    backgroundColor: Color = MaterialTheme.colorScheme.background,
+    lightShadowColor: Color = MaterialTheme.colorScheme.outline,
+    darkShadowColor: Color = MaterialTheme.colorScheme.tertiary,
     cornerRadius: Dp = 16.dp,
     shadowOffset: Int = 20,
     blurRadius: Dp = 10.dp,
@@ -161,9 +82,9 @@ fun NeumorphicSurface(
 @Composable
 fun NeumorphicBox(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xffe0e5ec),
-    lightShadowColor: Color = Color(0xffffffff),
-    darkShadowColor: Color = Color(0xffa3b1c6),
+    backgroundColor: Color = MaterialTheme.colorScheme.background,
+    lightShadowColor: Color = MaterialTheme.colorScheme.outline,
+    darkShadowColor: Color = MaterialTheme.colorScheme.onTertiary,
     cornerRadius: Dp = 16.dp,
     shadowOffset: Int = 20,
     blurRadius: Dp = 10.dp,
@@ -183,57 +104,12 @@ fun NeumorphicBox(
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun NeumorphicButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xffe0e5ec),
-    lightShadowColor: Color = Color(0xffffffff),
-    darkShadowColor: Color = Color(0xffa3b1c6),
-    cornerRadius: Dp = 16.dp,
-    pressedShadowOffset: Int = 5,
-    defaultShadowOffset: Int = 20,
-    pressedBlurRadius: Dp = 4.dp,
-    defaultBlurRadius: Dp = 10.dp,
-    content: @Composable () -> Unit
-) {
-    var isPressed by remember { mutableStateOf(false) }
-    val offset by animateIntAsState(targetValue = if (isPressed) pressedShadowOffset else defaultShadowOffset)
-    val blur by animateDpAsState(targetValue = if (isPressed) pressedBlurRadius else defaultBlurRadius)
-
-    NeumorphicSurface(
-        modifier = modifier.pointerInteropFilter { motionEvent ->
-            when (motionEvent.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    isPressed = true
-                    true
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    isPressed = false
-                    onClick()
-                    true
-                }
-                else -> false
-            }
-        },
-        backgroundColor = backgroundColor,
-        lightShadowColor = lightShadowColor,
-        darkShadowColor = darkShadowColor,
-        cornerRadius = cornerRadius,
-        shadowOffset = offset,
-        blurRadius = blur,
-        content = content
-    )
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
 fun NeumorphicCard(
-    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xffe0e5ec),
-    lightShadowColor: Color = Color(0xffffffff),
-    darkShadowColor: Color = Color(0xffa3b1c6),
+    onClick: (() -> Unit)? = null,
+    backgroundColor: Color = MaterialTheme.colorScheme.background,
+    lightShadowColor: Color = MaterialTheme.colorScheme.outline,
+    darkShadowColor: Color = MaterialTheme.colorScheme.onTertiary,
     cornerRadius: Dp = 16.dp,
     pressedShadowOffset: Int = 5,
     defaultShadowOffset: Int = 20,

@@ -7,6 +7,7 @@ import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.carsystem.pid.PIDListData
 import com.devidea.chevy.eventbus.ViewEvent
 import com.devidea.chevy.eventbus.ViewEventBus
+import com.devidea.chevy.repository.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CarViewModel @Inject constructor() : ViewModel() {
+class CarViewModel @Inject constructor(
+    private val repository: DataStoreRepository
+) : ViewModel() {
 
     init {
         viewModelScope.launch {
@@ -143,10 +146,49 @@ class CarViewModel @Inject constructor() : ViewModel() {
                 }
             }
         }
+        viewModelScope.launch {
+            launch {
+                repository.getConnectDate().collect { difference ->
+                    _lastConnectDate.value =
+                        when(difference) {
+                            (-1).toLong() -> "-"
+                            (0).toLong() -> "방금전"
+                            else -> "$difference 일 전"
+                        }
+                }
+            }
+
+            launch {
+                repository.getMileageDate().collect { difference ->
+                    _recentMileage.value = when(difference) {
+                        -1 -> "-"
+                        else -> "$difference Km"
+                    }
+                }
+            }
+
+            launch {
+                repository.getFuelDate().collect { difference ->
+                    _fullEfficiency.value = when(difference) {
+                        (-1).toFloat() -> "-"
+                        else -> "$difference Km/L"
+                    }
+                }
+            }
+        }
     }
 
+    private val _lastConnectDate = MutableStateFlow<String>("")
+    val lastConnectDate: StateFlow<String> get() = _lastConnectDate
+
+    private val _recentMileage = MutableStateFlow<String>("")
+    val recentMileage: StateFlow<String> get() = _recentMileage
+
+    private val _fullEfficiency = MutableStateFlow<String>("")
+    val fullEfficiency: StateFlow<String> get() = _fullEfficiency
+
     private val _bluetoothState = MutableStateFlow<BTState>(BTState.DISCONNECTED)
-    val bluetoothState : StateFlow<BTState> get() = _bluetoothState
+    val bluetoothState: StateFlow<BTState> get() = _bluetoothState
 
     private val _obdData = MutableStateFlow<MutableList<PIDListData>>(ArrayList())
     val obdData: StateFlow<MutableList<PIDListData>> get() = _obdData

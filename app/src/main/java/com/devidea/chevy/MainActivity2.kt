@@ -28,8 +28,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity2 : AppCompatActivity() {
-    @Inject
-    lateinit var viewModel: CarViewModel
     /* fun packAndMsg(bArr: ByteArray, i: Int) {
         var i2: Int
         val bArr2 = ByteArray(i + 5)

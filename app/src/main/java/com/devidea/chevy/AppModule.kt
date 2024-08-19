@@ -1,6 +1,7 @@
 package com.devidea.chevy
 
 import android.content.Context
+import com.devidea.chevy.repository.DataStoreRepository
 import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.Module
 import dagger.Provides
@@ -17,11 +18,5 @@ object AppModule {
     @Singleton
     fun provideApplicationContext(@ApplicationContext context: Context): Context {
         return context
-    }
-
-    @Provides
-    @Singleton
-    fun provideViewModel(): CarViewModel {
-        return CarViewModel()
     }
 }

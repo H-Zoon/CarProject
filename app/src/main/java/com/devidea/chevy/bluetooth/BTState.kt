@@ -1,15 +1,16 @@
 package com.devidea.chevy.bluetooth
 
-enum class BTState(val state: Int,  val description: String) {
-    CONNECTED(1, "Connected"),
-    CONNECTING(2, "Connecting"),
-    DISCONNECTED(0, "Disconnected"),
-    NOT_FOUND(4, "Not Found"),
-    SCANNING(3, "Scanning");
+import android.content.Context
+import com.devidea.chevy.R
 
-    companion object {
-        fun fromState(state: Int): BTState? {
-            return entries.find { it.state == state }
-        }
+enum class BTState(val description: Int) {
+    CONNECTED(R.string.bt_connected),
+    CONNECTING(R.string.bt_connecting),
+    DISCONNECTED(R.string.bt_disconnected),
+    NOT_FOUND(R.string.bt_not_found),
+    SCANNING(R.string.bt_scanning);
+
+    fun description(context: Context): String {
+        return context.getString(this.description)
     }
 }

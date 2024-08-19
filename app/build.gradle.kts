@@ -55,8 +55,8 @@ android {
 dependencies {
     //implementation (libs.androidx.hilt.lifecycle.viewmodel)
     implementation (libs.androidx.hilt.navigation.compose)
-    implementation ("androidx.compose.material:material-icons-extended:1.7.0-beta07")
-
+    implementation (libs.androidx.datastore.preferences)
+    //implementation ("org.jetbrains.skija:skija-shared:0.93.4")
     implementation(libs.hilt.android)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     ksp(libs.hilt.compiler)
