@@ -1,4 +1,4 @@
-package com.devidea.chevy
+package com.devidea.chevy.dashboard
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState

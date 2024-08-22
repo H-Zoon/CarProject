@@ -1,6 +1,5 @@
 package com.devidea.chevy
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +41,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.dashboard.EngineRotateGauge
+import com.devidea.chevy.dashboard.LEDSeconds
 import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
@@ -215,7 +216,8 @@ fun HomeScreen(viewModel: CarViewModel) {
         }
         composable("details/0") {
             ///CarStatusScreen()
-            HorizontalGauge()}
+            EngineRotateGauge(progress = 0.5f)
+        }
         composable("details/1") {
             /*val context = LocalContext.current
             val intent = Intent(context, MainActivity2::class.java)
