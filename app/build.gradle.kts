@@ -11,6 +11,9 @@ android {
     compileSdk = 34
 
     defaultConfig {
+        ndk {
+            abiFilters.addAll(listOf("armeabi", "armeabi-v7a", "arm64-v8a"))
+        }
         applicationId = "com.devidea.chevy"
         minSdk = 26
         targetSdk = 34
@@ -41,6 +44,7 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
     /*composeOptions {
         kotlinCompilerExtensionVersion = "2.0.0"
@@ -53,6 +57,7 @@ android {
 }
 
 dependencies {
+    implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
     //implementation (libs.androidx.hilt.lifecycle.viewmodel)
     implementation (libs.androidx.hilt.navigation.compose)
     implementation (libs.androidx.datastore.preferences)

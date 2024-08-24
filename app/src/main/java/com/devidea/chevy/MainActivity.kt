@@ -1,6 +1,8 @@
 package com.devidea.chevy
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -39,15 +41,21 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
-import com.devidea.chevy.dashboard.CustomArcWithDifferentColors
+import com.devidea.chevy.dashboard.Dashboard
 import com.devidea.chevy.dashboard.LEDSeconds
-import com.devidea.chevy.dashboard.a
 import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
+import com.kakao.sdk.common.util.Utility
+import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
+import com.kakaomobility.knsdk.KNLanguageType
+import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -216,17 +224,15 @@ fun HomeScreen(viewModel: CarViewModel) {
             }
         }
         composable("details/0") {
-            a()
-            //DrawArcExample()
-            ///CarStatusScreen()
-            //EngineRotateGauge(progress = 0.5f)
+            CarStatusScreen()
         }
         composable("details/1") {
-            /*val context = LocalContext.current
-            val intent = Intent(context, MainActivity2::class.java)
-            context.startActivity(intent)*/
-            LEDSeconds()
-        }/*composable("details/{cardIndex}") { backStackEntry ->
+            Dashboard()
+        }
+        composable("details/2") {
+
+        }
+        /*composable("details/{cardIndex}") { backStackEntry ->
             val cardIndex = backStackEntry.arguments?.getString("cardIndex")
             //DefaultDetailsScreen(cardIndex)
         }*/
@@ -235,6 +241,7 @@ fun HomeScreen(viewModel: CarViewModel) {
 
 @Composable
 fun GridCard(navController: NavHostController) {
+    val context = LocalContext.current
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
@@ -248,7 +255,40 @@ fun GridCard(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
-                onClick = { navController.navigate("details/$index") }
+                onClick = {
+                    if (index == 2) {
+                        //Log.e("KeyHash", Utility.getKeyHash(context))
+                        KNSDK.apply {
+                            initializeWithAppKey(
+                                aAppKey = "e31e85ed66b03658041340618628e93f",  aClientVersion = "1.0.0",
+                                aAppUserId = null, aLangType = KNLanguageType.KNLanguageType_KOREAN, aCompletion = {
+                                    if (it != null) {
+                                        when (it.code) {
+                                            KNError_Code_C103 -> {
+                                                Log.d("NAVI_ROTATION", "내비 인증 실패: $it")
+                                                return@initializeWithAppKey
+                                            }
+
+                                            KNError_Code_C302 -> {
+                                                Log.d("NAVI_ROTATION", "내비 권한 오류 : $it")
+                                                return@initializeWithAppKey
+                                            }
+
+                                            else -> {
+                                                Log.d("NAVI_ROTATION", "내비 초기화 실패: $it")
+                                                return@initializeWithAppKey
+                                            }
+                                        }
+                                    }else{
+                                        val intent = Intent(context, NaviActivity::class.java)
+                                        context.startActivity(intent)
+                                    }
+                                })
+                        }
+                    } else {
+                        navController.navigate("details/$index")
+                    }
+                }
             ) {
                 Row(
                     modifier = Modifier
