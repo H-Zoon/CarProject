@@ -41,8 +41,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
-import com.devidea.chevy.dashboard.EngineRotateGauge
+import com.devidea.chevy.dashboard.CustomArcWithDifferentColors
 import com.devidea.chevy.dashboard.LEDSeconds
+import com.devidea.chevy.dashboard.a
 import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
@@ -215,8 +216,10 @@ fun HomeScreen(viewModel: CarViewModel) {
             }
         }
         composable("details/0") {
+            a()
+            //DrawArcExample()
             ///CarStatusScreen()
-            EngineRotateGauge(progress = 0.5f)
+            //EngineRotateGauge(progress = 0.5f)
         }
         composable("details/1") {
             /*val context = LocalContext.current
