@@ -3,8 +3,10 @@ package com.devidea.chevy.dashboard
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -21,6 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.devidea.chevy.CarInfo
+import com.devidea.chevy.DoorStatus
+import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.SpeedMeterFontFamily
 import com.devidea.chevy.viewmodel.CarViewModel
 import kotlinx.coroutines.delay
@@ -30,9 +35,17 @@ import kotlin.math.sin
 @Composable
 fun Dashboard(carViewModel: CarViewModel = hiltViewModel()) {
     Column {
-        Box {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
             SpeedIndicator(carViewModel)
+            TempIndicator(carViewModel)
             RevolutionIndicator(carViewModel)
+        }
+
+        Box {
+            CarInfoItem(carViewModel)
         }
     }
 }
@@ -43,50 +56,37 @@ fun SpeedIndicator(carViewModel: CarViewModel) {
     val mGearNum by carViewModel.mGearNum.collectAsState()
     val mSpeed by carViewModel.mSpeed.collectAsState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f),
-    ) {
-
-        Text(
-            text = mSpeed.toString(),
-            modifier = Modifier.align(Alignment.Center),
-            style = TextStyle(
-                fontFamily = SpeedMeterFontFamily,
-                fontSize = 50.sp,
-                color = Color.Black,
-                textAlign = TextAlign.Center
-            ),
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = "km/h",
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(top = 0.dp, start = 20.dp, bottom = 0.dp, end = 80.dp),
-            style = TextStyle(
-                fontFamily = SpeedMeterFontFamily,
-                fontSize = 20.sp,
-                color = Color.Black,
-                textAlign = TextAlign.Center
-            ),
-            textAlign = TextAlign.Right
-        )
+    Column {
+        Row {
+            Text(
+                text = "$mSpeed",
+                modifier = Modifier.alignByBaseline(),
+                style = TextStyle(
+                    fontFamily = SpeedMeterFontFamily,
+                    fontSize = 50.sp,
+                    color = Color.Black,
+                )
+            )
+            Text(
+                text = " Km/h",
+                modifier = Modifier.alignByBaseline(),
+                style = TextStyle(
+                    fontFamily = SpeedMeterFontFamily,
+                    fontSize = 20.sp,
+                    color = Color.Black,
+                )
+            )
+        }
 
         Text(
             text = mGear + mGearNum,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(top = 0.dp, start = 20.dp, bottom = 80.dp, end = 80.dp),
+            modifier = Modifier,
             style = TextStyle(
                 fontFamily = SpeedMeterFontFamily,
                 fontSize = 30.sp,
                 color = Color.Black,
                 textAlign = TextAlign.Center
-            ),
-            textAlign = TextAlign.Right
+            )
         )
     }
 }
@@ -225,6 +225,127 @@ fun RevolutionIndicator(carViewModel: CarViewModel) {
                     textAlign = TextAlign.Center
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun TempIndicator(carViewModel: CarViewModel) {
+    val mTemp by carViewModel.mTemp.collectAsState()
+    var isAnimating by remember { mutableStateOf(true) }
+    var tempValue by remember { mutableIntStateOf(0) }
+    val textMeasurer = rememberTextMeasurer()
+
+    LaunchedEffect(Unit) {
+        if (isAnimating) {
+            for (i in 115 downTo 0 step 115) {
+                tempValue = i
+                delay(1500)
+            }
+            isAnimating = false
+        }
+    }
+
+    val animatedSweepAngle by animateFloatAsState(
+        targetValue = if (isAnimating) (tempValue / 115f) * -70f else (mTemp / 8000f) * -70f,
+        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+    )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+    ) {
+
+        val canvasSizePx = size.width  // 정사각형이므로 width와 height가 동일
+        val arcSize = canvasSizePx * 0.75f  // Arc 크기를 캔버스 크기의 75%로 설정
+        val strokeWidth = canvasSizePx * 0.07f  // Stroke 두께를 캔버스 크기의 7%로 설정
+        val radius = arcSize / 2  // Arc의 반지름
+        val centerOffset = (canvasSizePx - arcSize) / 2  // Arc를 중앙에 배치하기 위한 오프셋
+
+        // Arc 그리기
+        drawArc(
+            topLeft = Offset(centerOffset, centerOffset),
+            color = Color.Black,
+            startAngle = -280f,
+            sweepAngle = -70f,
+            useCenter = false,
+            style = Stroke(width = strokeWidth),
+            size = Size(arcSize, arcSize)
+        )
+
+        // Arc 그리기
+        drawArc(
+            topLeft = Offset(centerOffset, centerOffset),
+            color = Color.Red,
+            startAngle = -280f,
+            sweepAngle = animatedSweepAngle,
+            useCenter = false,
+            style = Stroke(width = strokeWidth),
+            size = Size(arcSize, arcSize)
+        )
+
+        for (i in 0..2) {
+            val angle = -290f + i * -23.5f
+
+            val angleRad = Math.toRadians(angle.toDouble())
+
+            // 사각형의 중심 좌표를 계산
+            val x = (radius * cos(angleRad)).toFloat()
+            val y = (radius * sin(angleRad)).toFloat()
+
+            val textOffset = Offset(
+                x + centerOffset + radius - (strokeWidth * 1.5f) / 2,
+                y + centerOffset + radius - (strokeWidth * 2.5f) / 2
+            )
+
+            drawText(
+                textMeasurer,
+                text = "$i",
+                topLeft = textOffset,
+                style = TextStyle(
+                    fontFamily = SpeedMeterFontFamily,
+                    fontSize = 15.sp,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun CarInfoItem(carViewModel: CarViewModel) {
+    val mMeterVoltage by carViewModel.mMeterVoltage.collectAsState()
+
+    LazyColumn(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize()
+    ) {
+
+        item { CarInfo2("V", mMeterVoltage) }
+    }
+}
+
+@Composable
+fun CarInfo2(label: String, value: Any) {
+    NeumorphicBox(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            Text(
+                text = "$label:",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            Text(text = value.toString(), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
