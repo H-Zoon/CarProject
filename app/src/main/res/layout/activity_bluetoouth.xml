@@ -1,20 +1,109 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:padding="16dp">
 
-    <Button
-        android:id="@+id/connectButton"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Connect Bluetooth"/>
+        android:orientation="vertical">
 
-    <Button
-        android:id="@+id/sned_page"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="SendPage"/>
+        <Button
+            android:id="@+id/buttonSendJumpPage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Jump Page" />
 
-</LinearLayout>
+        <Button
+            android:id="@+id/buttonSendChangeSetting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Change Setting" />
+
+        <Button
+            android:id="@+id/buttonSendAdjustHeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Adjust Height" />
+
+        <Button
+            android:id="@+id/buttonSendTrafficStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Traffic Status" />
+
+        <Button
+            android:id="@+id/buttonSendNotification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Notification" />
+
+        <Button
+            android:id="@+id/buttonSendNaviInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Navi Info" />
+
+        <Button
+            android:id="@+id/buttonSendCurrentTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Current Time" />
+
+        <Button
+            android:id="@+id/buttonSendLineInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Line Info" />
+
+        <Button
+            android:id="@+id/buttonNotifyIsNaviRunning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notify Is Navi Running" />
+
+        <Button
+            android:id="@+id/buttonSendLimitSpeed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Limit Speed" />
+
+        <Button
+            android:id="@+id/buttonSendCameraDistance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Camera Distance" />
+
+        <Button
+            android:id="@+id/buttonSendCameraDistanceEx"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Camera Distance Ex" />
+
+        <Button
+            android:id="@+id/buttonSendLaneInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Lane Info" />
+
+        <Button
+            android:id="@+id/buttonSendLaneInfoEx"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Lane Info Ex" />
+
+        <Button
+            android:id="@+id/buttonSendLaneInfoExV2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Lane Info Ex V2" />
+
+        <Button
+            android:id="@+id/buttonSendNextRoadName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send Next Road Name" />
+
+    </LinearLayout>
+</ScrollView>

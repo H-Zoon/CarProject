@@ -263,7 +263,7 @@ fun GridCard(navController: NavHostController) {
                         Log.e("KeyHash", Utility.getKeyHash(context))
                         KNSDK.apply {
                             initializeWithAppKey(
-                                aAppKey = "e31e85ed66b03658041340618628e93f",  aClientVersion = "1.0.0",
+                                aAppKey = "e31e85ed66b03658041340618628e93f", aClientVersion = "1.0.0",
                                 aAppUserId = null, aLangType = KNLanguageType.KNLanguageType_KOREAN, aCompletion = {
                                     if (it != null) {
                                         when (it.code) {
@@ -282,12 +282,15 @@ fun GridCard(navController: NavHostController) {
                                                 return@initializeWithAppKey
                                             }
                                         }
-                                    }else{
+                                    } else {
                                         val intent = Intent(context, NaviActivity::class.java)
                                         context.startActivity(intent)
                                     }
                                 })
                         }
+                    } else if (index == 3) {
+                        val intent = Intent(context, MainActivity2::class.java)
+                        context.startActivity(intent)
                     } else {
                         navController.navigate("details/$index")
                     }

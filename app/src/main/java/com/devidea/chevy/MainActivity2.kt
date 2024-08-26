@@ -28,34 +28,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity2 : AppCompatActivity() {
-    /* fun packAndMsg(bArr: ByteArray, i: Int) {
-        var i2: Int
-        val bArr2 = ByteArray(i + 5)
-        bArr2[0] = -1
-        bArr2[1] = 85
-        var i3 = 2
-        bArr2[2] = (i + 1).toByte()
-        bArr2[3] = 55
-        System.arraycopy(bArr, 0, bArr2, 4, i)
-        var i4 = 0
-        while (true) {
-            i2 = i + 4
-            if (i3 >= i2) {
-                break
-            }
-            i4 += bArr2[i3].toInt() and 255
-            i3++
-        }
-        bArr2[i2] = (i4 and 255).toByte()
-        BluetoothModel.sendMessage(bArr2)
-        val sb = StringBuilder(i)
-        val length = bArr.size
-        for (i5 in 0 until length) {
-            sb.append(String.format("%02X ", bArr[i5]))
-        }
-        Log.d("mcu_upgrade", "onSend: $sb")
-    }*/
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
@@ -89,18 +61,72 @@ class MainActivity2 : AppCompatActivity() {
             }
         }
 
-        findViewById<Button>(R.id.sned_page).setOnClickListener {
-            CoroutineScope(Dispatchers.Main).launch {
-                for (i in 0..300) {
-                    Log.i("MAIN", i.toString())
-                    ToureDevCodec.sendAppPage(i)
-                    delay(200L)
-                }
-            }
+        // 버튼에 각 함수 연결
+        findViewById<Button>(R.id.buttonSendJumpPage).setOnClickListener {
+            ToDeviceCodec.sendJumpPage(5)  // 예시로 인덱스 5 전달
         }
 
-        findViewById<Button>(R.id.connectButton).setOnClickListener {
+        findViewById<Button>(R.id.buttonSendChangeSetting).setOnClickListener {
+            ToDeviceCodec.sendChangeSetting(3, 7)  // 예시로 인덱스 3, 7 전달
+        }
 
+        findViewById<Button>(R.id.buttonSendAdjustHeight).setOnClickListener {
+            ToDeviceCodec.sendAdjustHeight(10)  // 예시로 인덱스 10 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendTrafficStatus).setOnClickListener {
+            ToDeviceCodec.sendTrafficStatus(byteArrayOf(1, 2, 3))  // 예시로 바이트 배열 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendNotification).setOnClickListener {
+            ToDeviceCodec.sendNotification(1, "Title", "Message")  // 예시로 인덱스 1, 타이틀, 메시지 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendNaviInfo).setOnClickListener {
+            ToDeviceCodec.sendnaviInfo(1, 2)  // 예시로 인덱스 1, 거리 1000 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendCurrentTime).setOnClickListener {
+            ToDeviceCodec.sendCurrentTime()  // 현재 시간을 전송
+        }
+
+        findViewById<Button>(R.id.buttonSendLineInfo).setOnClickListener {
+            ToDeviceCodec.sendLineInfo(1, 2)  // 예시로 두 개의 인수 전달
+        }
+
+        findViewById<Button>(R.id.buttonNotifyIsNaviRunning).setOnClickListener {
+            ToDeviceCodec.notifyIsNaviRunning(1)  // 예시로 1 (Byte) 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendLimitSpeed).setOnClickListener {
+            ToDeviceCodec.sendLimitSpeed(120, 80)  // 예시로 거리 120, 제한속도 80 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendCameraDistance).setOnClickListener {
+            ToDeviceCodec.sendCameraDistance(300, 40, 60)  // 예시로 거리 300, 속도 40, 60 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendCameraDistanceEx).setOnClickListener {
+            ToDeviceCodec.sendCameraDistanceEx(300, 50, 70)  // 예시로 거리 300, 속도 50, 70 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendLaneInfo).setOnClickListener {
+            ToDeviceCodec.sendLaneInfo(intArrayOf(1, 2, 3, 4))  // 예시로 배열 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendLaneInfoEx).setOnClickListener {
+            ToDeviceCodec.sendLaneInfoEx(intArrayOf(5, 6, 7, 8))  // 예시로 배열 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendLaneInfoExV2).setOnClickListener {
+            ToDeviceCodec.sendLaneInfoExV2(intArrayOf(9, 10, 11, 12))  // 예시로 배열 전달
+        }
+
+        findViewById<Button>(R.id.buttonSendNextRoadName).setOnClickListener {
+            ToDeviceCodec.sendNextRoadName("Main Street")  // 예시로 도로명 전달
+        }
+
+        fun hendle() {
             a.handleAllPid(byteArrayOf(1, 0, 7, -27, 0), 5)
             a.handleAllPid(byteArrayOf(3, 2, 0), 3)
             a.handleAllPid(byteArrayOf(4, 81), 2)
