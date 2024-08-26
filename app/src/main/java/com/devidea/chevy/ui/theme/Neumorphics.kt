@@ -86,8 +86,8 @@ fun NeumorphicBox(
     lightShadowColor: Color = MaterialTheme.colorScheme.outline,
     darkShadowColor: Color = MaterialTheme.colorScheme.onTertiary,
     cornerRadius: Dp = 16.dp,
-    shadowOffset: Int = 20,
-    blurRadius: Dp = 10.dp,
+    shadowOffset: Int = 5,
+    blurRadius: Dp = 4.dp,
     content: @Composable () -> Unit
 ) {
     NeumorphicSurface(
@@ -112,7 +112,7 @@ fun NeumorphicCard(
     darkShadowColor: Color = MaterialTheme.colorScheme.onTertiary,
     cornerRadius: Dp = 16.dp,
     pressedShadowOffset: Int = 5,
-    defaultShadowOffset: Int = 15,
+    defaultShadowOffset: Int = 10,
     pressedBlurRadius: Dp = 4.dp,
     defaultBlurRadius: Dp = 6.dp,
     content: @Composable () -> Unit
