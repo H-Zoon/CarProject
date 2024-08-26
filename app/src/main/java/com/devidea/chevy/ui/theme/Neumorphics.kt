@@ -54,14 +54,14 @@ fun NeumorphicSurface(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(0, -shadowOffset) }
+                .offset { IntOffset(-shadowOffset, -shadowOffset) }
                 .blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 .background(lightShadowColor, RoundedCornerShape(cornerRadius))
         )
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(0, shadowOffset) }
+                .offset { IntOffset(shadowOffset, shadowOffset) }
                 .blur(blurRadius, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 .background(darkShadowColor, RoundedCornerShape(cornerRadius))
         )
@@ -112,9 +112,9 @@ fun NeumorphicCard(
     darkShadowColor: Color = MaterialTheme.colorScheme.onTertiary,
     cornerRadius: Dp = 16.dp,
     pressedShadowOffset: Int = 5,
-    defaultShadowOffset: Int = 20,
+    defaultShadowOffset: Int = 15,
     pressedBlurRadius: Dp = 4.dp,
-    defaultBlurRadius: Dp = 10.dp,
+    defaultBlurRadius: Dp = 6.dp,
     content: @Composable () -> Unit
 ) {
     var isPressedState by remember { mutableStateOf(false) }

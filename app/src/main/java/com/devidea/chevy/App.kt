@@ -9,9 +9,12 @@ import android.util.Log
 import com.kakao.sdk.common.util.Utility
 import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
 import com.kakaomobility.knsdk.KNLanguageType
+import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.KNSDKDelegate
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
+import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -41,6 +44,14 @@ class App : Application() {
         KNSDK.apply {
             // 콘텍스트 등록 및 DB, 파일 등의 저장 경로 설정
             install(instance, "$filesDir/files")
+            delegate = object: KNSDKDelegate {
+                override fun knsdkFoundUnfinishedTrip(aTrip: KNTrip, aPriority: KNRoutePriority, aAvoidOptions: Int) {
+                    Log.d("APP", "knsdkFoundUnfinishedTrip")
+                }
+                override fun knsdkNeedsLocationAuthorization() {
+                    Log.d("APP", "knsdkNeedsLocationAuthorization")
+                }
+            }
         }
     }
 }

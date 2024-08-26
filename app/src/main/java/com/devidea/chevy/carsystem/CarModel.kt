@@ -18,6 +18,7 @@ object CarModel {
     var mMsgBuf = ByteArray(1024)
 
     fun revMsgBufferHandler(bArr: ByteArray?, length: Int) {
+        Log.d(TAG, bArr.contentToString())
         // 수신한 데이터의 길이가 0이거나 데이터 배열이 null인 경우 함수 종료
         if (length == 0 || bArr == null) return
 

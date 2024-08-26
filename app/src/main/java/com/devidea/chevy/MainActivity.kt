@@ -44,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.dashboard.Dashboard
 import com.devidea.chevy.dashboard.LEDSeconds
 import com.devidea.chevy.ui.theme.NeumorphicBox
@@ -62,6 +63,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: CarViewModel by viewModels()
+    val a = CarEventModule()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,6 +135,7 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
             modifier = Modifier
                 .width(48.dp)
                 .height(48.dp),
+            defaultShadowOffset = 10,
             onClick = { onClickAction() },
             cornerRadius = 50.dp
         ) {
@@ -246,8 +249,8 @@ fun GridCard(navController: NavHostController) {
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(35.dp),
+        horizontalArrangement = Arrangement.spacedBy(25.dp),
         userScrollEnabled = false
     ) {
         items(4) { index ->
@@ -257,7 +260,7 @@ fun GridCard(navController: NavHostController) {
                     .height(80.dp),
                 onClick = {
                     if (index == 2) {
-                        //Log.e("KeyHash", Utility.getKeyHash(context))
+                        Log.e("KeyHash", Utility.getKeyHash(context))
                         KNSDK.apply {
                             initializeWithAppKey(
                                 aAppKey = "e31e85ed66b03658041340618628e93f",  aClientVersion = "1.0.0",
