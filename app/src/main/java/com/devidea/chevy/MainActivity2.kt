@@ -1,30 +1,15 @@
 package com.devidea.chevy
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
-import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.CarModel
-import com.devidea.chevy.carsystem.pid.OBDData
 import com.devidea.chevy.codec.ToDeviceCodec
-import com.devidea.chevy.codec.ToureDevCodec
-import com.devidea.chevy.datas.NaviData.AMapTrafficStatus
-import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity2 : AppCompatActivity() {
@@ -83,7 +68,7 @@ class MainActivity2 : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendNaviInfo).setOnClickListener {
-            ToDeviceCodec.sendnaviInfo(1, 2)  // 예시로 인덱스 1, 거리 1000 전달
+            ToDeviceCodec.sendNextInfo(1, 2)  // 예시로 인덱스 1, 거리 1000 전달
         }
 
         findViewById<Button>(R.id.buttonSendCurrentTime).setOnClickListener {
