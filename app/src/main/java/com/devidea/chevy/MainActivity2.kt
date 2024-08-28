@@ -21,6 +21,7 @@ import com.devidea.chevy.datas.NaviData.AMapTrafficStatus
 import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,8 +83,26 @@ class MainActivity2 : AppCompatActivity() {
             ToDeviceCodec.sendNotification(1, "Title", "Message")  // 예시로 인덱스 1, 타이틀, 메시지 전달
         }
 
+        /**
+         * 2 = 좌
+         * 3 = 우
+         * 4 = 11시
+         * 5 = 1시
+         * 6 = 8시
+         * 7 = 5시
+         * 8 = u턴
+         * 9 = 직진
+         * 10 = ?
+         * 11 = 회전교차로 직진
+         */
         findViewById<Button>(R.id.buttonSendNaviInfo).setOnClickListener {
-            ToDeviceCodec.sendnaviInfo(1, 2)  // 예시로 인덱스 1, 거리 1000 전달
+            CoroutineScope(Dispatchers.Main).launch {
+                while (true){
+                    delay(3000L)
+                    ToDeviceCodec.sendnaviInfo(5, 100)  // 예시로 인덱스 1, 거리 1000 전달
+                }
+            }
+
         }
 
         findViewById<Button>(R.id.buttonSendCurrentTime).setOnClickListener {
@@ -91,7 +110,7 @@ class MainActivity2 : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendLineInfo).setOnClickListener {
-            ToDeviceCodec.sendLineInfo(1, 2)  // 예시로 두 개의 인수 전달
+            ToDeviceCodec.sendLineInfo(1, 0)  // 예시로 두 개의 인수 전달
         }
 
         findViewById<Button>(R.id.buttonNotifyIsNaviRunning).setOnClickListener {
@@ -99,27 +118,31 @@ class MainActivity2 : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendLimitSpeed).setOnClickListener {
-            ToDeviceCodec.sendLimitSpeed(120, 80)  // 예시로 거리 120, 제한속도 80 전달
+            ToDeviceCodec.sendLimitSpeed(0, 0)  // 예시로 거리 120, 제한속도 80 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistance).setOnClickListener {
-            ToDeviceCodec.sendCameraDistance(300, 40, 60)  // 예시로 거리 300, 속도 40, 60 전달
+            ToDeviceCodec.sendCameraDistance(0, 0, 0)  // 예시로 거리 300, 속도 40, 60 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistanceEx).setOnClickListener {
-            ToDeviceCodec.sendCameraDistanceEx(300, 50, 70)  // 예시로 거리 300, 속도 50, 70 전달
+            ToDeviceCodec.sendCameraDistanceEx(1, 1, 1)  // 예시로 거리 300, 속도 50, 70 전달
         }
 
+        /**
+         * 1 = 점멸
+         * 0 = 점등
+         */
         findViewById<Button>(R.id.buttonSendLaneInfo).setOnClickListener {
-            ToDeviceCodec.sendLaneInfo(intArrayOf(1, 2, 3, 4))  // 예시로 배열 전달
+            ToDeviceCodec.sendLaneInfo(intArrayOf(0, 0, 0, 0))  // 예시로 배열 전달
         }
 
         findViewById<Button>(R.id.buttonSendLaneInfoEx).setOnClickListener {
-            ToDeviceCodec.sendLaneInfoEx(intArrayOf(5, 6, 7, 8))  // 예시로 배열 전달
+            ToDeviceCodec.sendLaneInfoEx(intArrayOf(1, 0, 1, 1))  // 예시로 배열 전달
         }
 
         findViewById<Button>(R.id.buttonSendLaneInfoExV2).setOnClickListener {
-            ToDeviceCodec.sendLaneInfoExV2(intArrayOf(9, 10, 11, 12))  // 예시로 배열 전달
+            ToDeviceCodec.sendLaneInfoExV2(intArrayOf(1, 0, 1, 2))  // 예시로 배열 전달
         }
 
         findViewById<Button>(R.id.buttonSendNextRoadName).setOnClickListener {
