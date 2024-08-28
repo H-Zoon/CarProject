@@ -9,6 +9,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.codec.ToDeviceCodec
+import com.devidea.chevy.codec.ToDeviceCodec.sendLineInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
 import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
 import com.kakaomobility.knsdk.KNCarFuel
@@ -46,7 +47,9 @@ import java.lang.Math.pow
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tan
 
 class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
@@ -243,6 +246,33 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
         Log.d(TAG, "guidanceDidUpdateRouteGuide")
         binding.naviView.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
+
+        if (aRouteGuide.curDirection?.location?.pos != null && aRouteGuide.nextDirection?.location?.pos != null) {
+            val route = when (aRouteGuide.nextDirection?.rgCode.toString()) {
+                "KNRGCode_Straight" -> 2
+
+                "KNRGCode_LeftTurn" -> 3
+
+                "KNRGCode_RightTurn" -> 4
+
+                "KNRGCode_UTurn" -> 5
+
+                else -> 1
+            }
+
+            val distance = calculateDistance(aRouteGuide.curDirection?.location?.pos!!.x, aRouteGuide.curDirection?.location?.pos!!.y, aRouteGuide.nextDirection?.location?.pos!!.x, aRouteGuide.nextDirection?.location?.pos!!.y)
+            ToDeviceCodec.sendNextInfo(route, distance.toInt())
+
+            val recommendedLanes = aRouteGuide.lane?.laneInfos?.forEach { it ->
+                Toast.makeText(this, it.suggest.toString(), Toast.LENGTH_SHORT).show()
+                when {
+                    it.suggest.toInt() >= 20000 -> 1 // 진행 차로는 추천 차선
+                    it.suggest in 10000..19999 -> 0 // 기본 차로는 비추천
+                    else -> 0 // 그 외의 차로는 기본값 0
+                }
+            } ?: intArrayOf()
+            sendLineInfo(100, 2)
+        }
     }
 
     override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
@@ -301,6 +331,11 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         val y = ro - raTransformed * cos(theta) + YO
 
         return Pair(x, y)
+    }
+
+    fun calculateDistance(x1: Double, y1: Double, x2: Double, y2: Double): Double {
+        // 두 점 사이의 유클리드 거리를 계산
+        return sqrt((x2 - x1).pow(2) + (y2 - y1).pow(2))
     }
 
 }

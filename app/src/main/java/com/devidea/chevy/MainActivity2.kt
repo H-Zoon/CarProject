@@ -1,24 +1,14 @@
 package com.devidea.chevy
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
-import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.CarModel
-import com.devidea.chevy.carsystem.pid.OBDData
 import com.devidea.chevy.codec.ToDeviceCodec
-import com.devidea.chevy.codec.ToureDevCodec
-import com.devidea.chevy.datas.NaviData.AMapTrafficStatus
-import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Delay

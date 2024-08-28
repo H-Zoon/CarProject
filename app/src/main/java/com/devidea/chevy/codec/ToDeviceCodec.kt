@@ -2,10 +2,6 @@ package com.devidea.chevy.codec
 
 import android.util.Log
 import com.devidea.chevy.bluetooth.BluetoothModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Calendar
 
 object ToDeviceCodec {
@@ -110,30 +106,30 @@ object ToDeviceCodec {
         packAndSendMsg(52, bArr, bArr.size)
     }
 
-    fun sendnaviInfo(i: Int, i2: Int) {
+    fun sendNextInfo(icon: Int, distance: Int) {
         packAndSendMsg(
             byteArrayOf(
                 0,
-                i.toByte(),
-                (i2 and 255).toByte(),
-                ((i2 and 65280) shr 8).toByte(),
-                ((i2 and 16711680) shr 16).toByte(),
-                ((i2 and -16777216) shr 24).toByte()
+                icon.toByte(),
+                (distance and 255).toByte(),
+                ((distance and 65280) shr 8).toByte(),
+                ((distance and 16711680) shr 16).toByte(),
+                ((distance and -16777216) shr 24).toByte()
             ), 6
         )
     }
 
-    fun sendLineInfo(i: Int, i2: Int) {
+    fun sendLineInfo(distance: Int, lane: Int) {
         val bArr = byteArrayOf(
             2,
-            (i and 255).toByte(),
-            ((i and 65280) shr 8).toByte(),
-            ((i and 16711680) shr 16).toByte(),
-            ((i and 0xff000000.toInt()) shr 24).toByte(),
-            (i2 and 255).toByte(),
-            ((i2 and 65280) shr 8).toByte(),
-            ((i2 and 16711680) shr 16).toByte(),
-            ((i2 and 0xff000000.toInt()) shr 24).toByte()
+            (distance and 255).toByte(),
+            ((distance and 65280) shr 8).toByte(),
+            ((distance and 16711680) shr 16).toByte(),
+            ((distance and 0xff000000.toInt()) shr 24).toByte(),
+            (lane and 255).toByte(),
+            ((lane and 65280) shr 8).toByte(),
+            ((lane and 16711680) shr 16).toByte(),
+            ((lane and 0xff000000.toInt()) shr 24).toByte()
         )
         packAndSendMsg(bArr, bArr.size)
     }
