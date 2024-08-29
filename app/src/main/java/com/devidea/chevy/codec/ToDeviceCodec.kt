@@ -151,14 +151,14 @@ object ToDeviceCodec {
         )
     }
 
-    fun sendCameraDistance(assistantDistance: Int, i2: Int, i3: Int) {
+    fun sendCameraDistance(assistantDistance: Int, i2: Int, type: Int) {
         packAndSendMsg(
             byteArrayOf(
                 16,
                 (assistantDistance and 255).toByte(),
                 ((assistantDistance and 65280) shr 8).toByte(),
                 i2.toByte(),
-                i3.toByte()
+                type.toByte()
             ), 5
         )
     }
