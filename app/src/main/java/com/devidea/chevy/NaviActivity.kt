@@ -261,8 +261,6 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         Log.d(TAG, "guidanceDidUpdateLocation")
         binding.naviView.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
         nowLocation = aLocationGuide.location
-
-
     }
 
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
@@ -335,7 +333,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                 else -> null
                 }
 
-            val distance = calculateDistance(aRouteGuide.curDirection?.location?.pos!!.x, aRouteGuide.curDirection?.location?.pos!!.y, aRouteGuide.nextDirection?.location?.pos!!.x, aRouteGuide.nextDirection?.location?.pos!!.y)
+            val distance = calculateDistance(nowLocation?.pos!!.x, nowLocation?.pos!!.y, aRouteGuide.curDirection?.location?.pos!!.x, aRouteGuide.curDirection?.location?.pos!!.y)
             if (route != null) {
                 ToDeviceCodec.sendNextInfo(route.value, distance.toInt())
             }
