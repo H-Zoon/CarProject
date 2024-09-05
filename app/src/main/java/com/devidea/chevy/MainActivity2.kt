@@ -86,12 +86,12 @@ class MainActivity2 : AppCompatActivity() {
          * 11 = 회전교차로 직진
          */
         findViewById<Button>(R.id.buttonSendNaviInfo).setOnClickListener {
-            CoroutineScope(Dispatchers.Main).launch {
+           /* CoroutineScope(Dispatchers.Main).launch {
                 while (true){
-                    delay(3000L)
+                    delay(3000L)*/
                     ToDeviceCodec.sendNextInfo(5, 100)  // 예시로 인덱스 1, 거리 1000 전달
-                }
-            }
+                //}
+            //}
 
         }
 
@@ -108,11 +108,11 @@ class MainActivity2 : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendLimitSpeed).setOnClickListener {
-            ToDeviceCodec.sendLimitSpeed(0, 0)  // 예시로 거리 120, 제한속도 80 전달
+            ToDeviceCodec.sendLimitSpeed(10, 10)  // 예시로 거리 120, 제한속도 80 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistance).setOnClickListener {
-            ToDeviceCodec.sendCameraDistance(0, 0, 0)  // 예시로 거리 300, 속도 40, 60 전달
+            ToDeviceCodec.sendCameraDistance(10, 10, 2)  // 예시로 거리 300, 속도 40, 60 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistanceEx).setOnClickListener {

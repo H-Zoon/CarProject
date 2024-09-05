@@ -139,25 +139,25 @@ object ToDeviceCodec {
         packAndSendMsg(byteArrayOf(-32, b), 2)
     }
 
-    fun sendLimitSpeed(assistantDistance: Int, assistantLimitedSpeed: Int) {
+    fun sendLimitSpeed(distance: Int, limitedSpeed: Int) {
         packAndSendMsg(
             byteArrayOf(
                 1,
-                (assistantDistance and 255).toByte(),
-                ((assistantDistance and 65280) shr 8).toByte(),
-                (assistantLimitedSpeed and 255).toByte(),
-                ((assistantLimitedSpeed and 65280) shr 8).toByte()
+                (distance and 255).toByte(),
+                ((distance and 65280) shr 8).toByte(),
+                (limitedSpeed and 255).toByte(),
+                ((limitedSpeed and 65280) shr 8).toByte()
             ), 5
         )
     }
 
-    fun sendCameraDistance(assistantDistance: Int, i2: Int, type: Int) {
+    fun sendCameraDistance(distance: Int, limitedSpeed: Int, type: Int) {
         packAndSendMsg(
             byteArrayOf(
                 16,
-                (assistantDistance and 255).toByte(),
-                ((assistantDistance and 65280) shr 8).toByte(),
-                i2.toByte(),
+                (distance and 255).toByte(),
+                ((distance and 65280) shr 8).toByte(),
+                limitedSpeed.toByte(),
                 type.toByte()
             ), 5
         )

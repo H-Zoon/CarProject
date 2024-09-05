@@ -11,7 +11,7 @@ enum class NavigationIconType(val value: Int) {
     LEFT(2),                  // 좌회전 아이콘
     LEFT_BACK(6),             // 좌후방 아이콘
     LEFT_FRONT(4),            // 좌전방 아이콘
-    LEFT_TURN_AROUND(8),      // 좌회전 후 U턴 아이콘
+    TURN_AROUND(8),           // U턴 아이콘
     NONE(0),                  // 정의되지 않음 (사용자 정의 전환 아이콘 배열의 첫 요소)
     OUT_ROUNDABOUT(12),       // 로터리 나가기 아이콘
     RIGHT(3),                 // 우회전 아이콘
