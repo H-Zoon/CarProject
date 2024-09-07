@@ -1,9 +1,17 @@
 package com.devidea.chevy
 
 import android.os.Bundle
+import android.transition.TransitionManager
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.constraintlayout.widget.ConstraintSet
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
@@ -41,6 +49,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.Interceptor
+import okhttp3.Interceptor.*
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.lang.Math.pow
 import kotlin.math.PI
 import kotlin.math.cos
@@ -49,6 +62,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
+
 
 class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate, KNGuidance_CitsGuideDelegate, KNGuidance_LocationGuideDelegate,
@@ -479,6 +493,16 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
 
     override fun naviViewGuideState(state: KNGuideState) {
         Toast.makeText(this, "$state", Toast.LENGTH_SHORT).show()
+    }
+
+    @Composable
+    fun MyComposeScreen() {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Text(text = "Hello, Jetpack Compose!")
+        }
     }
 
 }

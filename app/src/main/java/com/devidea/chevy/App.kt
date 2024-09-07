@@ -8,6 +8,7 @@ import android.content.Intent
 import android.util.Log
 import com.kakao.sdk.common.util.Utility
 import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
+import com.kakao.vectormap.KakaoMapSdk
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
@@ -53,5 +54,7 @@ class App : Application() {
                 }
             }
         }
+
+        KakaoMapSdk.init(this, "e31e85ed66b03658041340618628e93f");
     }
 }

@@ -58,6 +58,13 @@ android {
 
 dependencies {
     implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
+    implementation ("com.google.dagger:hilt-android:2.44")
+    implementation(libs.androidx.runtime.livedata)
+    implementation ("com.kakao.maps.open:android:2.11.9")
+
+    implementation ("com.squareup.okhttp3:okhttp:4.11.0")   // OkHttp 의존성 추가
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+
     //implementation (libs.androidx.hilt.lifecycle.viewmodel)
     implementation (libs.androidx.hilt.navigation.compose)
     implementation (libs.androidx.datastore.preferences)

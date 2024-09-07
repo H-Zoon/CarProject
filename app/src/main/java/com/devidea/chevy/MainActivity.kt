@@ -289,7 +289,7 @@ fun GridCard(navController: NavHostController) {
                                 })
                         }
                     } else if (index == 3) {
-                        val intent = Intent(context, MainActivity2::class.java)
+                        val intent = Intent(context, MapActivity::class.java)
                         context.startActivity(intent)
                     } else {
                         navController.navigate("details/$index")
