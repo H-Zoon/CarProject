@@ -175,7 +175,7 @@ class CarEventModule {
                     if (bArr[2].toInt() != -1 && bArr[3].toInt() != -1) {
                         handleVoltage((bArr[2].toInt() and 255 shl 8) + (bArr[3].toInt() and 255))
                     }
-                    handleRotate((bArr[4].toInt() and 255 shl 8) + (bArr[5].toInt() and 255) / 4)
+                    handleRotate((((bArr[4].toInt() and 255) shl 8) + (bArr[5].toInt() and 255)) / 4)
                     handleSpeed(bArr[6].toInt() and 255)
                     handleTemp(bArr[7].toInt() and 255)
                     if (bArr[9].toInt() != -1 || bArr[8].toInt() != -1) {
