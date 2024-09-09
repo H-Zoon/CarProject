@@ -77,6 +77,7 @@ class MapViewModel @Inject constructor(
     }
 
     private var lastSearchResult: List<Document>? = null
+    var requestLoadTrip: Document? = null
 
     // 주소 검색 함수
     private fun searchAddress(query: String?) {

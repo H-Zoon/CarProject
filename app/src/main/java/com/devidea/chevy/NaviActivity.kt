@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.transition.TransitionManager
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import com.devidea.chevy.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
 import com.devidea.chevy.navi.NavigationIconType
 import com.devidea.chevy.navi.isCameraType
+import com.devidea.chevy.viewmodel.MapViewModel
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
 import com.kakaomobility.knsdk.KNRGCode
@@ -24,6 +26,7 @@ import com.kakaomobility.knsdk.KNRouteAvoidOption
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError
+import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_CitsGuideDelegate
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_GuideStateDelegate
@@ -42,8 +45,10 @@ import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety_Camera
 import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
+import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import com.kakaomobility.knsdk.ui.view.KNNaviView_GuideStateDelegate
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,11 +68,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
 
-
+@AndroidEntryPoint
 class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate, KNGuidance_CitsGuideDelegate, KNGuidance_LocationGuideDelegate,
     KNGuidance_RouteGuideDelegate, KNGuidance_VoiceGuideDelegate, KNNaviView_GuideStateDelegate {
 
+    private val viewModel: MapViewModel by viewModels()
     lateinit var binding: ActivityNaviBinding
     val TAG = "NaviActivity"
 
@@ -80,6 +86,69 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     private val _safetyGuide = MutableStateFlow<KNGuide_Safety?>(null)
     val safetyGuide: StateFlow<KNGuide_Safety?> = _safetyGuide
 
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentLocation.collect { location ->
+                location?.let {
+                    //안전운행 정보
+                    val safetiesOnGuide = safetyGuide.value?.safetiesOnGuide
+
+                    // safetiesOnGuide가 비어있거나 null인지 확인합니다.
+                    if (safetiesOnGuide.isNullOrEmpty()) {
+                        ToDeviceCodec.sendLimitSpeed(0, 0)
+                        ToDeviceCodec.sendCameraDistance(0, 0, 0)
+                        //ToDeviceCodec.sendCameraDistanceEx(0, 0, 0);
+                    } else {
+                        // safetiesOnGuide 리스트를 순회합니다.
+                        for (safety in safetiesOnGuide) {
+                            // 과속 단속 카메라 (코드 81, 82, 86, 100, 102, 103) 처리
+                            if (isCameraType(safety.code.value)) {
+                                val speedLimit = (safety as KNSafety_Camera).speedLimit
+                                val cameraDistance = location.distToLocation(safety.location)
+                                ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
+                                ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
+                                ToDeviceCodec.sendNextInfo(
+                                    NavigationIconType.NONE.value,
+                                    cameraDistance
+                                )
+
+                                //ToDeviceCodec.sendCameraDistanceEx(distance, speedLimit, 1)
+                                return@collect
+                            } else {
+                                ToDeviceCodec.sendCameraDistance(0, 0, 0)
+                                ToDeviceCodec.sendLimitSpeed(0, 0)
+                            }
+                        }
+                    }
+
+                    routeGuide.value?.let { routeGuide ->
+                        // 목표의 거리와 진행 방향 계산
+                        val distance =
+                            routeGuide.curDirection?.location?.let { location.distToLocation(it) }
+                                ?: 0
+                        val guidanceAsset =
+                            routeGuide.curDirection?.let { findGuideAsset(it.rgCode) }
+                                ?: NavigationIconType.NONE
+
+                        // 결과 전송
+                        ToDeviceCodec.sendNextInfo(guidanceAsset.value, distance)
+
+                        //차선 정보가 있다면 추천 차선 계산
+                        routeGuide.lane?.laneInfos?.let {
+                            val recommendArray = IntArray(it.size)
+
+                            // 추천 차선이면 1, 아니면 0을 배열에 저장
+                            for (i in it.indices) {
+                                recommendArray[i] = if (it[i].suggest == 1.toByte()) 1 else 0
+                            }
+                            //결과 전송
+                            sendLaneInfo(recommendArray)
+                        }
+                    } ?: run { ToDeviceCodec.sendNextInfo(0, 0) }
+                } ?: return@collect
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,116 +179,51 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
             citsGuideDelegate = this@NaviActivity
         }
 
-        KNSDK.sharedGuidance()?.apply {
-            Toast.makeText(this@NaviActivity, "init", Toast.LENGTH_SHORT).show()
-            binding.naviView.initWithGuidance(
-                this,
-                null,
-                KNRoutePriority.KNRoutePriority_Recommand,
-                KNRouteAvoidOption.KNRouteAvoidOption_None.value
-            )
-        }
+        viewModel.requestLoadTrip?.let {
+            val startKatec = wgs84ToKatech(37.6448294347533, 126.691187475643)
+            val goalKatec = wgs84ToKatech(it.x.toDouble(), it.y.toDouble())
 
-        /*val startKatec = wgs84ToKatech(37.6448294347533,126.691187475643)
-        val goalKatec = wgs84ToKatech(37.389573859018185,127.09082543849945)
-        // 출발지 설정
-        val start = KNPOI("home", startKatec.first.toInt(), startKatec.second.toInt(), null)
+            // 출발지 설정
+            val start = KNPOI("home", startKatec.first.toInt(), startKatec.second.toInt(), null)
+            // 목적지 설정
+            val goal = KNPOI("company", goalKatec.first.toInt(), goalKatec.second.toInt(), null)
 
-        // 목적지 설정
-        val goal = KNPOI("company", 957909, 1898496, null)
+            // 경로 옵션 설정
+            val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
+            val curAvoidOptions =
+                KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
 
-        // 경로 옵션 설정
-        val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
-        val curAvoidOptions =
-            KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
-
-        KNSDK.makeTripWithStart(start, goal, null, null) { knError: KNError?, knTrip: KNTrip? ->
-            if (knError != null) {
-                Log.d(TAG, "경로 생성 에러(KNError: $knError")
-            }
-            knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
-                // 경로 요청 실패
-                KNSDK.sharedGuidance()?.apply {
-                    // 각 가이던스 델리게이트 등록
-                    guideStateDelegate = this@NaviActivity
-                    locationGuideDelegate = this@NaviActivity
-                    routeGuideDelegate = this@NaviActivity
-                    safetyGuideDelegate = this@NaviActivity
-                    voiceGuideDelegate = this@NaviActivity
-                    citsGuideDelegate = this@NaviActivity
+            KNSDK.makeTripWithStart(start, goal, null, null) { knError: KNError?, knTrip: KNTrip? ->
+                if (knError != null) {
+                    Toast.makeText(this, "경로 생성 에러(KNError: $knError", Toast.LENGTH_SHORT).show()
                 }
-                if (error != null) {
-                    Log.d(TAG, "경로 요청 실패 : $error")
-                }
-                // 경로 요청 성공
-                else {
-                    // 경로 요청 성공
+                knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
+                    // 경로 요청 실패
                     KNSDK.sharedGuidance()?.apply {
-                       *//* binding.naviView.initWithGuidance(
-                            this,
-                            knTrip,
-                            curRoutePriority,
-                            curAvoidOptions
-                        )*//*
+                        // 각 가이던스 델리게이트 등록
+                        guideStateDelegate = this@NaviActivity
+                        locationGuideDelegate = this@NaviActivity
+                        routeGuideDelegate = this@NaviActivity
+                        safetyGuideDelegate = this@NaviActivity
+                        voiceGuideDelegate = this@NaviActivity
+                        citsGuideDelegate = this@NaviActivity
+                    }
+                    if (error != null) {
+                        Log.d(TAG, "경로 요청 실패 : $error")
+                    }
+                    // 경로 요청 성공
+                    else {
+                        // 경로 요청 성공
+                        KNSDK.sharedGuidance()?.apply {
+                            binding.naviView.initWithGuidance(
+                                this,
+                                knTrip,
+                                curRoutePriority,
+                                curAvoidOptions
+                            )
+                        }
                     }
                 }
-            }
-        }*/
-    }
-
-    init {
-        CoroutineScope(Dispatchers.IO).launch {
-            currentLocation.collect { location ->
-                location?.let {
-                    //안전운행 정보
-                    val safetiesOnGuide = safetyGuide.value?.safetiesOnGuide
-
-                    // safetiesOnGuide가 비어있거나 null인지 확인합니다.
-                    if (safetiesOnGuide.isNullOrEmpty()) {
-                        ToDeviceCodec.sendLimitSpeed(0, 0)
-                        ToDeviceCodec.sendCameraDistance(0, 0, 0)
-                        //ToDeviceCodec.sendCameraDistanceEx(0, 0, 0);
-                    } else {
-                        // safetiesOnGuide 리스트를 순회합니다.
-                        for (safety in safetiesOnGuide) {
-                            // 과속 단속 카메라 (코드 81, 82, 86, 100, 102, 103) 처리
-                            if (isCameraType(safety.code.value)) {
-                                val speedLimit = (safety as KNSafety_Camera).speedLimit
-                                val cameraDistance = location.distToLocation(safety.location)
-                                ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
-                                ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
-                                ToDeviceCodec.sendNextInfo(NavigationIconType.NONE.value, cameraDistance)
-
-                                //ToDeviceCodec.sendCameraDistanceEx(distance, speedLimit, 1)
-                                return@collect
-                            } else {
-                                ToDeviceCodec.sendCameraDistance(0, 0, 0)
-                                ToDeviceCodec.sendLimitSpeed(0, 0)
-                            }
-                        }
-                    }
-
-                    routeGuide.value?.let { routeGuide ->
-                        // 목표의 거리와 진행 방향 계산
-                        val distance = routeGuide.curDirection?.location?.let { location.distToLocation(it) } ?: 0
-                        val guidanceAsset = routeGuide.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
-
-                        // 결과 전송
-                        ToDeviceCodec.sendNextInfo(guidanceAsset.value, distance)
-
-                        //차선 정보가 있다면 추천 차선 계산
-                        routeGuide.lane?.laneInfos?.let {
-                            val recommendArray = IntArray(it.size)
-
-                            // 추천 차선이면 1, 아니면 0을 배열에 저장
-                            for (i in it.indices) {
-                                recommendArray[i] = if (it[i].suggest == 1.toByte()) 1 else 0
-                            }
-                            //결과 전송
-                            sendLaneInfo(recommendArray)
-                        }
-                    } ?: run { ToDeviceCodec.sendNextInfo(0, 0) }
-                } ?: return@collect
             }
         }
     }
@@ -319,7 +323,10 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     // KNGuidance_SafetyGuideDelegate
     // 안전 운행 정보 업데이트 시 호출. `safetyGuide`의 항목이 1개 이상 변경 시 전달됨.
     // 안전운전 설정시 해당 함수로 이벤트 전달.
-    override fun guidanceDidUpdateSafetyGuide(aGuidance: KNGuidance, aSafetyGuide: KNGuide_Safety?) {
+    override fun guidanceDidUpdateSafetyGuide(
+        aGuidance: KNGuidance,
+        aSafetyGuide: KNGuide_Safety?
+    ) {
         binding.naviView.guidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide)
 
         _safetyGuide.value = aSafetyGuide
@@ -332,7 +339,11 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         // 업데이트된 주변 안전 정보 리스트가 null이 아닌 경우
         safeties?.let {
             for (safety in it) {
-                Toast.makeText(this, "AroundSafety Safety type: ${safety.safetyType()}, description: ${safety.isOnStraightWay()}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "AroundSafety Safety type: ${safety.safetyType()}, description: ${safety.isOnStraightWay()}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -400,7 +411,11 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     }
 
     fun calculateDistance(location: KNLocation, location1: KNLocation): Int {
-        return sqrt((location1.pos.x - location.pos.x).pow(2) + (location1.pos.y - location.pos.y).pow(2)).toInt()
+        return sqrt(
+            (location1.pos.x - location.pos.x).pow(2) + (location1.pos.y - location.pos.y).pow(
+                2
+            )
+        ).toInt()
     }
 
     private fun findGuideAsset(code: KNRGCode): NavigationIconType {
