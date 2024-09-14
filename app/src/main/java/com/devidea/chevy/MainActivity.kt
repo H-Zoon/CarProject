@@ -232,7 +232,7 @@ fun HomeScreen(viewModel: CarViewModel) {
         composable("details/1") {
             Dashboard()
         }
-        composable("details/2") {
+        composable("details/3") {
 
         }
         /*composable("details/{cardIndex}") { backStackEntry ->
@@ -289,6 +289,7 @@ fun GridCard(navController: NavHostController) {
                                 })
                         }
                     } else if (index == 3) {
+
                         val intent = Intent(context, MapActivity::class.java)
                         context.startActivity(intent)
                     } else {

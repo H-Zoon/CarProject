@@ -1,5 +1,6 @@
 package com.devidea.chevy
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -28,11 +29,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,16 +44,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -73,10 +75,8 @@ import com.devidea.chevy.response.Document
 import com.devidea.chevy.viewmodel.MapViewModel
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.LatLng
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.MapView
-import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -88,11 +88,76 @@ import kotlinx.coroutines.launch
 class MapActivity : ComponentActivity() {
     private val viewModel: MapViewModel by viewModels()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            SearchHistoryApp(viewModel)
+            BActivityScreen(viewModel)
+        }
+    }
+}
+
+@Composable
+fun BActivityScreen(viewModel: MapViewModel) {
+    // ViewModel의 Flow 상태를 collectAsState로 관찰
+    val authenticationSuccess by viewModel.authenticationSuccess.collectAsState()
+    val isAuthenticating by viewModel.isAuthenticating.collectAsState()
+    val errorMessage by viewModel.authErrorMessage.collectAsState()
+
+    if (authenticationSuccess) {
+        // 인증 성공 후 SearchHistoryApp으로 이동
+        SearchHistoryApp(viewModel)
+    } else {
+        // 인증 프로세스 화면
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("B Activity 설명: 여기는 네비게이션이 설정된 B 액티비티입니다.")
+
+            Button(
+                onClick = {
+                    if (!isAuthenticating) {
+                        // 인증 시작
+                        viewModel.authenticateUser()
+                    }
+                },
+                enabled = !isAuthenticating  // 인증 중이면 버튼 비활성화
+            ) {
+                if (isAuthenticating) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text("인증 중...")
+                    }
+                } else {
+                    Text("인증 후 B Activity로 이동")
+                }
+            }
+
+            // 에러 메시지가 있을 경우 AlertDialog 표시
+            errorMessage?.let { error ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearError() },
+                    title = { Text("에러 발생") },
+                    text = { Text(error) },
+                    confirmButton = {
+                        Button(onClick = { viewModel.clearError() }) {
+                            Text("확인")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -159,6 +224,8 @@ fun rememberMapViewWithLifecycle(): View {
 
 @Composable
 fun SearchHistoryApp(viewModel: MapViewModel) {
+    val context = LocalContext.current
+
     val uiState by viewModel.uiState.observeAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
@@ -179,6 +246,8 @@ fun SearchHistoryApp(viewModel: MapViewModel) {
             else -> {
                 if (isSearchHistoryVisible || isSearchButtonVisible) {
                     focusManager.clearFocus()
+                } else {
+                    (context as? Activity)?.finish()
                 }
                 // Idle 상태이거나 다른 상태에서는 기본 뒤로가기 동작 (앱 종료 또는 다른 처리)
             }
@@ -410,9 +479,10 @@ fun MyBottomSheetScaffold(document: Document, viewModel: MapViewModel) {
                                         }
                                     }
                                 } else {
-                                    viewModel.requestLoadTrip = document
-                                    val intent = Intent(context, NaviActivity::class.java)
-                                    context.startActivity(intent)
+                                    val intent = Intent(context, NaviActivity::class.java).apply {
+                                        putExtra("document_key", document)
+                                    }
+                                    (context as? Activity)?.startActivity(intent)
                                 }
                             })
                     }

@@ -1,5 +1,9 @@
 package com.devidea.chevy.response
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class RoadAddress(
     val address_name: String,
     val region_1depth_name: String,
@@ -13,4 +17,4 @@ data class RoadAddress(
     val zone_no: String,
     val x: String,
     val y: String
-)
+) : Parcelable

@@ -14,7 +14,13 @@ import com.devidea.chevy.eventbus.ViewEventBus
 import com.devidea.chevy.repository.DataStoreRepository
 import com.devidea.chevy.response.Document
 import com.devidea.chevy.response.KakaoAddressResponse
+import com.kakaomobility.knsdk.KNLanguageType
+import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +57,61 @@ class MapViewModel @Inject constructor(
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
+    // 인증 성공 여부를 관리하는 Flow
+    private val _authenticationSuccess = MutableStateFlow(false)
+    val authenticationSuccess: StateFlow<Boolean> = _authenticationSuccess.asStateFlow()
+
+    // 인증 중 상태를 관리하는 Flow
+    private val _isAuthenticating = MutableStateFlow(false)
+    val isAuthenticating: StateFlow<Boolean> = _isAuthenticating.asStateFlow()
+
+    // 에러 메시지 상태를 관리하는 Flow
+    private val _authErrorMessage = MutableStateFlow<String?>(null)
+    val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
+
+    // 인증 시작
+    fun authenticateUser() {
+        CoroutineScope(Dispatchers.IO).launch {
+            _isAuthenticating.value = true
+            KNSDK.apply {
+                initializeWithAppKey(
+                    aAppKey = "e31e85ed66b03658041340618628e93f",
+                    aClientVersion = "1.0.0",
+                    aAppUserId = null,
+                    aLangType = KNLanguageType.KNLanguageType_KOREAN,
+                    aCompletion = { result ->
+                        result?.let {
+                            _isAuthenticating.value = false
+                            when (it.code) {
+                                KNError_Code_C103 -> {
+                                    // 인증 실패 처리
+                                    _authErrorMessage.value = "인증 실패: 코드 C103"
+                                }
+
+                                KNError_Code_C302 -> {
+                                    // 권한 오류 처리
+                                    _authErrorMessage.value = "권한 오류: 코드 C302"
+                                }
+
+                                else -> {
+                                    // 기타 오류 처리
+                                    _authErrorMessage.value = "초기화 실패: 알 수 없는 오류"
+                                }
+                            }
+                        } ?: run {
+                            _authenticationSuccess.value = true
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    // 에러 메시지 초기화
+    fun clearError() {
+        _authErrorMessage.value = null
+    }
+
     // 검색 결과 초기화
     fun clearResult() {
         _uiState.value = UiState.Idle
@@ -77,7 +138,6 @@ class MapViewModel @Inject constructor(
     }
 
     private var lastSearchResult: List<Document>? = null
-    var requestLoadTrip: Document? = null
 
     // 주소 검색 함수
     private fun searchAddress(query: String?) {

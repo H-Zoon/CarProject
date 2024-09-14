@@ -1,10 +1,9 @@
 package com.devidea.chevy
 
+import android.os.Build
 import android.os.Bundle
-import android.transition.TransitionManager
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -12,13 +11,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.constraintlayout.widget.ConstraintSet
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
 import com.devidea.chevy.navi.NavigationIconType
 import com.devidea.chevy.navi.isCameraType
-import com.devidea.chevy.viewmodel.MapViewModel
+import com.devidea.chevy.response.Document
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
 import com.kakaomobility.knsdk.KNRGCode
@@ -54,13 +52,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import okhttp3.Interceptor
-import okhttp3.Interceptor.*
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.lang.Math.pow
-import kotlin.math.PI
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.pow
@@ -73,7 +66,6 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate, KNGuidance_CitsGuideDelegate, KNGuidance_LocationGuideDelegate,
     KNGuidance_RouteGuideDelegate, KNGuidance_VoiceGuideDelegate, KNNaviView_GuideStateDelegate {
 
-    private val viewModel: MapViewModel by viewModels()
     lateinit var binding: ActivityNaviBinding
     val TAG = "NaviActivity"
 
@@ -87,6 +79,16 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     val safetyGuide: StateFlow<KNGuide_Safety?> = _safetyGuide
 
     init {
+        KNSDK.sharedGuidance()?.apply {
+            // 각 가이던스 델리게이트 등록
+            guideStateDelegate = this@NaviActivity
+            locationGuideDelegate = this@NaviActivity
+            routeGuideDelegate = this@NaviActivity
+            safetyGuideDelegate = this@NaviActivity
+            voiceGuideDelegate = this@NaviActivity
+            citsGuideDelegate = this@NaviActivity
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             currentLocation.collect { location ->
                 location?.let {
@@ -169,24 +171,22 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         binding.naviView.carType = KNCarType.KNCarType_1
         binding.naviView.guideStateDelegate = this
 
-        KNSDK.sharedGuidance()?.apply {
-            // 각 가이던스 델리게이트 등록
-            guideStateDelegate = this@NaviActivity
-            locationGuideDelegate = this@NaviActivity
-            routeGuideDelegate = this@NaviActivity
-            safetyGuideDelegate = this@NaviActivity
-            voiceGuideDelegate = this@NaviActivity
-            citsGuideDelegate = this@NaviActivity
+        // API 33 이상인 경우
+        val document: Document? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra("document_key", Document::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra("document_key")
         }
 
-        viewModel.requestLoadTrip?.let {
-            val startKatec = wgs84ToKatech(37.6448294347533, 126.691187475643)
-            val goalKatec = wgs84ToKatech(it.x.toDouble(), it.y.toDouble())
+        document?.let {
+            val startKatec = WGS84ToKATEC(LatLng(37.6541, 126.6825))
+            val goalKatec = WGS84ToKATEC(LatLng(BigDecimal(it.y).setScale(4, RoundingMode.HALF_UP).toDouble(), BigDecimal(it.x).setScale(4, RoundingMode.HALF_UP).toDouble()))
 
             // 출발지 설정
-            val start = KNPOI("home", startKatec.first.toInt(), startKatec.second.toInt(), null)
+            val start = KNPOI("home", startKatec.y.toInt(), startKatec.x.toInt(), "광주광역시 서구 상무중앙로78번길")
             // 목적지 설정
-            val goal = KNPOI("company", goalKatec.first.toInt(), goalKatec.second.toInt(), null)
+            val goal = KNPOI("company", goalKatec.y.toInt(), goalKatec.x.toInt(), it.address_name)
 
             // 경로 옵션 설정
             val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
@@ -199,17 +199,16 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                 }
                 knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
                     // 경로 요청 실패
-                    KNSDK.sharedGuidance()?.apply {
-                        // 각 가이던스 델리게이트 등록
-                        guideStateDelegate = this@NaviActivity
-                        locationGuideDelegate = this@NaviActivity
-                        routeGuideDelegate = this@NaviActivity
-                        safetyGuideDelegate = this@NaviActivity
-                        voiceGuideDelegate = this@NaviActivity
-                        citsGuideDelegate = this@NaviActivity
-                    }
                     if (error != null) {
                         Log.d(TAG, "경로 요청 실패 : $error")
+                        KNSDK.sharedGuidance()?.apply {
+                            binding.naviView.initWithGuidance(
+                                this,
+                                null,
+                                curRoutePriority,
+                                curAvoidOptions
+                            )
+                        }
                     }
                     // 경로 요청 성공
                     else {
@@ -372,42 +371,49 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         binding.naviView.didFinishPlayVoiceGuide(aGuidance, aVoiceGuide)
     }
 
-    fun wgs84ToKatech(latitude: Double, longitude: Double): Pair<Double, Double> {
-        val RE = 6378137.0            // WGS84 반경
-        val GRID = 5.0                // 격자 간격
-        val SLAT1 = 30.0              // 표준위도1
-        val SLAT2 = 60.0              // 표준위도2
-        val OLON = 127.5              // 기준점 경도
-        val OLAT = 38.0               // 기준점 위도
-        val XO = 200000.0             // 기준점 X좌표
-        val YO = 500000.0             // 기준점 Y좌표
+    data class LatLng(val latitude: Double, val longitude: Double)
+    data class Katech(val x: Double, val y: Double)
 
-        // 라디안으로 변환
-        val DEGRAD = PI / 180.0
-        val re = RE / GRID
-        val slat1 = SLAT1 * DEGRAD
-        val slat2 = SLAT2 * DEGRAD
-        val olon = OLON * DEGRAD
-        val olat = OLAT * DEGRAD
+    fun WGS84ToKATEC(latLng: LatLng): Katech {
+        // KATEC 좌표계 상수
+        val a = 6378137.0 // WGS84 타원체 장축 반경 (단위: meter)
+        val f = 1 / 298.257222101 // 타원체 편평률
+        val e2 = f * (2 - f) // 제 1 이심률의 제곱
 
-        var sn = tan(PI * 0.25 + slat2 * 0.5) / tan(PI * 0.25 + slat1 * 0.5)
-        sn = ln(cos(slat1) / cos(slat2)) / ln(sn)
-        var sf = tan(PI * 0.25 + slat1 * 0.5)
-        sf = pow(sf, sn) * cos(slat1) / sn
-        var ro = tan(PI * 0.25 + olat * 0.5)
-        ro = re * sf / pow(ro, sn)
+        // KATEC 기준
+        val lon0 = 2.2166185948963 // 기준점 경도 (radian, 128.0 degrees)
+        val lat0 = 0.6632251157578453 // 기준점 위도 (radian, 38.0 degrees)
+        val k0 = 1.0 // 스케일 팩터
+        val falseEasting = 1000000.0 // False Easting 값 (단위: meter)
+        val falseNorthing = 2000000.0 // False Northing 값 (단위: meter)
 
-        val ra = tan(PI * 0.25 + latitude * DEGRAD * 0.5)
-        val raTransformed = re * sf / pow(ra, sn)
-        var theta = longitude * DEGRAD - olon
-        if (theta > PI) theta -= 2.0 * PI
-        if (theta < -PI) theta += 2.0 * PI
-        theta *= sn
+        // WGS84 위도, 경도 (radians)
+        val lat = latLng.latitude * Math.PI / 180.0
+        val lon = latLng.longitude * Math.PI / 180.0
 
-        val x = raTransformed * sin(theta) + XO
-        val y = ro - raTransformed * cos(theta) + YO
+        // Transverse Mercator projection 공식 적용
+        val n = a / sqrt(1 - e2 * sin(lat0).pow(2)) // Radius of curvature in the prime vertical
+        val t = tan(lat).pow(2) // t = tan(latitude)^2
+        val c = e2 / (1 - e2) * cos(lat).pow(2) // Second term of the meridian distance
 
-        return Pair(x, y)
+        val A = (lon - lon0) * cos(lat) // Difference in longitude from the central meridian
+
+        // M: the meridian arc length
+        val m = a * ((1 - e2 / 4 - 3 * e2.pow(2) / 64 - 5 * e2.pow(3) / 256) * lat
+                - (3 * e2 / 8 + 3 * e2.pow(2) / 32 + 45 * e2.pow(3) / 1024) * sin(2 * lat)
+                + (15 * e2.pow(2) / 256 + 45 * e2.pow(3) / 1024) * sin(4 * lat)
+                - (35 * e2.pow(3) / 3072) * sin(6 * lat))
+
+        // X 좌표 계산
+        val x = falseEasting + k0 * n * (A + (1 - t + c) * A.pow(3) / 6
+                + (5 - 18 * t + t.pow(2) + 72 * c - 58 * e2) * A.pow(5) / 120)
+
+        // Y 좌표 계산
+        val y = falseNorthing + k0 * (m + n * tan(lat) * (A.pow(2) / 2
+                + (5 - t + 9 * c + 4 * c.pow(2)) * A.pow(4) / 24
+                + (61 - 58 * t + t.pow(2) + 600 * c - 330 * e2) * A.pow(6) / 720))
+
+        return Katech(x, y)
     }
 
     fun calculateDistance(location: KNLocation, location1: KNLocation): Int {
