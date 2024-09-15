@@ -6,12 +6,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.AddressRepository
-import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.pid.PIDListData
-import com.devidea.chevy.eventbus.ViewEvent
-import com.devidea.chevy.eventbus.ViewEventBus
-import com.devidea.chevy.repository.DataStoreRepository
 import com.devidea.chevy.response.Document
 import com.devidea.chevy.response.KakaoAddressResponse
 import com.kakaomobility.knsdk.KNLanguageType
@@ -68,6 +62,14 @@ class MapViewModel @Inject constructor(
     // 에러 메시지 상태를 관리하는 Flow
     private val _authErrorMessage = MutableStateFlow<String?>(null)
     val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
+
+    // 에러 메시지 상태를 관리하는 Flow
+    private val _cameraIsTracking = MutableStateFlow(true)
+    val cameraIsTracking: StateFlow<Boolean> = _cameraIsTracking.asStateFlow()
+
+    fun setCameraTracking(value : Boolean) {
+        _cameraIsTracking.value = value
+    }
 
     // 인증 시작
     fun authenticateUser() {
