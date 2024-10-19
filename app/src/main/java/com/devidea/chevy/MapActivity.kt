@@ -129,7 +129,7 @@ class MapActivity : ComponentActivity() {
         }
     }
 
-    private fun collectEvent(){
+    private fun collectEvent() {
         // StateFlow 관찰
         lifecycleScope.launch {
             viewModel.cameraIsTracking.collect { isTracking ->
@@ -155,7 +155,7 @@ class MapActivity : ComponentActivity() {
                 locationResult.lastLocation?.let { location ->
                     val latitude = location.latitude
                     val longitude = location.longitude
-                    userLocation = LatLng.from(latitude, longitude)
+                    userLocation = LatLng.from(37.645143328591324, 126.6878879070282)
                     centerLabel?.moveTo(userLocation)
                 }
             }
@@ -447,7 +447,7 @@ class MapActivity : ComponentActivity() {
                                     .align(Alignment.BottomEnd)
                                     .padding(16.dp),
                                 shape = CircleShape,
-                                containerColor = if(cameraState) Color.Blue else Color.Gray
+                                containerColor = if (cameraState) Color.Blue else Color.Gray
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LocationOn, // 원하는 아이콘으로 변경
@@ -592,8 +592,8 @@ class MapActivity : ComponentActivity() {
         val cameraUpdate =
             CameraUpdateFactory.newCenterPosition(
                 LatLng.from(
-                    document.y.toDouble(),
-                    document.x.toDouble()
+                    document.y,
+                    document.x
                 )
             )
         kakaoMaps?.moveCamera(cameraUpdate)
@@ -601,8 +601,8 @@ class MapActivity : ComponentActivity() {
         detailLabel = kakaoMaps?.labelManager?.layer?.addLabel(
             LabelOptions.from(
                 "dotLabel2", LatLng.from(
-                    document.y.toDouble(),
-                    document.x.toDouble()
+                    document.y,
+                    document.x
                 )
             )
                 .setStyles(

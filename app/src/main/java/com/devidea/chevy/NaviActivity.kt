@@ -52,10 +52,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.math.RoundingMode
+import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -79,16 +77,6 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     val safetyGuide: StateFlow<KNGuide_Safety?> = _safetyGuide
 
     init {
-        KNSDK.sharedGuidance()?.apply {
-            // 각 가이던스 델리게이트 등록
-            guideStateDelegate = this@NaviActivity
-            locationGuideDelegate = this@NaviActivity
-            routeGuideDelegate = this@NaviActivity
-            safetyGuideDelegate = this@NaviActivity
-            voiceGuideDelegate = this@NaviActivity
-            citsGuideDelegate = this@NaviActivity
-        }
-
         CoroutineScope(Dispatchers.IO).launch {
             currentLocation.collect { location ->
                 location?.let {
@@ -158,6 +146,24 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         binding = ActivityNaviBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        KNSDK.sharedGuidance()?.apply {
+            // 각 가이던스 델리게이트 등록
+            guideStateDelegate = this@NaviActivity
+            locationGuideDelegate = this@NaviActivity
+            routeGuideDelegate = this@NaviActivity
+            safetyGuideDelegate = this@NaviActivity
+            voiceGuideDelegate = this@NaviActivity
+            citsGuideDelegate = this@NaviActivity
+
+            /*// 안전운전 설정
+            binding.naviView.initWithGuidance(
+                this,
+                null,
+                KNRoutePriority.KNRoutePriority_Recommand,
+                KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value
+            )*/
+        }
+
         ToDeviceCodec.notifyIsNaviRunning(1)
         /*ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -180,20 +186,18 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         }
 
         document?.let {
-            val startKatec = WGS84ToKATEC(LatLng(37.6541, 126.6825))
-            val goalKatec = WGS84ToKATEC(LatLng(BigDecimal(it.y).setScale(4, RoundingMode.HALF_UP).toDouble(), BigDecimal(it.x).setScale(4, RoundingMode.HALF_UP).toDouble()))
+            val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = 127.11205203011632, aWgs84Lat =  37.39279717586919)
+            val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon =  it.x, aWgs84Lat =  it.y)
 
-            // 출발지 설정
-            val start = KNPOI("home", startKatec.y.toInt(), startKatec.x.toInt(), "광주광역시 서구 상무중앙로78번길")
-            // 목적지 설정
-            val goal = KNPOI("company", goalKatec.y.toInt(), goalKatec.x.toInt(), it.address_name)
+            val startKNPOI = KNPOI("", startKATEC.x.toInt(), startKATEC.y.toInt(), aAddress = null)
+            val goalKNPOI = KNPOI("", goalKATEC.x.toInt(), goalKATEC.y.toInt(), it.address_name)
 
             // 경로 옵션 설정
             val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
             val curAvoidOptions =
                 KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
 
-            KNSDK.makeTripWithStart(start, goal, null, null) { knError: KNError?, knTrip: KNTrip? ->
+            KNSDK.makeTripWithStart(aStart = startKNPOI, aGoal = goalKNPOI, aVias = null, aCompletion = { knError: KNError?, knTrip: KNTrip? ->
                 if (knError != null) {
                     Toast.makeText(this, "경로 생성 에러(KNError: $knError", Toast.LENGTH_SHORT).show()
                 }
@@ -201,14 +205,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                     // 경로 요청 실패
                     if (error != null) {
                         Log.d(TAG, "경로 요청 실패 : $error")
-                        KNSDK.sharedGuidance()?.apply {
-                            binding.naviView.initWithGuidance(
-                                this,
-                                null,
-                                curRoutePriority,
-                                curAvoidOptions
-                            )
-                        }
+                        Toast.makeText(this, "경로 요청 실패 : $error", Toast.LENGTH_SHORT).show()
                     }
                     // 경로 요청 성공
                     else {
@@ -223,7 +220,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                         }
                     }
                 }
-            }
+            })
         }
     }
 
@@ -297,7 +294,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     }
 
 
-    // KNGuidance_LocationGuideDelegate
+// KNGuidance_LocationGuideDelegate
 
     // 위치 정보가 변경될 경우 호출. `locationGuide`의 항목이 1개 이상 변경 시 전달됨.
     override fun guidanceDidUpdateLocation(
@@ -309,7 +306,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         _currentLocation.value = aLocationGuide.location
     }
 
-    // KNGuidance_RouteGuideDelegate
+// KNGuidance_RouteGuideDelegate
 
     // 경로 안내 정보 업데이트 시 호출. `routeGuide`의 항목이 1개 이상 변경 시 전달됨.
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
@@ -320,8 +317,8 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     }
 
     // KNGuidance_SafetyGuideDelegate
-    // 안전 운행 정보 업데이트 시 호출. `safetyGuide`의 항목이 1개 이상 변경 시 전달됨.
-    // 안전운전 설정시 해당 함수로 이벤트 전달.
+// 안전 운행 정보 업데이트 시 호출. `safetyGuide`의 항목이 1개 이상 변경 시 전달됨.
+// 안전운전 설정시 해당 함수로 이벤트 전달.
     override fun guidanceDidUpdateSafetyGuide(
         aGuidance: KNGuidance,
         aSafetyGuide: KNGuide_Safety?
@@ -348,7 +345,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     }
 
     // KNGuidance_VoiceGuideDelegate
-    // 음성 안내 사용 여부
+// 음성 안내 사용 여부
     override fun shouldPlayVoiceGuide(
         aGuidance: KNGuidance,
         aVoiceGuide: KNGuide_Voice,
@@ -369,59 +366,6 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
         Log.d(TAG, "didFinishPlayVoiceGuide")
         binding.naviView.didFinishPlayVoiceGuide(aGuidance, aVoiceGuide)
-    }
-
-    data class LatLng(val latitude: Double, val longitude: Double)
-    data class Katech(val x: Double, val y: Double)
-
-    fun WGS84ToKATEC(latLng: LatLng): Katech {
-        // KATEC 좌표계 상수
-        val a = 6378137.0 // WGS84 타원체 장축 반경 (단위: meter)
-        val f = 1 / 298.257222101 // 타원체 편평률
-        val e2 = f * (2 - f) // 제 1 이심률의 제곱
-
-        // KATEC 기준
-        val lon0 = 2.2166185948963 // 기준점 경도 (radian, 128.0 degrees)
-        val lat0 = 0.6632251157578453 // 기준점 위도 (radian, 38.0 degrees)
-        val k0 = 1.0 // 스케일 팩터
-        val falseEasting = 1000000.0 // False Easting 값 (단위: meter)
-        val falseNorthing = 2000000.0 // False Northing 값 (단위: meter)
-
-        // WGS84 위도, 경도 (radians)
-        val lat = latLng.latitude * Math.PI / 180.0
-        val lon = latLng.longitude * Math.PI / 180.0
-
-        // Transverse Mercator projection 공식 적용
-        val n = a / sqrt(1 - e2 * sin(lat0).pow(2)) // Radius of curvature in the prime vertical
-        val t = tan(lat).pow(2) // t = tan(latitude)^2
-        val c = e2 / (1 - e2) * cos(lat).pow(2) // Second term of the meridian distance
-
-        val A = (lon - lon0) * cos(lat) // Difference in longitude from the central meridian
-
-        // M: the meridian arc length
-        val m = a * ((1 - e2 / 4 - 3 * e2.pow(2) / 64 - 5 * e2.pow(3) / 256) * lat
-                - (3 * e2 / 8 + 3 * e2.pow(2) / 32 + 45 * e2.pow(3) / 1024) * sin(2 * lat)
-                + (15 * e2.pow(2) / 256 + 45 * e2.pow(3) / 1024) * sin(4 * lat)
-                - (35 * e2.pow(3) / 3072) * sin(6 * lat))
-
-        // X 좌표 계산
-        val x = falseEasting + k0 * n * (A + (1 - t + c) * A.pow(3) / 6
-                + (5 - 18 * t + t.pow(2) + 72 * c - 58 * e2) * A.pow(5) / 120)
-
-        // Y 좌표 계산
-        val y = falseNorthing + k0 * (m + n * tan(lat) * (A.pow(2) / 2
-                + (5 - t + 9 * c + 4 * c.pow(2)) * A.pow(4) / 24
-                + (61 - 58 * t + t.pow(2) + 600 * c - 330 * e2) * A.pow(6) / 720))
-
-        return Katech(x, y)
-    }
-
-    fun calculateDistance(location: KNLocation, location1: KNLocation): Int {
-        return sqrt(
-            (location1.pos.x - location.pos.x).pow(2) + (location1.pos.y - location.pos.y).pow(
-                2
-            )
-        ).toInt()
     }
 
     private fun findGuideAsset(code: KNRGCode): NavigationIconType {

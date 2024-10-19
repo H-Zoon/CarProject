@@ -10,15 +10,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.codec.ToDeviceCodec
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity2 : AppCompatActivity() {
+class DebugActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)

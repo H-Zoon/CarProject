@@ -7,7 +7,14 @@
     <string name="bt_scanning">기기를 찾고있습니다.</string>
     <string name="bt_not_found">기기를 찾지 못했습니다.</string>
 
-    <string name="summery_last_connect">마지막 연결</string>
-    <string name="summery_recent_mileage">최근 주행거리</string>
-    <string name="summery_recent_fuel_efficiency">최근 연비</string>
+    <string name="bluetooth_connected">블루투스가 연결되었습니다.</string>
+    <string name="bluetooth_disconnected">블루투스 연결이 해지되었습니다.</string>
+
+    <!--main summery-->
+    <string name="summary_last_connect">마지막 연결.</string>
+    <string name="summary_recent_mileage">최근 주행거리.</string>
+    <string name="summary_recent_fuel_efficiency">최근 연비</string>
+
+    <!--image description-->
+    <string name="car_image_description">connection status image</string>
 </resources>
