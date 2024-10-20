@@ -1,8 +1,7 @@
 package com.devidea.chevy
 
-import android.content.Intent
+import android.app.Activity
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,23 +41,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
-import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.dashboard.Dashboard
-import com.devidea.chevy.dashboard.LEDSeconds
+import com.devidea.chevy.map.MainScreen
 import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
-import com.kakao.sdk.common.util.Utility
-import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
-import com.kakaomobility.knsdk.KNLanguageType
-import com.kakaomobility.knsdk.KNSDK
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
+import com.devidea.chevy.viewmodel.MapViewModel
+import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,6 +61,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private val viewModel: CarViewModel by viewModels()
+    private val mapViewModel: MapViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,15 +73,21 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CarProjectTheme {
+                val navController = rememberNavController()
+                val backStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = backStackEntry?.destination?.route
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     content = { paddingValues ->
                         HomeScreen(
+                            navController = navController,
                             viewModel = viewModel,
+                            mapViewModel = mapViewModel,
+                            activity = this,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
-                                .padding(16.dp)
                         )
                     }
                 )
@@ -97,8 +97,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun HomeScreen(viewModel: CarViewModel, modifier: Modifier = Modifier) {
-    val navController = rememberNavController()
+fun HomeScreen(
+    navController: NavHostController, // 외부에서 전달된 NavController 사용
+    viewModel: CarViewModel,
+    mapViewModel: MapViewModel,
+    activity: Activity,
+    modifier: Modifier = Modifier
+) {
     NavHost(navController, startDestination = NavRoutes.HOME, modifier = modifier) {
         composable(NavRoutes.HOME) {
             Column(
@@ -121,7 +126,14 @@ fun HomeScreen(viewModel: CarViewModel, modifier: Modifier = Modifier) {
                 2 -> {
                     // NaviActivity는 별도의 컴포저블로 처리
                 }
-                3 -> MapActivity()
+                3 -> {
+                    // MainScreen을 네비게이션 경로로 호출
+                    MainScreen(
+                        viewModel = mapViewModel,
+                        //fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity),
+                        activity = activity
+                    )
+                }
             }
         }
     }
