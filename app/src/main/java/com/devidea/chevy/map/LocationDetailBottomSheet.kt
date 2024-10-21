@@ -9,13 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.devidea.chevy.navi.NaviActivity
 import com.devidea.chevy.response.Document
+import com.devidea.chevy.response.NavigateDocument
+import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocationDetailBottomSheet(document: Document) {
+fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.Expanded,
@@ -49,8 +52,15 @@ fun LocationDetailBottomSheet(document: Document) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = {
+                    val navigateDocument = NavigateDocument(
+                        address_name = document.address_name,
+                        goalX = document.x,
+                        goalY = document.y,
+                        startX = viewModel.userLocation.value?.longitude ?: 0.0,
+                        startY = viewModel.userLocation.value?.latitude ?: 0.0
+                    )
                     val intent = Intent(context, NaviActivity::class.java).apply {
-                        putExtra("document_key", document)
+                        putExtra("document_key", navigateDocument)
                     }
                     context.startActivity(intent)
                 }) {

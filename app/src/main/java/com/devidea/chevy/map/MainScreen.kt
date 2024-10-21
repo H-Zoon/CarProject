@@ -107,7 +107,7 @@ fun MainScreen(
 
                 is MapViewModel.UiState.ShowDetail -> {
                     val selectedDocument = (uiState as MapViewModel.UiState.ShowDetail).item
-                    LocationDetailBottomSheet(document = selectedDocument)
+                    LocationDetailBottomSheet(viewModel = viewModel, document = selectedDocument)
                 }
             }
         }

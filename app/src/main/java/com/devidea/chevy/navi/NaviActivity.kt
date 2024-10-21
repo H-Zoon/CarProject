@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -11,10 +12,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
 import com.devidea.chevy.response.Document
+import com.devidea.chevy.response.NavigateDocument
+import com.devidea.chevy.viewmodel.CarViewModel
+import com.devidea.chevy.viewmodel.NaviViewModel
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
 import com.kakaomobility.knsdk.KNRGCode
@@ -56,24 +61,21 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate, KNGuidance_CitsGuideDelegate, KNGuidance_LocationGuideDelegate,
     KNGuidance_RouteGuideDelegate, KNGuidance_VoiceGuideDelegate, KNNaviView_GuideStateDelegate {
 
+    private val viewModel: NaviViewModel by viewModels()
     lateinit var binding: ActivityNaviBinding
     val TAG = "NaviActivity"
 
-    private val _currentLocation = MutableStateFlow<KNLocation?>(null)
-    val currentLocation: StateFlow<KNLocation?> = _currentLocation
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        //enableEdgeToEdge()
+        binding = ActivityNaviBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-    private val _routeGuide = MutableStateFlow<KNGuide_Route?>(null)
-    val routeGuide: StateFlow<KNGuide_Route?> = _routeGuide
-
-    private val _safetyGuide = MutableStateFlow<KNGuide_Safety?>(null)
-    val safetyGuide: StateFlow<KNGuide_Safety?> = _safetyGuide
-
-    init {
-        CoroutineScope(Dispatchers.IO).launch {
-            currentLocation.collect { location ->
+        viewModel.viewModelScope.launch {
+            viewModel.currentLocation.collect { location ->
                 location?.let {
                     //안전운행 정보
-                    val safetiesOnGuide = safetyGuide.value?.safetiesOnGuide
+                    val safetiesOnGuide = viewModel.safetyGuide.value?.safetiesOnGuide
 
                     // safetiesOnGuide가 비어있거나 null인지 확인합니다.
                     if (safetiesOnGuide.isNullOrEmpty()) {
@@ -103,7 +105,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                         }
                     }
 
-                    routeGuide.value?.let { routeGuide ->
+                    viewModel.routeGuide.value?.let { routeGuide ->
                         // 목표의 거리와 진행 방향 계산
                         val distance =
                             routeGuide.curDirection?.location?.let { location.distToLocation(it) }
@@ -130,13 +132,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                 } ?: return@collect
             }
         }
-    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        //enableEdgeToEdge()
-        binding = ActivityNaviBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
         KNSDK.sharedGuidance()?.apply {
             // 각 가이던스 델리게이트 등록
@@ -170,16 +166,16 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         binding.naviView.guideStateDelegate = this
 
         // API 33 이상인 경우
-        val document: Document? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra("document_key", Document::class.java)
+        val document: NavigateDocument? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra("document_key", NavigateDocument::class.java)
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra("document_key")
         }
 
         document?.let {
-            val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = 127.11205203011632, aWgs84Lat =  37.39279717586919)
-            val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon =  it.x, aWgs84Lat =  it.y)
+            val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = it.startX, aWgs84Lat = it.startY)
+            val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = it.goalX, aWgs84Lat = it.goalY)
 
             val startKNPOI = KNPOI("", startKATEC.x.toInt(), startKATEC.y.toInt(), aAddress = null)
             val goalKNPOI = KNPOI("", goalKATEC.x.toInt(), goalKATEC.y.toInt(), it.address_name)
@@ -295,7 +291,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     ) {
         Log.d(TAG, "guidanceDidUpdateLocation")
         binding.naviView.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
-        _currentLocation.value = aLocationGuide.location
+        aLocationGuide.location?.let { viewModel.updateCurrentLocation(it) }
     }
 
 // KNGuidance_RouteGuideDelegate
@@ -304,8 +300,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
         Log.d(TAG, "guidanceDidUpdateRouteGuide")
         binding.naviView.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
-
-        _routeGuide.value = aRouteGuide
+        viewModel.updateRouteGuide(aRouteGuide)
     }
 
     // KNGuidance_SafetyGuideDelegate
@@ -317,7 +312,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     ) {
         binding.naviView.guidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide)
 
-        _safetyGuide.value = aSafetyGuide
+        viewModel.updateSafetyGuide(aSafetyGuide)
     }
 
     // 주변의 안전 운행 정보 업데이트 시 호출

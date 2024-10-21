@@ -27,8 +27,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val repository: AddressRepository,
-    private val repository2: DataStoreRepository,
+    private val addressRepository: AddressRepository,
+    private val dataStoreRepository: DataStoreRepository,
     private val locationProvider: LocationProvider
 ) : ViewModel() {
 
@@ -89,7 +89,7 @@ class MapViewModel @Inject constructor(
 
         viewModelScope.launch {
             launch {
-                repository2.getSearchHistory().collect { history ->
+                dataStoreRepository.getSearchHistory().collect { history ->
                     _searchHistory.value = history
                 }
             }
@@ -99,21 +99,21 @@ class MapViewModel @Inject constructor(
     // 검색어 추가
     fun addSearchQuery(query: String) {
         viewModelScope.launch {
-            repository2.addSearchQuery(query)
+            dataStoreRepository.addSearchQuery(query)
         }
     }
 
     // 검색 히스토리 삭제
     fun clearSearchHistory() {
         viewModelScope.launch {
-            repository2.clearSearchHistory()
+            dataStoreRepository.clearSearchHistory()
         }
     }
 
     // 개별 검색 히스토리 삭제
     fun removeSearchQuery(value: String) {
         viewModelScope.launch {
-            repository2.removeSearchQuery(value)
+            dataStoreRepository.removeSearchQuery(value)
         }
     }
     // 카메라 추적 상태 설정
@@ -232,7 +232,7 @@ class MapViewModel @Inject constructor(
         _uiState.value = UiState.Searching
         viewModelScope.launch {
             try {
-                val apiResult: KakaoAddressResponse? = repository.searchAddress(query, 1, 10)
+                val apiResult: KakaoAddressResponse? = addressRepository.searchAddress(query, 1, 10)
                 apiResult?.let {
                     lastSearchResult = it.documents // 검색 결과를 캐싱
                     _uiState.value = it.documents?.let { it1 -> UiState.SearchResult(it1) }!!
