@@ -46,13 +46,12 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.dashboard.Dashboard
-import com.devidea.chevy.map.MainScreen
+import com.devidea.chevy.map.MapEnterScreen
 import com.devidea.chevy.ui.theme.NeumorphicBox
 import com.devidea.chevy.ui.theme.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
-import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -128,7 +127,7 @@ fun HomeScreen(
                 }
                 3 -> {
                     // MainScreen을 네비게이션 경로로 호출
-                    MainScreen(
+                    MapEnterScreen(
                         viewModel = mapViewModel,
                         //fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity),
                         activity = activity

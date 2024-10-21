@@ -45,7 +45,7 @@
             android:name=".MapActivity"
             android:exported="false" />
         <activity
-            android:name=".NaviActivity"
+            android:name=".navi.NaviActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
         <activity

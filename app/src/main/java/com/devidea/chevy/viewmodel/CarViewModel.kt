@@ -2,6 +2,7 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.carsystem.CarEventModule
 import com.devidea.chevy.carsystem.pid.PIDListData

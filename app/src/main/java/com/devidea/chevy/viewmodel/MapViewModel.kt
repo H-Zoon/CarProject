@@ -6,8 +6,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.AddressRepository
+import com.devidea.chevy.LocationProvider
+import com.devidea.chevy.repository.DataStoreRepository
 import com.devidea.chevy.response.Document
 import com.devidea.chevy.response.KakaoAddressResponse
+import com.kakao.vectormap.LatLng
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -15,6 +18,7 @@ import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +27,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val repository: AddressRepository
+    private val repository: AddressRepository,
+    private val repository2: DataStoreRepository,
+    private val locationProvider: LocationProvider
 ) : ViewModel() {
 
     // UI 상태를 관리하는 sealed class
@@ -42,8 +48,8 @@ class MapViewModel @Inject constructor(
         object ClearDetail : UiEvent()  // 상세 다이얼로그 닫기 이벤트
     }
 
-    private val _uiState = MutableLiveData<UiState>(UiState.Idle)
-    val uiState: LiveData<UiState> = _uiState
+    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+    val uiState: StateFlow<UiState> = _uiState
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -63,12 +69,87 @@ class MapViewModel @Inject constructor(
     private val _authErrorMessage = MutableStateFlow<String?>(null)
     val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
 
-    // 에러 메시지 상태를 관리하는 Flow
+    // 카메라 추적 상태를 관리하는 Flow
     private val _cameraIsTracking = MutableStateFlow(true)
     val cameraIsTracking: StateFlow<Boolean> = _cameraIsTracking.asStateFlow()
 
-    fun setCameraTracking(value : Boolean) {
+    // 사용자 위치를 관리하는 Flow
+    private val _userLocation = MutableStateFlow<LatLng?>(null)
+    val userLocation: StateFlow<LatLng?> = _userLocation.asStateFlow()
+
+    // 검색기록 Flow
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    private var trackingJob: Job? = null
+
+    init {
+        // 초기 위치 업데이트 시작
+        startLocationUpdates()
+
+        viewModelScope.launch {
+            launch {
+                repository2.getSearchHistory().collect { history ->
+                    _searchHistory.value = history
+                }
+            }
+        }
+    }
+
+    // 검색어 추가
+    fun addSearchQuery(query: String) {
+        viewModelScope.launch {
+            repository2.addSearchQuery(query)
+        }
+    }
+
+    // 검색 히스토리 삭제
+    fun clearSearchHistory() {
+        viewModelScope.launch {
+            repository2.clearSearchHistory()
+        }
+    }
+
+    // 개별 검색 히스토리 삭제
+    fun removeSearchQuery(value: String) {
+        viewModelScope.launch {
+            repository2.removeSearchQuery(value)
+        }
+    }
+    // 카메라 추적 상태 설정
+    fun setCameraTracking(value: Boolean) {
         _cameraIsTracking.value = value
+        if (value) {
+            startTracking()
+        } else {
+            stopTracking()
+        }
+    }
+
+    // 위치 업데이트 시작
+    private fun startLocationUpdates() {
+        locationProvider.requestLocationUpdates { location ->
+            _userLocation.value = LatLng.from(location.latitude, location.longitude)
+        }
+    }
+
+    // 카메라 추적 시작
+    private fun startTracking() {
+        trackingJob = viewModelScope.launch {
+            _cameraIsTracking.collect { isTracking ->
+                if (isTracking) {
+                    // 카메라가 사용자의 위치를 추적하도록 로직 구현
+                    // 예: 맵의 카메라를 사용자 위치로 이동
+                } else {
+                    // 카메라 추적 중지 로직 구현
+                }
+            }
+        }
+    }
+
+    // 카메라 추적 중지
+    private fun stopTracking() {
+        trackingJob?.cancel()
     }
 
     // 인증 시작
@@ -124,12 +205,15 @@ class MapViewModel @Inject constructor(
             is UiEvent.Search -> {
                 searchAddress(event.query)
             }
+
             is UiEvent.SelectResult -> {
                 _uiState.value = UiState.ShowDetail(event.document)
             }
+
             UiEvent.ClearResult -> {
                 clearResult()
             }
+
             UiEvent.ClearDetail -> {
                 // 상세 보기 닫으면 다시 검색 결과로 이동
                 if (_uiState.value is UiState.ShowDetail) {
@@ -151,7 +235,7 @@ class MapViewModel @Inject constructor(
                 val apiResult: KakaoAddressResponse? = repository.searchAddress(query, 1, 10)
                 apiResult?.let {
                     lastSearchResult = it.documents // 검색 결과를 캐싱
-                    _uiState.value = it.documents?.let { it1 -> UiState.SearchResult(it1) }
+                    _uiState.value = it.documents?.let { it1 -> UiState.SearchResult(it1) }!!
                 } ?: run {
                     _errorMessage.value = "결과가 없습니다."
                     _uiState.value = UiState.Idle
@@ -165,5 +249,11 @@ class MapViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        locationProvider.stopLocationUpdates()
+        stopTracking()
     }
 }

@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.devidea.chevy.NaviActivity
+import com.devidea.chevy.navi.NaviActivity
 import com.devidea.chevy.response.Document
 import kotlinx.coroutines.launch
 

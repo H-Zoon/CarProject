@@ -1,8 +1,6 @@
 package com.devidea.chevy
 
 import android.content.Context
-import com.devidea.chevy.repository.DataStoreRepository
-import com.devidea.chevy.viewmodel.CarViewModel
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,4 +17,11 @@ object AppModule {
     fun provideApplicationContext(@ApplicationContext context: Context): Context {
         return context
     }
+
+    @Provides
+    @Singleton
+    fun provideLocationProvider(@ApplicationContext context: Context): LocationProvider {
+        return LocationProvider(context)
+    }
+
 }

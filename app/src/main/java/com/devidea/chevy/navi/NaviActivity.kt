@@ -1,4 +1,4 @@
-package com.devidea.chevy
+package com.devidea.chevy.navi
 
 import android.os.Build
 import android.os.Bundle
@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import com.devidea.chevy.codec.ToDeviceCodec
 import com.devidea.chevy.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
-import com.devidea.chevy.navi.NavigationIconType
-import com.devidea.chevy.navi.isCameraType
 import com.devidea.chevy.response.Document
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
@@ -52,12 +50,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
-import kotlin.math.tan
 
 @AndroidEntryPoint
 class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
@@ -459,15 +451,4 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     override fun naviViewGuideState(state: KNGuideState) {
         Toast.makeText(this, "$state", Toast.LENGTH_SHORT).show()
     }
-
-    @Composable
-    fun MyComposeScreen() {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Text(text = "Hello, Jetpack Compose!")
-        }
-    }
-
 }

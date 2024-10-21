@@ -58,7 +58,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -77,6 +76,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.devidea.chevy.navi.NaviActivity
 import com.devidea.chevy.response.Document
 import com.devidea.chevy.viewmodel.MapViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -350,7 +350,7 @@ class MapActivity : ComponentActivity() {
     fun SearchHistoryApp(viewModel: MapViewModel) {
         val context = LocalContext.current
 
-        val uiState by viewModel.uiState.observeAsState(MapViewModel.UiState.Idle)
+        val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
         val focusManager = LocalFocusManager.current
         var searchText by remember { mutableStateOf(TextFieldValue("")) }
         var isSearchHistoryVisible by remember { mutableStateOf(false) }
