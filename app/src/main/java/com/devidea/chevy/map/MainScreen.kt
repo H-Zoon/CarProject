@@ -1,29 +1,21 @@
 package com.devidea.chevy.map
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.devidea.chevy.ui.LocationDetailBottomSheet
 import com.devidea.chevy.viewmodel.MapViewModel
 
 @Composable
 fun MainScreen(
-    viewModel: MapViewModel = hiltViewModel(),
-    activity: Activity
+    viewModel: MapViewModel,
+    navController: NavHostController
 ) {
     val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
@@ -45,7 +37,7 @@ fun MainScreen(
                     isSearchHistoryVisible = false
                     focusManager.clearFocus()
                 } else {
-                    activity.finish()
+                    navController.popBackStack()
                 }
             }
         }

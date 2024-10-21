@@ -1,6 +1,5 @@
 package com.devidea.chevy
 
-import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -82,8 +81,6 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(
                             navController = navController,
                             viewModel = viewModel,
-                            mapViewModel = mapViewModel,
-                            activity = this,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
@@ -99,8 +96,6 @@ class MainActivity : ComponentActivity() {
 fun HomeScreen(
     navController: NavHostController, // 외부에서 전달된 NavController 사용
     viewModel: CarViewModel,
-    mapViewModel: MapViewModel,
-    activity: Activity,
     modifier: Modifier = Modifier
 ) {
     NavHost(navController, startDestination = NavRoutes.HOME, modifier = modifier) {
@@ -127,11 +122,7 @@ fun HomeScreen(
                 }
                 3 -> {
                     // MainScreen을 네비게이션 경로로 호출
-                    MapEnterScreen(
-                        viewModel = mapViewModel,
-                        //fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity),
-                        activity = activity
-                    )
+                    MapEnterScreen(navController = navController)
                 }
             }
         }
