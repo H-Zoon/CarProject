@@ -106,7 +106,7 @@ fun MapScreen(viewModel: MapViewModel) {
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
             shape = CircleShape,
-            containerColor = if (cameraState) Color.Blue else Color.Gray
+            containerColor = if (cameraState) Color(0xFFff722b) else Color.Gray
         ) {
             Icon(
                 imageVector = Icons.Default.LocationOn,
@@ -175,7 +175,7 @@ fun makeLabel(kakaoMap: KakaoMap, viewModel: MapViewModel, location: LatLng, lab
     val centerLabel: Label? = kakaoMap.labelManager?.layer?.addLabel(
         LabelOptions.from("dotLabel", location)
             .setStyles(
-                LabelStyle.from(R.drawable.c).setAnchorPoint(0.5f, 0.5f)
+                LabelStyle.from(R.drawable.ic_label_center).setAnchorPoint(0.5f, 0.5f)
             )
             .setRank(1)
     )

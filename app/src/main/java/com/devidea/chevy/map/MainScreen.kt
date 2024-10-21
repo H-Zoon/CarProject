@@ -67,8 +67,12 @@ fun MainScreen(
                 is MapViewModel.UiState.Idle -> {
                     AnimatedVisibility(
                         visible = isSearchHistoryVisible,
-                        enter = fadeIn() + slideInVertically(),
-                        exit = fadeOut() + slideOutVertically()
+                        enter = fadeIn() + slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight } // 화면 아래에서 위로 슬라이드 인
+                        ),
+                        exit = fadeOut() + slideOutVertically(
+                            targetOffsetY = { fullHeight -> fullHeight } // 화면 아래로 슬라이드 아웃
+                        )
                     ) {
                         SearchHistoryList(
                             viewModel = viewModel,

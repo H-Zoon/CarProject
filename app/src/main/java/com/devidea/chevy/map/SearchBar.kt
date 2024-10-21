@@ -35,6 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.devidea.chevy.ui.theme.DarkShadow
+import com.devidea.chevy.ui.theme.LightShadow
+import com.devidea.chevy.ui.theme.MainBackground
 
 @Composable
 fun SearchBar(
@@ -60,7 +63,6 @@ fun SearchBar(
             label = { Text("검색어 입력") },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Transparent)
                 .padding(16.dp)
                 .onFocusChanged { state ->
                     onFocusChanged(state.isFocused)
@@ -68,6 +70,8 @@ fun SearchBar(
                 },
             singleLine = true,
             colors = TextFieldDefaults.colors().copy(
+                focusedContainerColor  = MainBackground,
+                unfocusedContainerColor = Color.White,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -78,14 +82,14 @@ fun SearchBar(
             keyboardActions = KeyboardActions(
                 onSearch = { onSearch() }
             ),
-            leadingIcon = {
+            /*leadingIcon = {
                 IconButton(onClick = onSearch) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "검색"
                     )
                 }
-            }
+            }*/
         )
     }
 }
