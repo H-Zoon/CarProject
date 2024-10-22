@@ -20,17 +20,14 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devidea.chevy.App
 import com.devidea.chevy.App.Companion.CHANNEL_ID
-import com.devidea.chevy.MainActivity
+import com.devidea.chevy.ui.activity.MainActivity
 import com.devidea.chevy.R
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
-import javax.inject.Inject
 
 
 class LeBTService: Service() {

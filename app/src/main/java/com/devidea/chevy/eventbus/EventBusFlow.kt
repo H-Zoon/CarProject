@@ -1,7 +1,5 @@
 package com.devidea.chevy.eventbus
 
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.pid.PIDListData
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 

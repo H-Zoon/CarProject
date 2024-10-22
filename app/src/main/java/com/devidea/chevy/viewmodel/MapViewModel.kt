@@ -5,11 +5,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.AddressRepository
+import com.devidea.chevy.repository.remote.AddressRepository
 import com.devidea.chevy.LocationProvider
-import com.devidea.chevy.repository.DataStoreRepository
-import com.devidea.chevy.response.Document
-import com.devidea.chevy.response.KakaoAddressResponse
+import com.devidea.chevy.repository.device.DataStoreRepository
+import com.devidea.chevy.repository.remote.Document
+import com.devidea.chevy.repository.remote.KakaoAddressResponse
 import com.kakao.vectormap.LatLng
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK

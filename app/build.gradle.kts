@@ -58,6 +58,7 @@ android {
 }
 
 dependencies {
+
     implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
     implementation ("com.google.dagger:hilt-android:2.44")
     implementation(libs.androidx.runtime.livedata)

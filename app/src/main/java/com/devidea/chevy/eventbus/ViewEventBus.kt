@@ -1,8 +1,8 @@
 package com.devidea.chevy.eventbus
 
 import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.pid.PIDListData
+import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 

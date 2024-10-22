@@ -2,13 +2,12 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.carsystem.pid.PIDListData
+import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import com.devidea.chevy.eventbus.ViewEvent
 import com.devidea.chevy.eventbus.ViewEventBus
-import com.devidea.chevy.repository.DataStoreRepository
+import com.devidea.chevy.repository.device.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

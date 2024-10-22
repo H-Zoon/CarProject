@@ -7,8 +7,8 @@ import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.devidea.chevy.carsystem.CarEventModule
-import com.devidea.chevy.codec.ToDeviceCodec
+import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

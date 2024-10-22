@@ -4,18 +4,16 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.media.tv.TvContract.Channels.Logo
 import android.os.IBinder
 import android.util.Log
-import com.devidea.chevy.carsystem.CarModel
-import com.devidea.chevy.codec.ToDeviceCodec
-import com.devidea.chevy.codec.ToureDevCodec
+import com.devidea.chevy.datas.obd.CarModel
+import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
+import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
 import com.devidea.chevy.eventbus.ViewEvent
 import com.devidea.chevy.eventbus.ViewEventBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 object BluetoothModel {
