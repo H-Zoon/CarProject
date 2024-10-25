@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.repository.remote.AddressRepository
 import com.devidea.chevy.LocationProvider
+import com.devidea.chevy.Logger
 import com.devidea.chevy.repository.device.DataStoreRepository
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.repository.remote.KakaoAddressResponse
@@ -242,7 +243,7 @@ class MapViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 // 에러 처리
-                Log.e("AddressViewModel", "Error: ${e.message}")
+                Logger.e{"Error: ${e.message}"}
                 _errorMessage.value = e.message
                 _uiState.value = UiState.Idle
             } finally {

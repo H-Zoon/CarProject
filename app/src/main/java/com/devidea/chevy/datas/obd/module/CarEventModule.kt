@@ -3,6 +3,7 @@ package com.devidea.chevy.datas.obd.module;
 import android.util.Log
 import android.widget.Toast
 import com.devidea.chevy.App
+import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.datas.obd.protocol.pid.OBDData
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
@@ -39,8 +40,8 @@ class CarEventModule {
                         onRecvMsg(event.message, event.message.size)
                     }
 
-                    is Event.TPMSEvent -> Log.d(TAG, "no handling")
-                    is Event.controlEvent -> Log.d(TAG, "no handling")
+                    is Event.TPMSEvent -> Logger.d { "no handling" }
+                    is Event.controlEvent -> Logger.d { "no handling" }
                 }
             }
         }
@@ -80,7 +81,7 @@ class CarEventModule {
     }
 
     private fun onRecvCommonMsg(bArr: ByteArray, i: Int) {
-        Log.d(TAG, "recv msg ${bArr.joinToString()}")
+        Logger.d { "recv msg ${bArr.joinToString()}" }
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
@@ -156,11 +157,11 @@ class CarEventModule {
                 14.toByte() -> if (i > 5) handlePid(161, bArr[2], bArr[3], bArr[4], bArr[5])
                 15.toByte() -> when (bArr[2]) {
                     0.toByte() -> {
-                        Log.e("BT:", "!!!!!!!on start fast detect!!!!")
+                        Logger.e { "on start fast detect" }
                     }
 
                     1.toByte() -> {
-                        Log.e(" BT ", "!!!!!!!on end fast detect!!!!")
+                        Logger.e { "on end fast detect" }
                         mObdData.showPid()
                         postViewEvent(ViewEvent.updateObdData(mObdData.getPidDataList()))
                     }
@@ -280,16 +281,16 @@ class CarEventModule {
     }
 
     private fun getDevType(i: Int) {
-        Log.d("getDevType", "call")
+        Logger.d { "getDevType call" }
     }
 
     private fun getMonitorErrInfo(bArr: ByteArray, i: Int) {
         val i2 = bArr[0].toInt() and 255
         if (i2 == 255) {
-            Log.d("ing", "clear old err")
+            Logger.d { "ing clear old err" }
             mObdData.getDectectedErrObdList().clear()
         } else if (i2 == 0) {
-            Log.d("obd_search_listview_obd", "refresh")
+            Logger.d { "obd_search_listview_obd refresh" }
         } else {
             val bArr2 = ByteArray(2)
             for (i3 in 1 until i step 2) {
@@ -339,7 +340,7 @@ class CarEventModule {
             9 -> "ISO15765_250K_29BIT"
             else -> "unknown"
         }
-        Log.d("car_obd_type_value", str)
+        Logger.d { "car_obd_type_value $str" }
     }
 
     private fun getCarConditionData(
@@ -380,33 +381,36 @@ class CarEventModule {
             )
         }
         if (mObdData.mSupportPIDMap[61]?.support == 1) {
-            postViewEvent(ViewEvent.updateThreeCatalystTemperatureBankOne2(
-                String.format(
-                    Locale.getDefault(),
-                    "%d°C",
-                    bankOne2
+            postViewEvent(
+                ViewEvent.updateThreeCatalystTemperatureBankOne2(
+                    String.format(
+                        Locale.getDefault(),
+                        "%d°C",
+                        bankOne2
+                    )
                 )
-            )
             )
         }
         if (mObdData.mSupportPIDMap[62]?.support == 1) {
-            postViewEvent(ViewEvent.updateThreeCatalystTemperatureBankTwo1(
-                String.format(
-                    Locale.getDefault(),
-                    "%d°C",
-                    bankTwo1
+            postViewEvent(
+                ViewEvent.updateThreeCatalystTemperatureBankTwo1(
+                    String.format(
+                        Locale.getDefault(),
+                        "%d°C",
+                        bankTwo1
+                    )
                 )
-            )
             )
         }
         if (mObdData.mSupportPIDMap[63]?.support == 1) {
-            postViewEvent(ViewEvent.updateThreeCatalystTemperatureBankTwo2(
-                String.format(
-                    Locale.getDefault(),
-                    "%d°C",
-                    bankTwo2
+            postViewEvent(
+                ViewEvent.updateThreeCatalystTemperatureBankTwo2(
+                    String.format(
+                        Locale.getDefault(),
+                        "%d°C",
+                        bankTwo2
+                    )
                 )
-            )
             )
         }
     }
@@ -430,9 +434,9 @@ class CarEventModule {
         val f = i / 1000.0f
         if (f > 0.0f) {
             if (f < VOLTAGE_RANGE_MIN) {
-                Log.d("onVoltageUnnormal", "배터리 전압 너무 낮음")
+                Logger.d { "배터리 전압 너무 낮음" }
             } else if (f > VOLTAGE_RANGE_MAX) {
-                Log.d("onVoltageUnnormal", "배터리 전압 너무 높음")
+                Logger.d { "배터리 전압 너무 높음" }
             }
 
             postViewEvent(ViewEvent.updateMeterVoltage("${decimalFormat.format(f)}V"))
@@ -455,47 +459,47 @@ class CarEventModule {
         postViewEvent(ViewEvent.updateTemp(adjustedTemp))
         if (temp >= 0 && temp != 255) {
             when {
-                adjustedTemp < 0 -> Log.d("onVoltageUnnormal", "수온 낮음!")
-                adjustedTemp > TEMPERATURE_RANGE_MAX -> Log.d("onVoltageUnnormal", "수온 높음!")
+                adjustedTemp < 0 -> Logger.d { "수온 낮음!" }
+                adjustedTemp > TEMPERATURE_RANGE_MAX -> Logger.d { "수온 높음!" }
             }
         } else {
-            Log.d("meter_temp_value", "N/A")
+            Logger.d { "meter_temp_value N/A" }
         }
     }
 
     private fun onCarLockFunctionState(i: Int, i2: Int) {
-        Log.d(TAG, "onCarLockFunc:$i,$i2")
+        Logger.d { "onCarLockFunc:$i,$i2" }
         if (mGearFunOnoffVisible == 0) {
-            Log.d("gear_d_lock", "변속기 단수 확인!")
+            Logger.d { "gear_d_lock 변속기 단수 확인!" }
             ViewEvent.updateGearFunOnoffVisible(1)
         }
         if (mGearPUnlock != i) {
             postViewEvent(ViewEvent.updateGearPUnlock(i))
-            Log.d(
-                "gear_d_lock", (if (i == 1) 1
+            Logger.d {
+                "mGearPUnlock" + (if (i == 1) 1
                 else 0).toString()
-            )
+            }
         }
         if (mGearDLock != i2) {
             postViewEvent(ViewEvent.updateGearDLock(i2))
-            Log.d(
-                "gear_d_lock", (if (i2 == 1) 1
+            Logger.d {
+                "gear_d_lock" + (if (i2 == 1) 1
                 else 0).toString()
-            )
+            }
         }
     }
 
     fun onClkGearDLock() {
         val newGearDLock = if (mGearDLock == 1) 0 else 1
         postViewEvent(ViewEvent.updateGearDLock(newGearDLock))
-        Log.d("gear_d_lock_onoff", "mGearDLock!")
+        Logger.d {"gear_d_lock_onoff mGearDLock!"}
         sendGearFunSet(newGearDLock, mGearPUnlock)
     }
 
     fun onClkGearPUnlock() {
         val newGearPUnlock = if (mGearPUnlock == 1) 0 else 1
         postViewEvent(ViewEvent.updateGearPUnlock(newGearPUnlock))
-        Log.d("gear_p_unlock_onoff", "mGearPUnlock!")
+        Logger.d {"gear_p_unlock_onoff mGearPUnlock!"}
         sendGearFunSet(mGearDLock, newGearPUnlock)
     }
 

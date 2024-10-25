@@ -1,6 +1,7 @@
 package com.devidea.chevy.datas.obd
 
 import android.util.Log
+import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
 import com.devidea.chevy.datas.obd.module.ControlModule
 import com.devidea.chevy.datas.obd.module.TPMSModule
@@ -20,7 +21,7 @@ object CarModel {
     var mMsgBuf = ByteArray(1024)
 
     fun revMsgBufferHandler(bArr: ByteArray?, length: Int) {
-        Log.d(TAG, bArr.contentToString())
+        Logger.d{ bArr.contentToString()}
         // 수신한 데이터의 길이가 0이거나 데이터 배열이 null인 경우 함수 종료
         if (length == 0 || bArr == null) return
 
@@ -55,7 +56,7 @@ object CarModel {
                     mMsgLen = mMsgBuf[2].toInt() and 255
                     // 메시지 길이가 128을 초과하면 경고 메시지 출력
                     if (mMsgLen > 128) {
-                        Log.e(TAG,"analyseCarInfo if (m_nDataPacketLen > 128)")
+                        Logger.d{"analyseCarInfo if (m_nDataPacketLen > 128)"}
                     }
                 }
                 // 메시지 끝에 도달한 경우

@@ -1,6 +1,7 @@
 package com.devidea.chevy.datas.obd.module;
 
 import android.util.Log
+import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.datas.obd.protocol.OBDProtocol
 import com.devidea.chevy.datas.obd.TPMSData
@@ -23,7 +24,7 @@ class TPMSModule {
                     if (bArr[3].toInt() != -1) ((bArr[3].toInt() and 240) shr 4) + ((bArr[3].toInt() and 15) / 10.0f) else 255.0f
                 val i = if (bArr[4].toInt() != -1) (bArr[4].toInt() and 255) - 40 else 255
                 val b3 = bArr[5]
-                Log.d(tag, "onTpms data:$i")
+                Logger.d { "onTpms data:$i" }
                 onTireData(b2.toInt(), f, i, b3)
             }
         }
@@ -31,7 +32,7 @@ class TPMSModule {
 
     // 페어링 상태를 처리하는 메서드
     private fun onPairState(i: Int, i2: Int) {
-        Log.i(tag, "onPairState :$i ,$i2")
+        Logger.i { "onPairState :$i ,$i2" }
         when (i2) {
             0 -> {
                 mIsPairing = true
@@ -53,10 +54,10 @@ class TPMSModule {
         mTPMSData.indices
             .filter { it == i }
             .forEach {
-                Log.d("tirePair", mTPMSData[it].vIdPair.toString())
-                Log.d("tireState", mTPMSData[it].vIdState.toString())
-                Log.d("tireTemp", mTPMSData[it].vIdTemp.toString())
-                Log.d("tireData", mTPMSData[it].vIdValue.toString())
+                Logger.d { "tirePair: ${mTPMSData[it].vIdPair}" }
+                Logger.d { "tirePair:  $mTPMSData[it].vIdState}" }
+                Logger.d { "tirePair: $mTPMSData[it].vIdTemp}" }
+                Logger.d { "tirePair:  $mTPMSData[it].vIdValue}" }
             }
     }
 
@@ -84,7 +85,6 @@ class TPMSModule {
 
     // 타이어 데이터를 처리하는 메서드
     private fun onTireData(i: Int, f: Float, i2: Int, b: Byte) {
-        Log.d(tag, "onTireData")
         mIsRecvedTireData = true
         if (i in 0..3) {
             handleTireData(mTPMSData[i], f, i2, b.toInt())
@@ -99,19 +99,19 @@ class TPMSModule {
             TPMSData.tireState = -1
             "N/A BAR"
         }
-        Log.d("data","${TPMSData.vIdValue}")
-        Log.d("data","${str2}")
+        Logger.d { "${TPMSData.vIdValue}" }
+        Logger.d { str2 }
 
         val str = if (i != 255) "$i℃" else ""
-        Log.d("data","${TPMSData.vIdTemp}")
-        Log.d("data","${str}")
+        Logger.d { "${TPMSData.vIdTemp}" }
+        Logger.d { str }
 
         if (TPMSData.tireState != i2 || TPMSData.tireValue == 255.0f) {
             TPMSData.tireState = i2
             val str3 =
                 if (TPMSData.tireValue == 255.0f || TPMSData.tireValue == -1.0f) "N/A" else "N/A"
-            Log.d("data","${TPMSData.vIdState}")
-            Log.d("data","${str3}")
+            Logger.d { "${TPMSData.vIdState}" }
+            Logger.d { "${str3}" }
         }
     }
 

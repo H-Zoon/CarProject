@@ -2,6 +2,7 @@ package com.devidea.chevy.datas.obd.protocol.pid
 
 import android.annotation.SuppressLint
 import android.util.Log
+import com.devidea.chevy.Logger
 
 
 class OBDData {
@@ -159,7 +160,7 @@ class OBDData {
         // 처리 첫 번째 바이트 (byte1)
         while (bitPositions >= 0) {
             val pidIndex = (7 - bitPositions) + basePidIndex
-            Log.e(TAG, "1 id = $pidIndex")
+            Logger.d { "1 id = $pidIndex" }
             val pidData = mSupportPIDMap[pidIndex]
             pidData?.support = if ((1 shl bitPositions) and firstByteInt == 0) 0 else 1
             bitPositions--
@@ -169,7 +170,7 @@ class OBDData {
         val secondBaseIndex = basePidIndex + 8
         for (bitPosition in 7 downTo 0) {
             val pidIndex = (7 - bitPosition) + secondBaseIndex
-            Log.e(TAG, "2 id = $pidIndex")
+            Logger.d { "2 id = $pidIndex" }
             mSupportPIDMap[pidIndex]?.support =
                 if ((1 shl bitPosition) and secondByteInt != 0) 1 else 0
         }
@@ -178,7 +179,7 @@ class OBDData {
         val thirdBaseIndex = secondBaseIndex + 8
         for (bitPosition in 7 downTo 0) {
             val pidIndex = (7 - bitPosition) + thirdBaseIndex
-            Log.e(TAG, "3 id = $pidIndex")
+            Logger.d { "3 id = $pidIndex" }
             mSupportPIDMap[pidIndex]?.support =
                 if ((1 shl bitPosition) and thirdByteInt != 0) 1 else 0
         }
@@ -187,7 +188,7 @@ class OBDData {
         val fourthBaseIndex = thirdBaseIndex + 8
         for (bitPosition in 7 downTo 0) {
             val pidIndex = (7 - bitPosition) + fourthBaseIndex
-            Log.e(TAG, "4 id = $pidIndex")
+            Logger.d { "4 id = $pidIndex" }
             mSupportPIDMap[pidIndex]?.support =
                 if ((1 shl bitPosition) and fourthByteInt != 0) 1 else 0
         }
@@ -205,13 +206,13 @@ class OBDData {
         for (pids in 1..118) {
             val tempPIDMap = mPidMap[pids]
             if (tempPIDMap == null) {
-                Log.d("err", "pidMap에서 찾을 수 없음")
+                Logger.d { "pidMap에서 찾을 수 없음" }
                 return
             }
 
             val tempSupportMap = mSupportPIDMap[tempPIDMap.PID]
             if (tempSupportMap == null) {
-                Log.d("err", "mSupportPIDMap에서 찾을 수 없음")
+                Logger.d { "mSupportPIDMap에서 찾을 수 없음" }
                 return
             }
 

@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.databinding.ActivityNaviBinding
@@ -182,7 +183,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
                 knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
                     // 경로 요청 실패
                     if (error != null) {
-                        Log.d(TAG, "경로 요청 실패 : $error")
+                        Logger.d { "경로 요청 실패 : $error" }
                         Toast.makeText(this, "경로 요청 실패 : $error", Toast.LENGTH_SHORT).show()
                     }
                     // 경로 요청 성공
@@ -204,12 +205,12 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
 
     // 경로 변경 시 호출. 교통 변화 또는 경로 이탈로 인한 재탐색 및 사용자 재탐색 시 전달
     override fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
-        Log.d(TAG, "guidanceCheckingRouteChange")
+        Logger.d { "guidanceCheckingRouteChange" }
 
     }
 
     override fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
-        Log.d(TAG, "guidanceDidUpdateIndoorRoute")
+        Logger.d { "guidanceDidUpdateIndoorRoute" }
         binding.naviView.guidanceDidUpdateIndoorRoute(aGuidance, aRoute)
     }
 
@@ -219,25 +220,25 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         aRoutes: List<KNRoute>,
         aMultiRouteInfo: KNMultiRouteInfo?
     ) {
-        Log.d(TAG, "guidanceDidUpdateRoutes")
+        Logger.d { "guidanceDidUpdateRoutes" }
         binding.naviView.guidanceDidUpdateRoutes(aGuidance, aRoutes, aMultiRouteInfo)
     }
 
     // 길 안내 종료 시 호출
     override fun guidanceGuideEnded(aGuidance: KNGuidance) {
-        Log.d(TAG, "guidanceGuideEnded")
+        Logger.d { "guidanceGuideEnded" }
         binding.naviView.guidanceGuideEnded(aGuidance)
     }
 
     // 길 안내 시작 시 호출
     override fun guidanceGuideStarted(aGuidance: KNGuidance) {
-        Log.d(TAG, "guidanceGuideStarted")
+        Logger.d { "guidanceGuideStarted" }
         binding.naviView.guidanceGuideStarted(aGuidance)
     }
 
     // 경로에서 이탈한 뒤 새로운 경로를 요청할 때 호출
     override fun guidanceOutOfRoute(aGuidance: KNGuidance) {
-        Log.d(TAG, "guidanceOutOfRoute")
+        Logger.d { "guidanceOutOfRoute" }
         binding.naviView.guidanceOutOfRoute(aGuidance)
     }
 
@@ -250,24 +251,24 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         aToLocation: KNLocation,
         aChangeReason: KNGuideRouteChangeReason
     ) {
-        Log.d(TAG, "guidanceRouteChanged")
+        Logger.d { "guidanceRouteChanged" }
         binding.naviView.guidanceRouteChanged(aGuidance)
     }
 
     // 수신 받은 새 경로가 기존의 안내된 경로와 동일할 경우 호출
     override fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
-        Log.d(TAG, "guidanceRouteUnchanged")
+        Logger.d { "guidanceRouteUnchanged" }
         binding.naviView.guidanceRouteUnchanged(aGuidance)
     }
 
     // 경로에 오류가 발생 시 호출
     override fun guidanceRouteUnchangedWithError(aGuidnace: KNGuidance, aError: KNError) {
-        Log.d(TAG, "guidanceRouteUnchangedWithError")
+        Logger.d { "guidanceRouteUnchangedWithError" }
         binding.naviView.guidanceRouteUnchangedWithError(aGuidnace, aError)
     }
 
     override fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
-        Log.d(TAG, "didUpdateCitsGuide")
+        Logger.d { "didUpdateCitsGuide" }
         binding.naviView.didUpdateCitsGuide(aGuidance, aCitsGuide)
     }
 
@@ -279,7 +280,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         aGuidance: KNGuidance,
         aLocationGuide: KNGuide_Location
     ) {
-        Log.d(TAG, "guidanceDidUpdateLocation")
+        Logger.d { "guidanceDidUpdateLocation" }
         binding.naviView.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
         aLocationGuide.location?.let { viewModel.updateCurrentLocation(it) }
     }
@@ -288,7 +289,7 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
 
     // 경로 안내 정보 업데이트 시 호출. `routeGuide`의 항목이 1개 이상 변경 시 전달됨.
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
-        Log.d(TAG, "guidanceDidUpdateRouteGuide")
+        Logger.d { "guidanceDidUpdateRouteGuide" }
         binding.naviView.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
         viewModel.updateRouteGuide(aRouteGuide)
     }
@@ -328,20 +329,20 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
         aVoiceGuide: KNGuide_Voice,
         aNewData: MutableList<ByteArray>
     ): Boolean {
-        Log.d(TAG, "shouldPlayVoiceGuide")
+        Logger.d { "shouldPlayVoiceGuide" }
         binding.naviView.shouldPlayVoiceGuide(aGuidance, aVoiceGuide, aNewData)
         return true
     }
 
     // 음성 안내 시작
     override fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        Log.d(TAG, "willPlayVoiceGuide")
+        Logger.d { "willPlayVoiceGuide" }
         binding.naviView.willPlayVoiceGuide(aGuidance, aVoiceGuide)
     }
 
     // 음성 안내 종료
     override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        Log.d(TAG, "didFinishPlayVoiceGuide")
+        Logger.d { "didFinishPlayVoiceGuide" }
         binding.naviView.didFinishPlayVoiceGuide(aGuidance, aVoiceGuide)
     }
 

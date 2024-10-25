@@ -20,6 +20,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devidea.chevy.App
 import com.devidea.chevy.App.Companion.CHANNEL_ID
+import com.devidea.chevy.Logger
 import com.devidea.chevy.ui.activity.MainActivity
 import com.devidea.chevy.R
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +31,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 
-class LeBTService: Service() {
+class LeBTService : Service() {
 
     var mBleServiceCallback: BleServiceCallback? = null
     val mBinder = LocalBinder()
@@ -46,7 +47,7 @@ class LeBTService: Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.i(TAG, "onUnbind close.")
+        Logger.i { "onUnbind close." }
         return super.onUnbind(intent)
     }
 
@@ -99,7 +100,7 @@ class LeBTService: Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy")
+        Logger.d{ "onDestroy"}
         super.onDestroy()
     }
 
@@ -145,10 +146,10 @@ class LeBTService: Service() {
                 val device = result.device
                 val name = device.name
                 val address = device.address
-                Log.i(TAG, "device found name: $name")
-                Log.i(TAG, "device found addr: $address")
+                Logger.i { "device found name: $name" }
+                Logger.i { "device found addr: $address" }
                 if ((name != null && name == BluetoothModel.BT_NAME1) || (name != null && name == BluetoothModel.BT_NAME2)) {
-                    Log.i(TAG, "sinjet device found!")
+                    Logger.i { "sinjet device found!" }
                     scanJob?.cancel()
                     bluetoothAdapter.bluetoothLeScanner.stopScan(this)
                     bluetoothGatt =
@@ -158,7 +159,7 @@ class LeBTService: Service() {
                     return
                 }
             } catch (e: Exception) {
-                Log.e(TAG, e.toString())
+                Logger.e { e.toString() }
             }
         }
     }
@@ -177,13 +178,13 @@ class LeBTService: Service() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             when (newState) {
                 BluetoothGatt.STATE_CONNECTED -> {
-                    Log.d(TAG, "Connected to GATT server.")
+                    Logger.d { "Connected to GATT server." }
                     bluetoothGatt?.discoverServices()
                     mBleServiceCallback?.onBTStateChange(BTState.CONNECTED)
                 }
 
                 BluetoothGatt.STATE_DISCONNECTED -> {
-                    Log.d(TAG, "Disconnected from GATT server.")
+                    Logger.d { "Disconnected from GATT server." }
                     mBleServiceCallback?.onBTStateChange(BTState.DISCONNECTED)
                 }
             }
@@ -193,7 +194,7 @@ class LeBTService: Service() {
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             super.onMtuChanged(gatt, mtu, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "change MTU succeed = $mtu")
+                Logger.d { "change MTU succeed = $mtu" }
             }
         }
 
@@ -201,7 +202,7 @@ class LeBTService: Service() {
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Services discovered.")
+                Logger.d { "Services discovered." }
                 val service = gatt.getService(SERVICE_UUID)
 
                 val notifyCharacteristic = service?.getCharacteristic(CHARACTERISTIC_NOTIFY_UUID)
@@ -211,10 +212,10 @@ class LeBTService: Service() {
                     setCharacteristicNotification(gatt, notifyCharacteristic)
                     setCharacteristicNotification(gatt, writeCharacteristic)
                 } else {
-                    Log.e(TAG, "onServicesDiscovered: Not Found characteristics")
+                    Logger.e { "onServicesDiscovered: Not Found characteristics" }
                 }
             } else {
-                Log.e(TAG, "onServicesDiscovered: Failed with status $status")
+                Logger.e { "onServicesDiscovered: Failed with status $status" }
             }
         }
 
@@ -235,10 +236,9 @@ class LeBTService: Service() {
                     gatt.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
                 }
                 gatt.readCharacteristic(characteristic)
-            } ?: Log.e(
-                TAG,
+            } ?: Logger.e {
                 "setCharacteristicNotification: Descriptor not found for ${characteristic.uuid}"
-            )
+            }
         }
 
         /**
@@ -263,7 +263,7 @@ class LeBTService: Service() {
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Characteristic read: ${value.joinToString()}")
+                Logger.d{ "Characteristic read: ${value.joinToString()}"}
                 mBleServiceCallback?.onReceived(value, value.size)
             }
         }
@@ -293,7 +293,7 @@ class LeBTService: Service() {
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Characteristic written successfully")
+                Logger.d { "Characteristic written successfully" }
             }
         }
     }

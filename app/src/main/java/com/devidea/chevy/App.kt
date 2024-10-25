@@ -47,10 +47,10 @@ class App : Application() {
             install(instance, "$filesDir/files")
             delegate = object: KNSDKDelegate {
                 override fun knsdkFoundUnfinishedTrip(aTrip: KNTrip, aPriority: KNRoutePriority, aAvoidOptions: Int) {
-                    Log.d("APP", "knsdkFoundUnfinishedTrip")
+                    Logger.d{"knsdkFoundUnfinishedTrip"}
                 }
                 override fun knsdkNeedsLocationAuthorization() {
-                    Log.d("APP", "knsdkNeedsLocationAuthorization")
+                    Logger.d{"knsdkNeedsLocationAuthorization"}
                 }
             }
         }

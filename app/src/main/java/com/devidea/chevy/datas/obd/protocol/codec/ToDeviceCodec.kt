@@ -1,6 +1,7 @@
 package com.devidea.chevy.datas.obd.protocol.codec
 
 import android.util.Log
+import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BluetoothModel
 import java.util.Calendar
 
@@ -135,7 +136,7 @@ object ToDeviceCodec {
     }
 
     fun notifyIsNaviRunning(b: Byte) {
-        Log.i("navi", "notifyIsNaviRunning:${b.toInt()}")
+        Logger.i{"notifyIsNaviRunning:${b.toInt()}"}
         packAndSendMsg(byteArrayOf(-32, b), 2)
     }
 
@@ -248,7 +249,7 @@ object ToDeviceCodec {
             (i5 + 1).toByte(),
             i6.toByte()
         )
-        Log.i("ing", "sendCurrentTime$i,$i2,$i3,$i4,$i5,$i6")
+        Logger.d {"sendCurrentTime$i,$i2,$i3,$i4,$i5,$i6"}
         packAndSendMsg(bArr, bArr.size)
 
 

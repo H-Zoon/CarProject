@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
+import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.obd.CarModel
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
@@ -46,7 +47,7 @@ object BluetoothModel {
 
     private val mBleServiceCallback = object : LeBTService.BleServiceCallback {
         override fun onBTStateChange(state: BTState) {
-            Log.d(TAG, "onBTStateChange: $btState -> $state")
+            Logger.d { "onBTStateChange: $btState -> $state" }
             if (btState != state) {
                 postViewEvent(ViewEvent.BluetoothState(state))
                 leBTService?.updateNotification(state)
@@ -54,12 +55,12 @@ object BluetoothModel {
                 if (btState == BTState.CONNECTED) {
                     ToureDevCodec.sendInit(1)
                     ToDeviceCodec.sendCurrentTime()
-                   /* scanJob = CoroutineScope(Dispatchers.IO).launch {
-                        while (true) {
-                            delay(3000L)
-                            ToureDevCodec.sendHeartbeat()
-                        }
-                    }*/
+                    /* scanJob = CoroutineScope(Dispatchers.IO).launch {
+                         while (true) {
+                             delay(3000L)
+                             ToureDevCodec.sendHeartbeat()
+                         }
+                     }*/
                 } else if (btState == BTState.DISCONNECTED) {
                     scanJob?.cancel()
                 }
@@ -80,7 +81,7 @@ object BluetoothModel {
     // 블루투스를 연결합니다.
     fun connectBT() {
         if (btState == BTState.CONNECTED) {
-            Log.d("BluetoothModel::", "already connect")
+            Logger.d { "BluetoothModel:: already connect" }
         } else {
             leBTService?.startScan()
         }
