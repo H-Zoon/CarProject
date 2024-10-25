@@ -19,10 +19,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -46,6 +52,7 @@ import com.devidea.chevy.ui.components.CarStatus
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.ui.components.LogsScreen
 import com.devidea.chevy.ui.screen.dashboard.Dashboard
 import com.devidea.chevy.ui.screen.map.MapEnterScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
@@ -61,6 +68,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: CarViewModel by viewModels()
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -75,6 +83,21 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Car Project") },
+                            actions = {
+                                IconButton(onClick = {
+                                    navController.navigate(NavRoutes.LOGS)
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = "View Logs"
+                                    )
+                                }
+                            }
+                        )
+                    },
                     content = { paddingValues ->
                         HomeScreen(
                             navController = navController,
@@ -90,14 +113,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
 fun HomeScreen(
-    navController: NavHostController, // 외부에서 전달된 NavController 사용
+    navController: NavHostController,
     viewModel: CarViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(navController, startDestination = NavRoutes.HOME, modifier = modifier) {
         composable(NavRoutes.HOME) {
+            // 기존의 Home 화면 컴포즈 코드
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -119,9 +144,11 @@ fun HomeScreen(
                 1 -> MapEnterScreen(navController = navController)
             }
         }
+        composable(NavRoutes.LOGS) {
+            LogsScreen()
+        }
     }
 }
-
 @Composable
 fun BluetoothActionComponent(viewModel: CarViewModel) {
     val bluetoothState by viewModel.bluetoothState.collectAsState()
@@ -289,5 +316,5 @@ fun GridCard(navController: NavHostController) {
 object NavRoutes {
     const val HOME = "home"
     const val DETAILS = "details"
+    const val LOGS = "logs"
 }
-
