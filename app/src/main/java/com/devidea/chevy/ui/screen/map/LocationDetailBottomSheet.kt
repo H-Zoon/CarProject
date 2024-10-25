@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.devidea.chevy.ui.activity.NaviActivity
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.datas.navi.NavigateDocument
+import com.devidea.chevy.ui.activity.NaviActivity2
 import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
@@ -58,7 +59,7 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
                         startX = viewModel.userLocation.value?.longitude ?: 0.0,
                         startY = viewModel.userLocation.value?.latitude ?: 0.0
                     )
-                    val intent = Intent(context, NaviActivity::class.java).apply {
+                    val intent = Intent(context, NaviActivity2::class.java).apply {
                         putExtra("document_key", navigateDocument)
                     }
                     context.startActivity(intent)
