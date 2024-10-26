@@ -1,10 +1,12 @@
 package com.devidea.chevy.ui.activity
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,6 +50,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.devidea.chevy.Logger
 import com.devidea.chevy.ui.components.CarStatus
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
@@ -59,14 +62,44 @@ import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
+import com.devidea.chevy.viewmodel.NaviViewModel
+import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.common.objects.KNError
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_CitsGuideDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_GuideStateDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_LocationGuideDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_RouteGuideDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_SafetyGuideDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_VoiceGuideDelegate
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
+import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
+import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
+import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
+import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
+import com.kakaomobility.knsdk.guidance.knguidance.routeguide.objects.KNMultiRouteInfo
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
+import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
+import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
+import com.kakaomobility.knsdk.ui.view.KNNaviView_GuideStateDelegate
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity(),
+    KNGuidance_GuideStateDelegate,
+    KNGuidance_SafetyGuideDelegate,
+    KNGuidance_CitsGuideDelegate,
+    KNGuidance_LocationGuideDelegate,
+    KNGuidance_RouteGuideDelegate,
+    KNGuidance_VoiceGuideDelegate,
+    KNNaviView_GuideStateDelegate {
 
     private val viewModel: CarViewModel by viewModels()
+    private val naviViewModel: NaviViewModel by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,6 +108,15 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             BluetoothModel.initBTModel(this@MainActivity)
+        }
+
+        KNSDK.sharedGuidance()?.apply {
+            guideStateDelegate = this@MainActivity
+            locationGuideDelegate = this@MainActivity
+            routeGuideDelegate = this@MainActivity
+            safetyGuideDelegate = this@MainActivity
+            voiceGuideDelegate = this@MainActivity
+            citsGuideDelegate = this@MainActivity
         }
 
         setContent {
@@ -110,6 +152,118 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    // Delegate Methods
+
+    override fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
+        Logger.d { "guidanceCheckingRouteChange" }
+    }
+
+    override fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
+        Logger.d { "guidanceDidUpdateIndoorRoute" }
+        // 필요한 UI 업데이트 구현
+    }
+
+    override fun guidanceDidUpdateRoutes(
+        aGuidance: KNGuidance,
+        aRoutes: List<KNRoute>,
+        aMultiRouteInfo: KNMultiRouteInfo?
+    ) {
+        Logger.d { "guidanceDidUpdateRoutes" }
+    }
+
+    override fun guidanceGuideEnded(aGuidance: KNGuidance) {
+        Logger.d { "guidanceGuideEnded" }
+    }
+
+    override fun guidanceGuideStarted(aGuidance: KNGuidance) {
+        Logger.d { "guidanceGuideStarted" }
+    }
+
+    override fun guidanceOutOfRoute(aGuidance: KNGuidance) {
+        Logger.d { "guidanceOutOfRoute" }
+    }
+
+    override fun guidanceRouteChanged(
+        aGuidance: KNGuidance,
+        aFromRoute: KNRoute,
+        aFromLocation: KNLocation,
+        aToRoute: KNRoute,
+        aToLocation: KNLocation,
+        aChangeReason: KNGuideRouteChangeReason
+    ) {
+        Logger.d { "guidanceRouteChanged" }
+    }
+
+    override fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
+        Logger.d { "guidanceRouteUnchanged" }
+    }
+
+    override fun guidanceRouteUnchangedWithError(aGuidnace: KNGuidance, aError: KNError) {
+        Logger.d { "guidanceRouteUnchangedWithError" }
+    }
+
+    override fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
+        Logger.d { "didUpdateCitsGuide" }
+    }
+
+    override fun guidanceDidUpdateLocation(
+        aGuidance: KNGuidance,
+        aLocationGuide: KNGuide_Location
+    ) {
+        Logger.d { "guidanceDidUpdateLocation" }
+        aLocationGuide.location?.let { naviViewModel.updateCurrentLocation(it) }
+    }
+
+    override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
+        Logger.d { "guidanceDidUpdateRouteGuide" }
+        naviViewModel.updateRouteGuide(aRouteGuide)
+    }
+
+    override fun guidanceDidUpdateSafetyGuide(
+        aGuidance: KNGuidance,
+        aSafetyGuide: KNGuide_Safety?
+    ) {
+        Logger.d { "guidanceDidUpdateSafetyGuide" }
+        naviViewModel.updateSafetyGuide(aSafetyGuide)
+    }
+
+    override fun guidanceDidUpdateAroundSafeties(guidance: KNGuidance, safeties: List<KNSafety>?) {
+        Logger.d { "guidanceDidUpdateAroundSafeties" }
+        safeties?.forEach { safety ->
+            Toast.makeText(
+                this,
+                "AroundSafety Safety type: ${safety.safetyType()}, description: ${safety.isOnStraightWay()}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    override fun shouldPlayVoiceGuide(
+        aGuidance: KNGuidance,
+        aVoiceGuide: KNGuide_Voice,
+        aNewData: MutableList<ByteArray>
+    ): Boolean {
+        Logger.d { "shouldPlayVoiceGuide" }
+        return true
+    }
+
+    override fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
+        Logger.d { "willPlayVoiceGuide" }
+    }
+
+    override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
+        Logger.d { "didFinishPlayVoiceGuide" }
+    }
+
+    override fun naviViewGuideEnded() {
+        Toast.makeText(this, "naviViewGuideEnded", Toast.LENGTH_SHORT).show()
+        // 가이드 종료 로직 처리
+    }
+
+    override fun naviViewGuideState(state: KNGuideState) {
+        Toast.makeText(this, "$state", Toast.LENGTH_SHORT).show()
     }
 }
 

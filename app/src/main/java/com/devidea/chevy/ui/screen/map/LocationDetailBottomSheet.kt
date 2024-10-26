@@ -13,12 +13,16 @@ import com.devidea.chevy.ui.activity.NaviActivity
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.datas.navi.NavigateDocument
 import com.devidea.chevy.ui.activity.NaviActivity2
+import com.devidea.chevy.ui.screen.navi.NaviScreen
 import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
+    var showNaviScreen by remember { mutableStateOf(false) }
+    var navigateDocument by remember { mutableStateOf<NavigateDocument?>(null) }
+
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.Expanded,
@@ -26,7 +30,6 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
         )
     )
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     BackHandler(enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
         coroutineScope.launch {
@@ -51,20 +54,22 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = {
-                    val navigateDocument = NavigateDocument(
-                        address_name = document.address_name,
-                        goalX = document.x,
-                        goalY = document.y,
-                        startX = viewModel.userLocation.value?.longitude ?: 0.0,
-                        startY = viewModel.userLocation.value?.latitude ?: 0.0
-                    )
-                    val intent = Intent(context, NaviActivity2::class.java).apply {
-                        putExtra("document_key", navigateDocument)
+
+                if (showNaviScreen && navigateDocument != null) {
+                    NaviScreen(document = navigateDocument!!)
+                } else {
+                    Button(onClick = {
+                        navigateDocument = NavigateDocument(
+                            address_name = document.address_name,
+                            goalX = document.x,
+                            goalY = document.y,
+                            startX = viewModel.userLocation.value?.longitude ?: 0.0,
+                            startY = viewModel.userLocation.value?.latitude ?: 0.0
+                        )
+                        showNaviScreen = true
+                    }) {
+                        Text(text = "길안내")
                     }
-                    context.startActivity(intent)
-                }) {
-                    Text(text = "길안내")
                 }
             }
         }
