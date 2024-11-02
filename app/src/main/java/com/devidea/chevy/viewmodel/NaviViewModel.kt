@@ -1,18 +1,30 @@
 package com.devidea.chevy.viewmodel
 
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.Logger
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError
 import com.kakaomobility.knsdk.common.objects.KNPOI
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
+import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
+import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
 import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
+import com.kakaomobility.knsdk.guidance.knguidance.routeguide.objects.KNMultiRouteInfo
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
+import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
+import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -22,7 +34,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 @HiltViewModel
-class NaviViewModel @Inject constructor(): ViewModel() {
+class NaviViewModel @Inject constructor() : ViewModel() {
 
     private val _currentLocation = MutableStateFlow<KNLocation?>(null)
     val currentLocation: StateFlow<KNLocation?> = _currentLocation.asStateFlow()
@@ -54,6 +66,160 @@ class NaviViewModel @Inject constructor(): ViewModel() {
     fun setError(errorMessage: String) {
         _errorState.value = errorMessage
     }
+
+    // 이벤트를 전달하기 위한 SharedFlow
+    private val _eventFlow = MutableSharedFlow<GuidanceEvent>()
+    val eventFlow: SharedFlow<GuidanceEvent> = _eventFlow
+
+    // 경로 변경 시 호출
+    fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceCheckingRouteChange(aGuidance))
+        }
+    }
+
+    // 실내 경로 업데이트 시 호출
+    fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateIndoorRoute(aGuidance, aRoute))
+        }
+    }
+
+    // 주행 중 경로 변경 시 호출
+    fun guidanceDidUpdateRoutes(
+        aGuidance: KNGuidance,
+        aRoutes: List<KNRoute>,
+        aMultiRouteInfo: KNMultiRouteInfo?
+    ) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateRoutes(aGuidance, aRoutes, aMultiRouteInfo))
+        }
+    }
+
+    // 길 안내 시작 시 호출
+    fun guidanceGuideStarted(aGuidance: KNGuidance) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceGuideStarted(aGuidance))
+        }
+    }
+
+    // 길 안내 종료 시 호출
+    fun guidanceGuideEnded(aGuidance: KNGuidance) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceGuideEnded(aGuidance))
+        }
+    }
+
+    // 경로 이탈 시 호출
+    fun guidanceOutOfRoute(aGuidance: KNGuidance) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceOutOfRoute(aGuidance))
+        }
+    }
+
+    // 경로 변경 시 호출
+    fun guidanceRouteChanged(
+        aGuidance: KNGuidance,
+        aFromRoute: KNRoute,
+        aFromLocation: KNLocation,
+        aToRoute: KNRoute,
+        aToLocation: KNLocation,
+        aChangeReason: KNGuideRouteChangeReason
+    ) {
+        viewModelScope.launch {
+            _eventFlow.emit(
+                GuidanceEvent.GuidanceRouteChanged(
+                    aGuidance,
+                    aFromRoute,
+                    aFromLocation,
+                    aToRoute,
+                    aToLocation,
+                    aChangeReason
+                )
+            )
+        }
+    }
+
+    // 경로가 변경되지 않았을 때 호출
+    fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceRouteUnchanged(aGuidance))
+        }
+    }
+
+    // 경로 변경 오류 시 호출
+    fun guidanceRouteUnchangedWithError(aGuidance: KNGuidance, aError: KNError) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceRouteUnchangedWithError(aGuidance, aError))
+        }
+    }
+
+    // C-ITS 안내 업데이트 시 호출
+    fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.DidUpdateCitsGuide(aGuidance, aCitsGuide))
+        }
+    }
+
+    // 위치 정보 업데이트 시 호출
+    fun guidanceDidUpdateLocation(
+        aGuidance: KNGuidance,
+        aLocationGuide: KNGuide_Location
+    ) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateLocation(aGuidance, aLocationGuide))
+        }
+    }
+
+    // 경로 안내 정보 업데이트 시 호출
+    fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateRouteGuide(aGuidance, aRouteGuide))
+        }
+    }
+
+    // 안전 운행 정보 업데이트 시 호출
+    fun guidanceDidUpdateSafetyGuide(
+        aGuidance: KNGuidance,
+        aSafetyGuide: KNGuide_Safety?
+    ) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide))
+        }
+    }
+
+    // 주변 안전 정보 업데이트 시 호출
+    fun guidanceDidUpdateAroundSafeties(aGuidance: KNGuidance, aSafeties: List<KNSafety>?) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.GuidanceDidUpdateAroundSafeties(aGuidance, aSafeties))
+        }
+    }
+
+    // 음성 안내 사용 여부 결정 시 호출
+    fun shouldPlayVoiceGuide(
+        aGuidance: KNGuidance,
+        aVoiceGuide: KNGuide_Voice,
+        aNewData: MutableList<ByteArray>
+    ) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.ShouldPlayVoiceGuide(aGuidance, aVoiceGuide, aNewData))
+        }
+    }
+
+    // 음성 안내 시작 시 호출
+    fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.WillPlayVoiceGuide(aGuidance, aVoiceGuide))
+        }
+    }
+
+    // 음성 안내 종료 시 호출
+    fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
+        viewModelScope.launch {
+            _eventFlow.emit(GuidanceEvent.DidFinishPlayVoiceGuide(aGuidance, aVoiceGuide))
+        }
+    }
+
 
     // 경로 생성 메서드 예시
     fun createTrip(start: KNPOI, goal: KNPOI, routePriority: KNRoutePriority, avoidOptions: Int) {

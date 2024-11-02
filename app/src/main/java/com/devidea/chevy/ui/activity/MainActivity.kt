@@ -1,8 +1,8 @@
 package com.devidea.chevy.ui.activity
 
+import android.app.Activity
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -33,9 +33,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -48,10 +50,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.Logger
-import com.devidea.chevy.ui.components.CarStatus
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
@@ -60,8 +60,10 @@ import com.devidea.chevy.ui.screen.dashboard.Dashboard
 import com.devidea.chevy.ui.screen.map.MapEnterScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
+import com.devidea.chevy.ui.screen.navi.NaviScreen
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.CarViewModel
+import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.NaviViewModel
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError
@@ -98,7 +100,8 @@ class MainActivity : AppCompatActivity(),
     KNGuidance_VoiceGuideDelegate,
     KNNaviView_GuideStateDelegate {
 
-    private val viewModel: CarViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels()
+    private val carViewModel: CarViewModel by viewModels()
     private val naviViewModel: NaviViewModel by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -130,7 +133,7 @@ class MainActivity : AppCompatActivity(),
                             title = { Text("Car Project") },
                             actions = {
                                 IconButton(onClick = {
-                                    navController.navigate(NavRoutes.LOGS)
+                                    navController.navigate(MainViewModel.NavRoutes.LOGS)
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.List,
@@ -143,7 +146,9 @@ class MainActivity : AppCompatActivity(),
                     content = { paddingValues ->
                         HomeScreen(
                             navController = navController,
-                            viewModel = viewModel,
+                            carViewModel = carViewModel,
+                            naviViewModel = naviViewModel,
+                            mainViewModel = viewModel,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(paddingValues)
@@ -158,11 +163,13 @@ class MainActivity : AppCompatActivity(),
 
     override fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
         Logger.d { "guidanceCheckingRouteChange" }
+        naviViewModel.guidanceCheckingRouteChange(aGuidance)
     }
 
     override fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
         Logger.d { "guidanceDidUpdateIndoorRoute" }
         // 필요한 UI 업데이트 구현
+        naviViewModel.guidanceDidUpdateIndoorRoute(aGuidance, aRoute)
     }
 
     override fun guidanceDidUpdateRoutes(
@@ -171,18 +178,26 @@ class MainActivity : AppCompatActivity(),
         aMultiRouteInfo: KNMultiRouteInfo?
     ) {
         Logger.d { "guidanceDidUpdateRoutes" }
+        naviViewModel.guidanceDidUpdateRoutes(
+            aGuidance,
+            aRoutes,
+            aMultiRouteInfo
+        )
     }
 
     override fun guidanceGuideEnded(aGuidance: KNGuidance) {
         Logger.d { "guidanceGuideEnded" }
+        naviViewModel.guidanceGuideEnded(aGuidance)
     }
 
     override fun guidanceGuideStarted(aGuidance: KNGuidance) {
         Logger.d { "guidanceGuideStarted" }
+        naviViewModel.guidanceGuideStarted(aGuidance)
     }
 
     override fun guidanceOutOfRoute(aGuidance: KNGuidance) {
         Logger.d { "guidanceOutOfRoute" }
+        naviViewModel.guidanceOutOfRoute(aGuidance)
     }
 
     override fun guidanceRouteChanged(
@@ -194,18 +209,29 @@ class MainActivity : AppCompatActivity(),
         aChangeReason: KNGuideRouteChangeReason
     ) {
         Logger.d { "guidanceRouteChanged" }
+        naviViewModel.guidanceRouteChanged(
+            aGuidance,
+            aFromRoute,
+            aFromLocation,
+            aToRoute,
+            aToLocation,
+            aChangeReason
+        )
     }
 
     override fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
         Logger.d { "guidanceRouteUnchanged" }
+        naviViewModel.guidanceRouteUnchanged(aGuidance)
     }
 
     override fun guidanceRouteUnchangedWithError(aGuidnace: KNGuidance, aError: KNError) {
         Logger.d { "guidanceRouteUnchangedWithError" }
+        naviViewModel.guidanceRouteUnchangedWithError(aGuidnace, aError)
     }
 
     override fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
         Logger.d { "didUpdateCitsGuide" }
+        naviViewModel.didUpdateCitsGuide(aGuidance, aCitsGuide)
     }
 
     override fun guidanceDidUpdateLocation(
@@ -214,11 +240,12 @@ class MainActivity : AppCompatActivity(),
     ) {
         Logger.d { "guidanceDidUpdateLocation" }
         aLocationGuide.location?.let { naviViewModel.updateCurrentLocation(it) }
+        naviViewModel.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
     }
 
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
         Logger.d { "guidanceDidUpdateRouteGuide" }
-        naviViewModel.updateRouteGuide(aRouteGuide)
+        naviViewModel.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
     }
 
     override fun guidanceDidUpdateSafetyGuide(
@@ -226,11 +253,12 @@ class MainActivity : AppCompatActivity(),
         aSafetyGuide: KNGuide_Safety?
     ) {
         Logger.d { "guidanceDidUpdateSafetyGuide" }
-        naviViewModel.updateSafetyGuide(aSafetyGuide)
+        naviViewModel.guidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide)
     }
 
     override fun guidanceDidUpdateAroundSafeties(guidance: KNGuidance, safeties: List<KNSafety>?) {
         Logger.d { "guidanceDidUpdateAroundSafeties" }
+        naviViewModel.guidanceDidUpdateAroundSafeties(guidance, safeties)
         safeties?.forEach { safety ->
             Toast.makeText(
                 this,
@@ -246,24 +274,30 @@ class MainActivity : AppCompatActivity(),
         aNewData: MutableList<ByteArray>
     ): Boolean {
         Logger.d { "shouldPlayVoiceGuide" }
+        naviViewModel.shouldPlayVoiceGuide(aGuidance,
+            aVoiceGuide,
+            aNewData)
         return true
     }
 
     override fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
         Logger.d { "willPlayVoiceGuide" }
+        naviViewModel.willPlayVoiceGuide(aGuidance,
+            aVoiceGuide)
     }
 
     override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
         Logger.d { "didFinishPlayVoiceGuide" }
+        naviViewModel.didFinishPlayVoiceGuide(aGuidance,
+            aVoiceGuide)
     }
 
     override fun naviViewGuideEnded() {
-        Toast.makeText(this, "naviViewGuideEnded", Toast.LENGTH_SHORT).show()
-        // 가이드 종료 로직 처리
+        //naviViewModel.naviViewGuideEnded()
     }
 
     override fun naviViewGuideState(state: KNGuideState) {
-        Toast.makeText(this, "$state", Toast.LENGTH_SHORT).show()
+        //naviViewModel.naviViewGuideState(state)
     }
 }
 
@@ -271,11 +305,22 @@ class MainActivity : AppCompatActivity(),
 @Composable
 fun HomeScreen(
     navController: NavHostController,
-    viewModel: CarViewModel,
+    carViewModel: CarViewModel,
+    naviViewModel:NaviViewModel,
+    mainViewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
-    NavHost(navController, startDestination = NavRoutes.HOME, modifier = modifier) {
-        composable(NavRoutes.HOME) {
+
+    LaunchedEffect(Unit) {
+        mainViewModel.navigationEvent.collect { route ->
+            route?.let {
+                navController.navigate(it)
+            }
+        }
+    }
+
+    NavHost(navController, startDestination = MainViewModel.NavRoutes.HOME, modifier = modifier) {
+        composable(MainViewModel.NavRoutes.HOME) {
             // 기존의 Home 화면 컴포즈 코드
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -284,28 +329,30 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(20.dp)
             ) {
-                BluetoothActionComponent(viewModel = viewModel)
-                CarImage(viewModel = viewModel)
-                CarInformationSummary(viewModel = viewModel)
+                BluetoothActionComponent(viewModel = mainViewModel)
+                CarImage(viewModel = mainViewModel)
+                CarInformationSummary(viewModel = mainViewModel)
                 Spacer(modifier = Modifier.height(32.dp))
-                GridCard(navController)
+                GridCard(viewModel = mainViewModel) // navController 대신 viewModel 전달
             }
         }
-        composable("${NavRoutes.DETAILS}/{cardIndex}") { backStackEntry ->
+        composable("${MainViewModel.NavRoutes.DETAILS}/{cardIndex}") { backStackEntry ->
             val cardIndex = backStackEntry.arguments?.getString("cardIndex")?.toIntOrNull()
             when (cardIndex) {
                 0 -> Dashboard()
-                1 -> MapEnterScreen(navController = navController)
+                1 -> MapEnterScreen(mainViewModel = mainViewModel)
+                2 -> NaviScreen(activity = LocalContext.current as MainActivity, viewModel = naviViewModel, document = mainViewModel.navigateDocument.value!!)
             }
         }
-        composable(NavRoutes.LOGS) {
+        composable(MainViewModel.NavRoutes.LOGS) {
             LogsScreen()
         }
     }
 }
+
 @Composable
-fun BluetoothActionComponent(viewModel: CarViewModel) {
-    val bluetoothState by viewModel.bluetoothState.collectAsState()
+fun BluetoothActionComponent(viewModel: MainViewModel) {
+    val bluetoothState by viewModel.bluetoothStatus.collectAsState()
     val context = LocalContext.current
 
     val onClickAction = remember(bluetoothState) {
@@ -313,6 +360,7 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
             BTState.CONNECTED -> {
                 { BluetoothModel.disconnectBT() }
             }
+
             else -> {
                 { BluetoothModel.connectBT() }
             }
@@ -343,6 +391,7 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
                         modifier = Modifier.size(38.dp)
                     )
                 }
+
                 BTState.DISCONNECTED, BTState.NOT_FOUND -> {
                     Image(
                         painter = painterResource(id = R.drawable.icon_search),
@@ -350,6 +399,7 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
                         modifier = Modifier.size(38.dp)
                     )
                 }
+
                 BTState.SCANNING, BTState.CONNECTING -> {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary,
@@ -363,8 +413,8 @@ fun BluetoothActionComponent(viewModel: CarViewModel) {
 }
 
 @Composable
-fun CarImage(viewModel: CarViewModel) {
-    val bluetoothState by viewModel.bluetoothState.collectAsState()
+fun CarImage(viewModel: MainViewModel) {
+    val bluetoothState by viewModel.bluetoothStatus.collectAsState()
 
     // ColorFilter는 상태에 따라 계산되고, remember를 사용하여 최적화
     val colorFilter = remember(bluetoothState) {
@@ -387,7 +437,7 @@ fun CarImage(viewModel: CarViewModel) {
 }
 
 @Composable
-fun CarInformationSummary(viewModel: CarViewModel) {
+fun CarInformationSummary(viewModel: MainViewModel) {
     NeumorphicBox(
         modifier = Modifier
             .fillMaxWidth()
@@ -436,7 +486,10 @@ fun InfoSection(title: String, content: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun GridCard(navController: NavHostController) {
+fun GridCard(viewModel: MainViewModel) {
+
+    val coroutineScope = rememberCoroutineScope()
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
@@ -450,7 +503,11 @@ fun GridCard(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
-                onClick = { navController.navigate("details/$index") },
+                onClick = {
+                    coroutineScope.launch {
+                        viewModel.navigateTo("${MainViewModel.NavRoutes.DETAILS}/$index") // 예시로 cardIndex 0 전달
+                    }
+                },
                 cornerRadius = 12.dp
             ) {
                 Row(
@@ -465,10 +522,4 @@ fun GridCard(navController: NavHostController) {
             }
         }
     }
-}
-
-object NavRoutes {
-    const val HOME = "home"
-    const val DETAILS = "details"
-    const val LOGS = "logs"
 }

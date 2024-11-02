@@ -1,6 +1,5 @@
-package com.devidea.chevy.datas.obd.module
+package com.devidea.chevy.datas.obd.model
 
-import android.util.Log
 import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.datas.obd.ControlFuncs

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import com.devidea.chevy.ui.theme.SpeedMeterFontFamily
 
@@ -172,7 +172,7 @@ fun CarInfoCard(label: String, value: String, modifier: Modifier = Modifier) {
 
 
 @Composable
-fun DoorStatus(label: String, state: CarEventModule.DoorState) {
+fun DoorStatus(label: String, state: CarEventModel.DoorState) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

@@ -1,6 +1,5 @@
-package com.devidea.chevy.datas.obd.module;
+package com.devidea.chevy.datas.obd.model;
 
-import android.util.Log
 import android.widget.Toast
 import com.devidea.chevy.App
 import com.devidea.chevy.Logger
@@ -11,8 +10,8 @@ import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
 import com.devidea.chevy.datas.obd.protocol.OBDProtocol
 import com.devidea.chevy.eventbus.Event
 import com.devidea.chevy.eventbus.EventBus
-import com.devidea.chevy.eventbus.ViewEvent
-import com.devidea.chevy.eventbus.ViewEventBus
+import com.devidea.chevy.eventbus.CarEvents
+import com.devidea.chevy.eventbus.CarEventBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -21,16 +20,13 @@ import java.text.DecimalFormat
 import java.util.Locale
 import kotlin.experimental.and
 
-class CarEventModule {
-
-    companion object {
-        const val MSG_NO_INFO_TIMEOUT = 100
-        const val TEMPERATURE_RANGE_MAX = 112
-        const val TEMPERATURE_RANGE_MIN = 0
-        const val VOLTAGE_RANGE_MAX = 15.0f
-        const val VOLTAGE_RANGE_MIN = 10.0f
-        private const val TAG = "CarEventModule"
-    }
+object CarEventModel {
+    const val MSG_NO_INFO_TIMEOUT = 100
+    const val TEMPERATURE_RANGE_MAX = 112
+    const val TEMPERATURE_RANGE_MIN = 0
+    const val VOLTAGE_RANGE_MAX = 15.0f
+    const val VOLTAGE_RANGE_MIN = 10.0f
+    private const val TAG = "CarEventModule"
 
     init {
         CoroutineScope(Dispatchers.Main).launch {
@@ -106,7 +102,7 @@ class CarEventModule {
                     System.arraycopy(bArr, 3, bArr3, 0, 8)
                     val str2 = String(bArr3)
                     mStrVinSecondHalf = str2
-                    ViewEvent.updateCarVIN(mStrVinFirstHalf + mStrVinSecondHalf)
+                    CarEvents.updateCarVIN(mStrVinFirstHalf + mStrVinSecondHalf)
                 }
             }
 
@@ -163,7 +159,7 @@ class CarEventModule {
                     1.toByte() -> {
                         Logger.e { "on end fast detect" }
                         mObdData.showPid()
-                        postViewEvent(ViewEvent.updateObdData(mObdData.getPidDataList()))
+                        postViewEvent(CarEvents.updateObdData(mObdData.getPidDataList()))
                     }
                 }
 
@@ -197,26 +193,26 @@ class CarEventModule {
         rightRear: Int,
         trunk: Int
     ) {
-        postViewEvent(ViewEvent.updateLeftFront(if (leftFront == 1) DoorState.Open else DoorState.Closed))
-        postViewEvent(ViewEvent.updateRightFront(if (rightFront == 1) DoorState.Open else DoorState.Closed))
-        postViewEvent(ViewEvent.updateLeftRear(if (leftRear == 1) DoorState.Open else DoorState.Closed))
-        postViewEvent(ViewEvent.updateRightRear(if (rightRear == 1) DoorState.Open else DoorState.Closed))
-        postViewEvent(ViewEvent.updateTrunk(if (trunk == 1) DoorState.Open else DoorState.Closed))
+        postViewEvent(CarEvents.updateLeftFront(if (leftFront == 1) DoorState.Open else DoorState.Closed))
+        postViewEvent(CarEvents.updateRightFront(if (rightFront == 1) DoorState.Open else DoorState.Closed))
+        postViewEvent(CarEvents.updateLeftRear(if (leftRear == 1) DoorState.Open else DoorState.Closed))
+        postViewEvent(CarEvents.updateRightRear(if (rightRear == 1) DoorState.Open else DoorState.Closed))
+        postViewEvent(CarEvents.updateTrunk(if (trunk == 1) DoorState.Open else DoorState.Closed))
     }
 
     private fun handleRemainGas(i: Int) {
-        postViewEvent(ViewEvent.updateRemainGas(if (i < 0 || i >= 255) "N/A" else "${(i * 100) / 255}%"))
+        postViewEvent(CarEvents.updateRemainGas(if (i < 0 || i >= 255) "N/A" else "${(i * 100) / 255}%"))
     }
 
     private fun handleMileage(i: Int) {
-        postViewEvent(ViewEvent.updateMileage(if (i >= 0) "$i Km" else "N/A"))
+        postViewEvent(CarEvents.updateMileage(if (i >= 0) "$i Km" else "N/A"))
     }
 
     private fun handCarInfo(parkingBrake: Int, seatbelt: Int, gear: Int, gearNum: Int) {
-        postViewEvent(ViewEvent.updateHandBrake(parkingBrake == 1))
-        postViewEvent(ViewEvent.updateSeatbelt(seatbelt == 1))
-        postViewEvent(ViewEvent.updateGear(makeGearText(gear, gearNum)))
-        postViewEvent(ViewEvent.updateGearNum(gearNum))
+        postViewEvent(CarEvents.updateHandBrake(parkingBrake == 1))
+        postViewEvent(CarEvents.updateSeatbelt(seatbelt == 1))
+        postViewEvent(CarEvents.updateGear(makeGearText(gear, gearNum)))
+        postViewEvent(CarEvents.updateGearNum(gearNum))
     }
 
     private fun makeGearText(i: Int, i2: Int): String {
@@ -353,10 +349,10 @@ class CarEventModule {
         bankTwo1: Int,
         bankTwo2: Int
     ) {
-        postViewEvent(ViewEvent.updateErrCount(errCount))
-        postViewEvent(ViewEvent.updateVoltage(String.format("%.1fV", voltage.toDouble() / 1000.0)))
+        postViewEvent(CarEvents.updateErrCount(errCount))
+        postViewEvent(CarEvents.updateVoltage(String.format("%.1fV", voltage.toDouble() / 1000.0)))
         postViewEvent(
-            ViewEvent.updateSolarTermDoor(
+            CarEvents.updateSolarTermDoor(
                 String.format(
                     "%.1f%%",
                     solarTermDoor * 100 / 255.0
@@ -364,14 +360,14 @@ class CarEventModule {
             )
         )
         postViewEvent(
-            ViewEvent.updateWaterTemperature(
+            CarEvents.updateWaterTemperature(
                 if (waterTemperature > 0 && waterTemperature != 255) ("${waterTemperature - 40}°C") else ("N/A")
             )
         )
 
         if (mObdData.mSupportPIDMap[60]?.support == 1) {
             postViewEvent(
-                ViewEvent.updateThreeCatalystTemperatureBankOne1(
+                CarEvents.updateThreeCatalystTemperatureBankOne1(
                     String.format(
                         Locale.getDefault(),
                         "%d°C",
@@ -382,7 +378,7 @@ class CarEventModule {
         }
         if (mObdData.mSupportPIDMap[61]?.support == 1) {
             postViewEvent(
-                ViewEvent.updateThreeCatalystTemperatureBankOne2(
+                CarEvents.updateThreeCatalystTemperatureBankOne2(
                     String.format(
                         Locale.getDefault(),
                         "%d°C",
@@ -393,7 +389,7 @@ class CarEventModule {
         }
         if (mObdData.mSupportPIDMap[62]?.support == 1) {
             postViewEvent(
-                ViewEvent.updateThreeCatalystTemperatureBankTwo1(
+                CarEvents.updateThreeCatalystTemperatureBankTwo1(
                     String.format(
                         Locale.getDefault(),
                         "%d°C",
@@ -404,7 +400,7 @@ class CarEventModule {
         }
         if (mObdData.mSupportPIDMap[63]?.support == 1) {
             postViewEvent(
-                ViewEvent.updateThreeCatalystTemperatureBankTwo2(
+                CarEvents.updateThreeCatalystTemperatureBankTwo2(
                     String.format(
                         Locale.getDefault(),
                         "%d°C",
@@ -439,24 +435,24 @@ class CarEventModule {
                 Logger.d { "배터리 전압 너무 높음" }
             }
 
-            postViewEvent(ViewEvent.updateMeterVoltage("${decimalFormat.format(f)}V"))
+            postViewEvent(CarEvents.updateMeterVoltage("${decimalFormat.format(f)}V"))
         } else {
-            postViewEvent(ViewEvent.updateMeterVoltage("N/A"))
+            postViewEvent(CarEvents.updateMeterVoltage("N/A"))
         }
     }
 
     private fun handleRotate(rotate: Int) {
-        postViewEvent(ViewEvent.updateRotate(rotate))
+        postViewEvent(CarEvents.updateRotate(rotate))
     }
 
     private fun handleSpeed(speed: Int) {
-        postViewEvent(ViewEvent.updateSpeed(speed))
+        postViewEvent(CarEvents.updateSpeed(speed))
     }
 
 
     private fun handleTemp(temp: Int) {
         val adjustedTemp = temp - 40
-        postViewEvent(ViewEvent.updateTemp(adjustedTemp))
+        postViewEvent(CarEvents.updateTemp(adjustedTemp))
         if (temp >= 0 && temp != 255) {
             when {
                 adjustedTemp < 0 -> Logger.d { "수온 낮음!" }
@@ -471,17 +467,17 @@ class CarEventModule {
         Logger.d { "onCarLockFunc:$i,$i2" }
         if (mGearFunOnoffVisible == 0) {
             Logger.d { "gear_d_lock 변속기 단수 확인!" }
-            ViewEvent.updateGearFunOnoffVisible(1)
+            CarEvents.updateGearFunOnoffVisible(1)
         }
         if (mGearPUnlock != i) {
-            postViewEvent(ViewEvent.updateGearPUnlock(i))
+            postViewEvent(CarEvents.updateGearPUnlock(i))
             Logger.d {
                 "mGearPUnlock" + (if (i == 1) 1
                 else 0).toString()
             }
         }
         if (mGearDLock != i2) {
-            postViewEvent(ViewEvent.updateGearDLock(i2))
+            postViewEvent(CarEvents.updateGearDLock(i2))
             Logger.d {
                 "gear_d_lock" + (if (i2 == 1) 1
                 else 0).toString()
@@ -491,15 +487,15 @@ class CarEventModule {
 
     fun onClkGearDLock() {
         val newGearDLock = if (mGearDLock == 1) 0 else 1
-        postViewEvent(ViewEvent.updateGearDLock(newGearDLock))
-        Logger.d {"gear_d_lock_onoff mGearDLock!"}
+        postViewEvent(CarEvents.updateGearDLock(newGearDLock))
+        Logger.d { "gear_d_lock_onoff mGearDLock!" }
         sendGearFunSet(newGearDLock, mGearPUnlock)
     }
 
     fun onClkGearPUnlock() {
         val newGearPUnlock = if (mGearPUnlock == 1) 0 else 1
-        postViewEvent(ViewEvent.updateGearPUnlock(newGearPUnlock))
-        Logger.d {"gear_p_unlock_onoff mGearPUnlock!"}
+        postViewEvent(CarEvents.updateGearPUnlock(newGearPUnlock))
+        Logger.d { "gear_p_unlock_onoff mGearPUnlock!" }
         sendGearFunSet(mGearDLock, newGearPUnlock)
     }
 
@@ -525,9 +521,9 @@ class CarEventModule {
         BluetoothModel.sendMessage(bArr2)
     }
 
-    private fun postViewEvent(event: ViewEvent) {
+    private fun postViewEvent(event: CarEvents) {
         CoroutineScope(Dispatchers.Main).launch {
-            ViewEventBus.post(event)
+            CarEventBus.post(event)
         }
     }
 }

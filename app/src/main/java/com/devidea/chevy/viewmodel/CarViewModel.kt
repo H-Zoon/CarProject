@@ -2,12 +2,10 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
-import com.devidea.chevy.eventbus.ViewEvent
-import com.devidea.chevy.eventbus.ViewEventBus
-import com.devidea.chevy.repository.device.DataStoreRepository
+import com.devidea.chevy.eventbus.CarEvents
+import com.devidea.chevy.eventbus.CarEventBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,197 +14,149 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CarViewModel @Inject constructor(
-    private val repository: DataStoreRepository
-) : ViewModel() {
+class CarViewModel @Inject constructor() : ViewModel() {
 
     init {
         viewModelScope.launch {
-            ViewEventBus.events.collect { viewEvent ->
+            CarEventBus.events.collect { viewEvent ->
                 when (viewEvent) {
-                    is ViewEvent.updateObdData -> {
+                    is CarEvents.updateObdData -> {
                         _obdData.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateLeftFront -> {
+                    is CarEvents.updateLeftFront -> {
                         _leftFront.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateRightFront -> {
+                    is CarEvents.updateRightFront -> {
                         _rightFront.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateLeftRear -> {
+                    is CarEvents.updateLeftRear -> {
                         _leftRear.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateRightRear -> {
+                    is CarEvents.updateRightRear -> {
                         _rightRear.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateTrunk -> {
+                    is CarEvents.updateTrunk -> {
                         _trunk.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateRotate -> {
+                    is CarEvents.updateRotate -> {
                         _mRotate.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateRemainGas -> {
+                    is CarEvents.updateRemainGas -> {
                         _mRemainGas.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateMileage -> {
+                    is CarEvents.updateMileage -> {
                         _mMileage.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateHandBrake -> {
+                    is CarEvents.updateHandBrake -> {
                         _mHandBrake.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateSeatbelt -> {
+                    is CarEvents.updateSeatbelt -> {
                         _mSeatbelt.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateGear -> {
+                    is CarEvents.updateGear -> {
                         _mGear.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateGearNum -> {
+                    is CarEvents.updateGearNum -> {
                         _mGearNum.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateErrCount -> {
+                    is CarEvents.updateErrCount -> {
                         _mErrCount.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateVoltage -> {
+                    is CarEvents.updateVoltage -> {
                         _mVoltage.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateSolarTermDoor -> {
+                    is CarEvents.updateSolarTermDoor -> {
                         _mSolarTermDoor.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateWaterTemperature -> {
+                    is CarEvents.updateWaterTemperature -> {
                         _mWaterTemperature.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateThreeCatalystTemperatureBankOne1 -> {
+                    is CarEvents.updateThreeCatalystTemperatureBankOne1 -> {
                         _mThreeCatalystTemperatureBankOne1.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateThreeCatalystTemperatureBankOne2 -> {
+                    is CarEvents.updateThreeCatalystTemperatureBankOne2 -> {
                         _mThreeCatalystTemperatureBankOne2.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateThreeCatalystTemperatureBankTwo1 -> {
+                    is CarEvents.updateThreeCatalystTemperatureBankTwo1 -> {
                         _mThreeCatalystTemperatureBankTwo1.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateThreeCatalystTemperatureBankTwo2 -> {
+                    is CarEvents.updateThreeCatalystTemperatureBankTwo2 -> {
                         _mThreeCatalystTemperatureBankTwo2.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateMeterVoltage -> {
+                    is CarEvents.updateMeterVoltage -> {
                         _mMeterVoltage.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateMeterRotate -> {
+                    is CarEvents.updateMeterRotate -> {
                         _mMeterRotate.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateSpeed -> {
+                    is CarEvents.updateSpeed -> {
                         _mSpeed.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateTemp -> {
+                    is CarEvents.updateTemp -> {
                         _mTemp.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateGearFunOnoffVisible -> {
+                    is CarEvents.updateGearFunOnoffVisible -> {
                         _mGearFunOnoffVisible.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateGearDLock -> {
+                    is CarEvents.updateGearDLock -> {
                         _mGearDLock.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateGearPUnlock -> {
+                    is CarEvents.updateGearPUnlock -> {
                         _mGearPUnlock.value = viewEvent.value
                     }
 
-                    is ViewEvent.updateCarVIN -> {
+                    is CarEvents.updateCarVIN -> {
                         _carVIN.value = viewEvent.value
-                    }
-
-                    is ViewEvent.BluetoothState -> {
-                        _bluetoothState.value = viewEvent.value
-                    }
-                }
-            }
-        }
-        viewModelScope.launch {
-            launch {
-                repository.getConnectDate().collect { difference ->
-                    _lastConnectDate.value =
-                        when(difference) {
-                            (-1).toLong() -> "-"
-                            (0).toLong() -> "방금전"
-                            else -> "$difference 일 전"
-                        }
-                }
-            }
-
-            launch {
-                repository.getMileageDate().collect { difference ->
-                    _recentMileage.value = when(difference) {
-                        -1 -> "-"
-                        else -> "$difference Km"
-                    }
-                }
-            }
-
-            launch {
-                repository.getFuelDate().collect { difference ->
-                    _fullEfficiency.value = when(difference) {
-                        (-1).toFloat() -> "-"
-                        else -> "$difference Km/L"
                     }
                 }
             }
         }
     }
 
-    private val _lastConnectDate = MutableStateFlow<String>("")
-    val lastConnectDate: StateFlow<String> get() = _lastConnectDate
-
-    private val _recentMileage = MutableStateFlow<String>("")
-    val recentMileage: StateFlow<String> get() = _recentMileage
-
-    private val _fullEfficiency = MutableStateFlow<String>("")
-    val fullEfficiency: StateFlow<String> get() = _fullEfficiency
-
-    private val _bluetoothState = MutableStateFlow<BTState>(BTState.DISCONNECTED)
-    val bluetoothState: StateFlow<BTState> get() = _bluetoothState
-
     private val _obdData = MutableStateFlow<MutableList<PIDListData>>(ArrayList())
     val obdData: StateFlow<MutableList<PIDListData>> get() = _obdData
 
-    private val _leftFront = MutableStateFlow<CarEventModule.DoorState>(CarEventModule.DoorState.Closed)
-    val leftFront: StateFlow<CarEventModule.DoorState> get() = _leftFront.asStateFlow()
+    private val _leftFront = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    val leftFront: StateFlow<CarEventModel.DoorState> get() = _leftFront.asStateFlow()
 
-    private val _rightFront = MutableStateFlow<CarEventModule.DoorState>(CarEventModule.DoorState.Closed)
-    val rightFront: StateFlow<CarEventModule.DoorState> get() = _rightFront.asStateFlow()
+    private val _rightFront = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    val rightFront: StateFlow<CarEventModel.DoorState> get() = _rightFront.asStateFlow()
 
-    private val _leftRear = MutableStateFlow<CarEventModule.DoorState>(CarEventModule.DoorState.Closed)
-    val leftRear: StateFlow<CarEventModule.DoorState> get() = _leftRear.asStateFlow()
+    private val _leftRear = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    val leftRear: StateFlow<CarEventModel.DoorState> get() = _leftRear.asStateFlow()
 
-    private val _rightRear = MutableStateFlow<CarEventModule.DoorState>(CarEventModule.DoorState.Closed)
-    val rightRear: StateFlow<CarEventModule.DoorState> get() = _rightRear.asStateFlow()
+    private val _rightRear = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    val rightRear: StateFlow<CarEventModel.DoorState> get() = _rightRear.asStateFlow()
 
-    private val _trunk = MutableStateFlow<CarEventModule.DoorState>(CarEventModule.DoorState.Closed)
-    val trunk: StateFlow<CarEventModule.DoorState> get() = _trunk.asStateFlow()
+    private val _trunk = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    val trunk: StateFlow<CarEventModel.DoorState> get() = _trunk.asStateFlow()
 
     private val _mRotate = MutableStateFlow<Int>(0)
     val mRotate: StateFlow<Int> get() = _mRotate.asStateFlow()

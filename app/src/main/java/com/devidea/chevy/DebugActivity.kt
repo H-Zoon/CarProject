@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.devidea.chevy.datas.obd.module.CarEventModule
+import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -16,7 +16,7 @@ class DebugActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bluetoouth)
-        val a = CarEventModule()
+        val a = CarEventModel
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {

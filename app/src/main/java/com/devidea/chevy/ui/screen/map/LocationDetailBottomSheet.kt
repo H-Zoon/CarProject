@@ -1,25 +1,22 @@
 package com.devidea.chevy.ui
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.devidea.chevy.ui.activity.NaviActivity
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.datas.navi.NavigateDocument
-import com.devidea.chevy.ui.activity.NaviActivity2
 import com.devidea.chevy.ui.screen.navi.NaviScreen
+import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
+fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document, mainViewModel: MainViewModel) {
     var showNaviScreen by remember { mutableStateOf(false) }
     var navigateDocument by remember { mutableStateOf<NavigateDocument?>(null) }
 
@@ -55,21 +52,16 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (showNaviScreen && navigateDocument != null) {
-                    NaviScreen(document = navigateDocument!!)
-                } else {
-                    Button(onClick = {
-                        navigateDocument = NavigateDocument(
-                            address_name = document.address_name,
-                            goalX = document.x,
-                            goalY = document.y,
-                            startX = viewModel.userLocation.value?.longitude ?: 0.0,
-                            startY = viewModel.userLocation.value?.latitude ?: 0.0
-                        )
-                        showNaviScreen = true
-                    }) {
-                        Text(text = "길안내")
-                    }
+                Button(onClick = {
+                    mainViewModel.foundRoot(
+                        addressName = document.address_name,
+                        goalX = document.x,
+                        goalY = document.y,
+                        startX = viewModel.userLocation.value?.longitude ?: 0.0,
+                        startY = viewModel.userLocation.value?.latitude ?: 0.0
+                    ) {}
+                }) {
+                    Text(text = "길안내")
                 }
             }
         }

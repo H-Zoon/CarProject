@@ -8,15 +8,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.navigation.NavHostController
 import com.devidea.chevy.ui.LocationDetailBottomSheet
+import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
     viewModel: MapViewModel,
-    navController: NavHostController
+    mainViewModel: MainViewModel
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
@@ -37,7 +39,9 @@ fun MainScreen(
                     isSearchHistoryVisible = false
                     focusManager.clearFocus()
                 } else {
-                    navController.popBackStack()
+                    coroutineScope.launch {
+                        mainViewModel.navigateTo(MainViewModel.NavRoutes.HOME)
+                    }
                 }
             }
         }
@@ -103,7 +107,7 @@ fun MainScreen(
 
                 is MapViewModel.UiState.ShowDetail -> {
                     val selectedDocument = (uiState as MapViewModel.UiState.ShowDetail).item
-                    LocationDetailBottomSheet(viewModel = viewModel, document = selectedDocument)
+                    LocationDetailBottomSheet(viewModel = viewModel, mainViewModel= mainViewModel, document = selectedDocument)
                 }
             }
         }
