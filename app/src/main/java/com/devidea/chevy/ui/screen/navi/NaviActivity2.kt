@@ -8,25 +8,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import com.devidea.chevy.Logger
-import com.devidea.chevy.datas.navi.NavigateDocument
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.devidea.chevy.eventbus.GuidanceEvent
+import com.devidea.chevy.eventbus.KNNAVEventBus
 import com.devidea.chevy.ui.activity.MainActivity
-import com.devidea.chevy.viewmodel.GuidanceEvent
 import com.devidea.chevy.viewmodel.NaviViewModel
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
-import com.kakaomobility.knsdk.KNRouteAvoidOption
-import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
-import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.ui.view.KNNaviView
 
 @Composable
 fun NaviScreen(
     activity: MainActivity,
-    viewModel: NaviViewModel,
+    viewModel: NaviViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
-    document: NavigateDocument
 ) {
     // 상태 수집
     val currentLocation by viewModel.currentLocation.collectAsState()
@@ -62,42 +58,18 @@ fun NaviScreen(
     )
 
     LaunchedEffect(naviView) {
-        // 경로 설정 로직
-        document.let {
-            val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = it.startX, aWgs84Lat = it.startY)
-            val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = it.goalX, aWgs84Lat = it.goalY)
-
-            val startKNPOI = KNPOI("", startKATEC.x.toInt(), startKATEC.y.toInt(), aAddress = null)
-            val goalKNPOI = KNPOI("", goalKATEC.x.toInt(), goalKATEC.y.toInt(), it.address_name)
-
-            val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
-            val curAvoidOptions =
-                KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
-
-            KNSDK.makeTripWithStart(aStart = startKNPOI, aGoal = goalKNPOI, aVias = null) { knError, knTrip ->
-                if (knError != null) {
-                    Logger.e { "경로 생성 에러(KNError: $knError" }
-                }
-                knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
-                    if (error != null) {
-                        Logger.e { "경로 요청 실패 : $error" }
-                    } else {
-                        KNSDK.sharedGuidance()?.apply {
-                            naviView.initWithGuidance(
-                                this,
-                                knTrip,
-                                curRoutePriority,
-                                curAvoidOptions
-                            )
-                        }
+        KNNAVEventBus.events.collect { event ->
+            when (event) {
+                is GuidanceEvent.RequestNavGuidance -> {
+                    KNSDK.sharedGuidance()?.apply {
+                        naviView.initWithGuidance(
+                            this,
+                            event.a,
+                            event.b,
+                            event.c
+                        )
                     }
                 }
-            }
-        }
-
-
-        viewModel.eventFlow.collect { event ->
-            when (event) {
                 is GuidanceEvent.GuidanceCheckingRouteChange -> {
                     naviView.guidanceCheckingRouteChange(event.guidance)
                 }

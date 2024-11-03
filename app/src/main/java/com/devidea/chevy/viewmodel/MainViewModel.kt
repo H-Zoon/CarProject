@@ -9,6 +9,8 @@ import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
 import com.devidea.chevy.datas.navi.NavigateDocument
+import com.devidea.chevy.eventbus.UIEventBus
+import com.devidea.chevy.eventbus.UIEvents
 import com.devidea.chevy.repository.device.DataStoreRepository
 import com.devidea.chevy.repository.remote.Document
 import com.kakaomobility.knsdk.KNRouteAvoidOption
@@ -38,16 +40,19 @@ class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository
 ) : ViewModel() {
 
-    sealed class NavRoutes {
-        val HOME = "home"
-        val DETAILS = "details"
-        val MAP = "home"
-        val NAV = "home"
-        val LOGS = "logs"
+    enum class NavRoutes {
+        HOME,
+        DETAILS,
+        MAP,
+        NAV,
+        LOGS,
     }
 
     private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
     val bluetoothStatus: StateFlow<BTState> get() = _bluetoothStatus
+
+    private val _navigationEvent = MutableStateFlow(NavRoutes.HOME)
+    val navigationEvent:StateFlow<NavRoutes> get() = _navigationEvent
 
     init {
         viewModelScope.launch {
@@ -79,9 +84,17 @@ class MainViewModel @Inject constructor(
                     }
                 }
             }
+
             launch {
-                BluetoothModel.bluetoothStatus.collect {
-                    _bluetoothStatus.value = it
+                UIEventBus.events.collect {
+                    when(it){
+                        is UIEvents.reuestNavHost -> {
+                            _navigationEvent.value = it.value
+                        }
+                        is UIEvents.reuestBluetooth -> {
+                            _bluetoothStatus.value = it.value
+                        }
+                    }
                 }
             }
         }
@@ -96,38 +109,4 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-    private val _navigationEvent = MutableSharedFlow<String>()
-    val navigationEvent = _navigationEvent.asSharedFlow()
-
-    // 네비게이션 요청 함수
-    fun navigateTo(route: String) {
-        _navigationEvent.emit(route)
-    }
-
-    fun foundRoot(addressName: String, goalX: Double, goalY: Double, startX: Double, startY: Double, failure: (() -> Unit)) {
-        val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = startX, aWgs84Lat = startY)
-        val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = goalX, aWgs84Lat = goalY)
-
-        val startKNPOI = KNPOI("", startKATEC.x.toInt(), startKATEC.y.toInt(), aAddress = null)
-        val goalKNPOI = KNPOI("", goalKATEC.x.toInt(), goalKATEC.y.toInt(), addressName)
-
-        val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
-        val curAvoidOptions =
-            KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
-
-        KNSDK.makeTripWithStart(aStart = startKNPOI, aGoal = goalKNPOI, aVias = null) { knError, knTrip ->
-            if (knError != null) {
-                Logger.e { "경로 생성 에러(KNError: $knError" }
-            }
-            knTrip?.routeWithPriority(curRoutePriority, curAvoidOptions) { error, _ ->
-                if (error != null) {
-                    failure()
-                } else {
-                    KNSDK.sharedGuidance()?.apply {
-                        navigateTo("${NavRoutes.DETAILS}/2")
-                    }
-                }
-            }
-        }
-    }
 }

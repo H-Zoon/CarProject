@@ -55,6 +55,9 @@ import com.devidea.chevy.Logger
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.eventbus.UIEventBus
+import com.devidea.chevy.eventbus.UIEvents
+import com.devidea.chevy.ui.components.CardItem
 import com.devidea.chevy.ui.components.LogsScreen
 import com.devidea.chevy.ui.screen.dashboard.Dashboard
 import com.devidea.chevy.ui.screen.map.MapEnterScreen
@@ -133,7 +136,7 @@ class MainActivity : AppCompatActivity(),
                             title = { Text("Car Project") },
                             actions = {
                                 IconButton(onClick = {
-                                    navController.navigate(MainViewModel.NavRoutes.LOGS)
+                                    navController.navigate(MainViewModel.NavRoutes.LOGS.toString())
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.List,
@@ -146,8 +149,6 @@ class MainActivity : AppCompatActivity(),
                     content = { paddingValues ->
                         HomeScreen(
                             navController = navController,
-                            carViewModel = carViewModel,
-                            naviViewModel = naviViewModel,
                             mainViewModel = viewModel,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -305,22 +306,24 @@ class MainActivity : AppCompatActivity(),
 @Composable
 fun HomeScreen(
     navController: NavHostController,
-    carViewModel: CarViewModel,
-    naviViewModel:NaviViewModel,
     mainViewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
+    val cardItems = listOf(
+        CardItem("Title 1", "This is a description", MainViewModel.NavRoutes.DETAILS),
+        CardItem("Title 2", "This is a description", MainViewModel.NavRoutes.MAP),
+    )
 
     LaunchedEffect(Unit) {
         mainViewModel.navigationEvent.collect { route ->
-            route?.let {
-                navController.navigate(it)
+            route.let {
+                navController.navigate(it.toString())
             }
         }
     }
 
-    NavHost(navController, startDestination = MainViewModel.NavRoutes.HOME, modifier = modifier) {
-        composable(MainViewModel.NavRoutes.HOME) {
+    NavHost(navController, startDestination = MainViewModel.NavRoutes.HOME.toString(), modifier = modifier) {
+        composable(MainViewModel.NavRoutes.HOME.toString()) {
             // 기존의 Home 화면 컴포즈 코드
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -333,18 +336,19 @@ fun HomeScreen(
                 CarImage(viewModel = mainViewModel)
                 CarInformationSummary(viewModel = mainViewModel)
                 Spacer(modifier = Modifier.height(32.dp))
-                GridCard(viewModel = mainViewModel) // navController 대신 viewModel 전달
+                GridCard(cardItems)
             }
         }
-        composable("${MainViewModel.NavRoutes.DETAILS}/{cardIndex}") { backStackEntry ->
-            val cardIndex = backStackEntry.arguments?.getString("cardIndex")?.toIntOrNull()
-            when (cardIndex) {
-                0 -> Dashboard()
-                1 -> MapEnterScreen(mainViewModel = mainViewModel)
-                2 -> NaviScreen(activity = LocalContext.current as MainActivity, viewModel = naviViewModel, document = mainViewModel.navigateDocument.value!!)
-            }
+        composable(MainViewModel.NavRoutes.DETAILS.toString()) {
+            Dashboard()
         }
-        composable(MainViewModel.NavRoutes.LOGS) {
+        composable(MainViewModel.NavRoutes.MAP.toString()) {
+            MapEnterScreen()
+        }
+        composable(MainViewModel.NavRoutes.NAV.toString()) {
+            NaviScreen(activity = LocalContext.current as MainActivity)
+        }
+        composable(MainViewModel.NavRoutes.LOGS.toString()) {
             LogsScreen()
         }
     }
@@ -486,7 +490,7 @@ fun InfoSection(title: String, content: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun GridCard(viewModel: MainViewModel) {
+fun GridCard(cardItem:List<CardItem>) {
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -498,14 +502,14 @@ fun GridCard(viewModel: MainViewModel) {
         horizontalArrangement = Arrangement.spacedBy(25.dp),
         userScrollEnabled = false
     ) {
-        items(2) { index ->
+        items(cardItem.size) { index ->
             NeumorphicCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp),
                 onClick = {
                     coroutineScope.launch {
-                        viewModel.navigateTo("${MainViewModel.NavRoutes.DETAILS}/$index") // 예시로 cardIndex 0 전달
+                       UIEventBus.post(UIEvents.reuestNavHost(cardItem[index].date))
                     }
                 },
                 cornerRadius = 12.dp
@@ -517,7 +521,7 @@ fun GridCard(viewModel: MainViewModel) {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Card $index", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = cardItem[index].title, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }

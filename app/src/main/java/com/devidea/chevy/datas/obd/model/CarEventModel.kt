@@ -18,15 +18,19 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.experimental.and
 
-object CarEventModel {
-    const val MSG_NO_INFO_TIMEOUT = 100
-    const val TEMPERATURE_RANGE_MAX = 112
-    const val TEMPERATURE_RANGE_MIN = 0
-    const val VOLTAGE_RANGE_MAX = 15.0f
-    const val VOLTAGE_RANGE_MIN = 10.0f
-    private const val TAG = "CarEventModule"
+class CarEventModel @Inject constructor() {
+
+    companion object {
+        const val MSG_NO_INFO_TIMEOUT = 100
+        const val TEMPERATURE_RANGE_MAX = 112
+        const val TEMPERATURE_RANGE_MIN = 0
+        const val VOLTAGE_RANGE_MAX = 15.0f
+        const val VOLTAGE_RANGE_MIN = 10.0f
+        private const val TAG = "CarEventModule"
+    }
 
     init {
         CoroutineScope(Dispatchers.Main).launch {
@@ -137,7 +141,11 @@ object CarEventModel {
                 ((bArr[14].toInt() and 255 shl 8) + (bArr[15].toInt() and 255)) / 10 - 40
             )
 
-            33.toByte() -> onCarLockFunctionState(OBDProtocol.byteH4(bArr[2]), OBDProtocol.byteL4(bArr[2]))
+            33.toByte() -> onCarLockFunctionState(
+                OBDProtocol.byteH4(bArr[2]),
+                OBDProtocol.byteL4(bArr[2])
+            )
+
             else -> when (bArr[1]) {
                 8.toByte() -> {
                     val bArr5 = ByteArray(bArr.size - 2)

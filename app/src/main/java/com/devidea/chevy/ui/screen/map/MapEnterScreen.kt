@@ -11,15 +11,14 @@ import com.devidea.chevy.viewmodel.MapViewModel
 
 @Composable
 fun MapEnterScreen(
-    viewModel: MapViewModel = hiltViewModel(),
-    mainViewModel: MainViewModel
+    viewModel: MapViewModel = hiltViewModel()
 ) {
     val authenticationSuccess by viewModel.authenticationSuccess.collectAsState()
     val isAuthenticating by viewModel.isAuthenticating.collectAsState()
     val errorMessage by viewModel.authErrorMessage.collectAsState()
 
     if (authenticationSuccess) {
-        MainScreen(viewModel= viewModel, mainViewModel = mainViewModel)
+        MainScreen(viewModel= viewModel)
     } else {
         AuthenticationScreen(
             isAuthenticating = isAuthenticating,

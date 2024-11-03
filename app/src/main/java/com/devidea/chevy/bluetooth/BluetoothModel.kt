@@ -10,6 +10,8 @@ import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
 import com.devidea.chevy.eventbus.Event
 import com.devidea.chevy.eventbus.EventBus
+import com.devidea.chevy.eventbus.UIEventBus
+import com.devidea.chevy.eventbus.UIEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,9 +27,6 @@ object BluetoothModel {
     private var scanJob: Job? = null
 
     private var btState = BTState.DISCONNECTED
-
-    private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
-    val bluetoothStatus: StateFlow<BTState> get() = _bluetoothStatus
 
     private var leBTService: LeBTService? = null
     private var isBound = false
@@ -50,7 +49,9 @@ object BluetoothModel {
         override fun onBTStateChange(state: BTState) {
             Logger.d { "onBTStateChange: $btState -> $state" }
             if (btState != state) {
-                _bluetoothStatus.value = state
+                CoroutineScope(Dispatchers.Main).launch {
+                    UIEventBus.post(UIEvents.reuestBluetooth(state))
+                }
                 leBTService?.updateNotification(state)
                 btState = state
                 if (btState == BTState.CONNECTED) {
@@ -115,7 +116,7 @@ object BluetoothModel {
         var mMsgEndPos = 0
         var mMsgLen = 0
 
-        Logger.d{ bArr.contentToString()}
+        Logger.d { bArr.contentToString() }
         // 수신한 데이터의 길이가 0이거나 데이터 배열이 null인 경우 함수 종료
         if (length == 0 || bArr == null) return
 
@@ -150,14 +151,15 @@ object BluetoothModel {
                     mMsgLen = mMsgBuf[2].toInt() and 255
                     // 메시지 길이가 128을 초과하면 경고 메시지 출력
                     if (mMsgLen > 128) {
-                        Logger.d{"analyseCarInfo if (m_nDataPacketLen > 128)"}
+                        Logger.d { "analyseCarInfo if (m_nDataPacketLen > 128)" }
                     }
                 }
                 // 메시지 끝에 도달한 경우
                 else -> {
                     if (mMsgEndPos == mMsgLen + 4) {
                         // 체크섬 계산
-                        val checksum = (2 until mMsgEndPos - 1).sumBy { mMsgBuf[it].toInt() and 255 }
+                        val checksum =
+                            (2 until mMsgEndPos - 1).sumBy { mMsgBuf[it].toInt() and 255 }
                         val calculatedChecksum = checksum and 255
 
                         // 계산된 체크섬과 수신한 체크섬 비교
@@ -183,7 +185,7 @@ object BluetoothModel {
         //Log.e(TAG, "header : $header, massage : ${bArr.joinToString()}")
         CoroutineScope(Dispatchers.Main).launch {
             when (header) {
-                1 ->  EventBus.post(Event.carStateEvent(bArr))
+                1 -> EventBus.post(Event.carStateEvent(bArr))
                 //8 -> AppModel.getInstance().onRecvMsg(bArr2, bArr2.size)
                 63 -> {
                     if (bArr.size > 2 && bArr[1] == 16.toByte()) {

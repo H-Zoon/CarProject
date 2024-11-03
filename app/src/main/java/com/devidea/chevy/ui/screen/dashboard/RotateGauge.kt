@@ -46,7 +46,7 @@ fun Dashboard(carViewModel: CarViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun SpeedIndicator(carViewModel: CarViewModel) {
+fun SpeedIndicator(carViewModel: CarViewModel = hiltViewModel()) {
     val mGear by carViewModel.mGear.collectAsState()
     val mGearNum by carViewModel.mGearNum.collectAsState()
     val mSpeed by carViewModel.mSpeed.collectAsState()

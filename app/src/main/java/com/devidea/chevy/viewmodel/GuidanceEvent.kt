@@ -13,6 +13,7 @@ import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 
+/*
 sealed class GuidanceEvent {
     // 경로 변경 이벤트
     data class GuidanceCheckingRouteChange(val guidance: KNGuidance) : GuidanceEvent()
@@ -57,4 +58,4 @@ sealed class GuidanceEvent {
     ) : GuidanceEvent()
     data class WillPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
     data class DidFinishPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
-}
+}*/

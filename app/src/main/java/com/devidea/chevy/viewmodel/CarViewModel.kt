@@ -2,10 +2,12 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.datas.obd.CarModel
 import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import com.devidea.chevy.eventbus.CarEvents
 import com.devidea.chevy.eventbus.CarEventBus
+import com.devidea.chevy.repository.device.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +16,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CarViewModel @Inject constructor() : ViewModel() {
+class CarViewModel @Inject constructor(private val repository: CarEventModel) : ViewModel() {
 
     init {
         viewModelScope.launch {
@@ -143,16 +145,20 @@ class CarViewModel @Inject constructor() : ViewModel() {
     private val _obdData = MutableStateFlow<MutableList<PIDListData>>(ArrayList())
     val obdData: StateFlow<MutableList<PIDListData>> get() = _obdData
 
-    private val _leftFront = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    private val _leftFront =
+        MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
     val leftFront: StateFlow<CarEventModel.DoorState> get() = _leftFront.asStateFlow()
 
-    private val _rightFront = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    private val _rightFront =
+        MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
     val rightFront: StateFlow<CarEventModel.DoorState> get() = _rightFront.asStateFlow()
 
-    private val _leftRear = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    private val _leftRear =
+        MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
     val leftRear: StateFlow<CarEventModel.DoorState> get() = _leftRear.asStateFlow()
 
-    private val _rightRear = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
+    private val _rightRear =
+        MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)
     val rightRear: StateFlow<CarEventModel.DoorState> get() = _rightRear.asStateFlow()
 
     private val _trunk = MutableStateFlow<CarEventModel.DoorState>(CarEventModel.DoorState.Closed)

@@ -8,16 +8,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.TextFieldValue
+import com.devidea.chevy.eventbus.UIEventBus
+import com.devidea.chevy.eventbus.UIEvents
 import com.devidea.chevy.ui.LocationDetailBottomSheet
 import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen(
-    viewModel: MapViewModel,
-    mainViewModel: MainViewModel
-) {
+fun MainScreen(viewModel: MapViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
@@ -40,7 +39,7 @@ fun MainScreen(
                     focusManager.clearFocus()
                 } else {
                     coroutineScope.launch {
-                        mainViewModel.navigateTo(MainViewModel.NavRoutes.HOME)
+                        UIEventBus.post(UIEvents.reuestNavHost(MainViewModel.NavRoutes.HOME))
                     }
                 }
             }
@@ -107,7 +106,10 @@ fun MainScreen(
 
                 is MapViewModel.UiState.ShowDetail -> {
                     val selectedDocument = (uiState as MapViewModel.UiState.ShowDetail).item
-                    LocationDetailBottomSheet(viewModel = viewModel, mainViewModel= mainViewModel, document = selectedDocument)
+                    LocationDetailBottomSheet(
+                        viewModel = viewModel,
+                        document = selectedDocument
+                    )
                 }
             }
         }
