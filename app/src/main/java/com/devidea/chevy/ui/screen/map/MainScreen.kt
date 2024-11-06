@@ -39,7 +39,7 @@ fun MainScreen(viewModel: MapViewModel) {
                     focusManager.clearFocus()
                 } else {
                     coroutineScope.launch {
-                        UIEventBus.post(UIEvents.reuestNavHost(MainViewModel.NavRoutes.HOME))
+                        UIEventBus.post(UIEvents.reuestNavHost(MainViewModel.NavRoutes.Home))
                     }
                 }
             }

@@ -88,8 +88,20 @@ sealed class UIEvents {
     data class reuestBluetooth(val value: BTState) : UIEvents()
 }
 
+object KNAVStartEventBus : IEventBusBehavior<GuidanceStartEvent> {
+    private val _events = MutableSharedFlow<GuidanceStartEvent>(replay = 1, extraBufferCapacity = 1)
+    override val events = _events.asSharedFlow()
+    override suspend fun post(event: GuidanceStartEvent) {
+        _events.emit(event)
+    }
+}
+
+sealed class GuidanceStartEvent {
+    data class RequestNavGuidance(val knTrip: KNTrip, val knRoutePriority: KNRoutePriority, val curAvoidOptions: Int) : GuidanceStartEvent()
+}
+
 object KNNAVEventBus : IEventBusBehavior<GuidanceEvent> {
-    private val _events = MutableSharedFlow<GuidanceEvent>(replay = 1, extraBufferCapacity = 10)
+    private val _events = MutableSharedFlow<GuidanceEvent>()
     override val events = _events.asSharedFlow()
     override suspend fun post(event: GuidanceEvent) {
         _events.emit(event)
@@ -97,7 +109,6 @@ object KNNAVEventBus : IEventBusBehavior<GuidanceEvent> {
 }
 
 sealed class GuidanceEvent {
-    data class RequestNavGuidance(val a: KNTrip, val b : KNRoutePriority, val c : Int) : GuidanceEvent()
     // 경로 변경 이벤트
     data class GuidanceCheckingRouteChange(val guidance: KNGuidance) : GuidanceEvent()
     data class GuidanceDidUpdateIndoorRoute(val guidance: KNGuidance, val route: KNRoute?) : GuidanceEvent()
@@ -121,6 +132,7 @@ sealed class GuidanceEvent {
         val toLocation: KNLocation,
         val changeReason: KNGuideRouteChangeReason
     ) : GuidanceEvent()
+
     data class GuidanceRouteUnchanged(val guidance: KNGuidance) : GuidanceEvent()
     data class GuidanceRouteUnchangedWithError(val guidance: KNGuidance, val error: KNError) : GuidanceEvent()
 
@@ -139,6 +151,7 @@ sealed class GuidanceEvent {
         val voiceGuide: KNGuide_Voice,
         val newData: MutableList<ByteArray>
     ) : GuidanceEvent()
+
     data class WillPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
     data class DidFinishPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
 }

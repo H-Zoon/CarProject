@@ -10,11 +10,8 @@ import androidx.compose.ui.unit.dp
 import com.devidea.chevy.Logger
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.datas.navi.NavigateDocument
-import com.devidea.chevy.eventbus.GuidanceEvent
-import com.devidea.chevy.eventbus.KNNAVEventBus
-import com.devidea.chevy.eventbus.UIEventBus
-import com.devidea.chevy.eventbus.UIEvents
-import com.devidea.chevy.viewmodel.MainViewModel.NavRoutes
+import com.devidea.chevy.eventbus.GuidanceStartEvent
+import com.devidea.chevy.eventbus.KNAVStartEventBus
 import com.devidea.chevy.viewmodel.MapViewModel
 import com.kakaomobility.knsdk.KNRouteAvoidOption
 import com.kakaomobility.knsdk.KNRoutePriority
@@ -107,12 +104,7 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document) {
                         startY = viewModel.userLocation.value?.latitude ?: 0.0,
                         success = {it, it1, it2 ->
                             coroutineScope.launch {
-                                UIEventBus.post(
-                                    UIEvents.reuestNavHost(
-                                        NavRoutes.NAV
-                                    )
-                                )
-                                KNNAVEventBus.post(GuidanceEvent.RequestNavGuidance(it, it1, it2))
+                                KNAVStartEventBus.post(GuidanceStartEvent.RequestNavGuidance(it, it1, it2))
                             }
                         },
                         failure = {})

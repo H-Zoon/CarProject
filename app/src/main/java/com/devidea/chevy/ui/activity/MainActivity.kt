@@ -1,6 +1,6 @@
 package com.devidea.chevy.ui.activity
 
-import android.app.Activity
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -51,7 +51,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.devidea.chevy.Logger
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
@@ -65,7 +64,6 @@ import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.screen.navi.NaviScreen
 import com.devidea.chevy.ui.theme.CarProjectTheme
-import com.devidea.chevy.viewmodel.CarViewModel
 import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.NaviViewModel
 import com.kakaomobility.knsdk.KNSDK
@@ -104,7 +102,6 @@ class MainActivity : AppCompatActivity(),
     KNNaviView_GuideStateDelegate {
 
     private val viewModel: MainViewModel by viewModels()
-    private val carViewModel: CarViewModel by viewModels()
     private val naviViewModel: NaviViewModel by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -136,7 +133,7 @@ class MainActivity : AppCompatActivity(),
                             title = { Text("Car Project") },
                             actions = {
                                 IconButton(onClick = {
-                                    navController.navigate(MainViewModel.NavRoutes.LOGS.toString())
+                                    navController.navigate(MainViewModel.NavRoutes.Logs.route)
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.List,
@@ -161,16 +158,12 @@ class MainActivity : AppCompatActivity(),
     }
 
     // Delegate Methods
-
     override fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
-        Logger.d { "guidanceCheckingRouteChange" }
-        naviViewModel.guidanceCheckingRouteChange(aGuidance)
+        viewModel.guidanceCheckingRouteChange(aGuidance)
     }
 
     override fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
-        Logger.d { "guidanceDidUpdateIndoorRoute" }
-        // 필요한 UI 업데이트 구현
-        naviViewModel.guidanceDidUpdateIndoorRoute(aGuidance, aRoute)
+        viewModel.guidanceDidUpdateIndoorRoute(aGuidance, aRoute)
     }
 
     override fun guidanceDidUpdateRoutes(
@@ -178,8 +171,7 @@ class MainActivity : AppCompatActivity(),
         aRoutes: List<KNRoute>,
         aMultiRouteInfo: KNMultiRouteInfo?
     ) {
-        Logger.d { "guidanceDidUpdateRoutes" }
-        naviViewModel.guidanceDidUpdateRoutes(
+        viewModel.guidanceDidUpdateRoutes(
             aGuidance,
             aRoutes,
             aMultiRouteInfo
@@ -187,18 +179,15 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun guidanceGuideEnded(aGuidance: KNGuidance) {
-        Logger.d { "guidanceGuideEnded" }
-        naviViewModel.guidanceGuideEnded(aGuidance)
+        viewModel.guidanceGuideEnded(aGuidance)
     }
 
     override fun guidanceGuideStarted(aGuidance: KNGuidance) {
-        Logger.d { "guidanceGuideStarted" }
-        naviViewModel.guidanceGuideStarted(aGuidance)
+        viewModel.guidanceGuideStarted(aGuidance)
     }
 
     override fun guidanceOutOfRoute(aGuidance: KNGuidance) {
-        Logger.d { "guidanceOutOfRoute" }
-        naviViewModel.guidanceOutOfRoute(aGuidance)
+        viewModel.guidanceOutOfRoute(aGuidance)
     }
 
     override fun guidanceRouteChanged(
@@ -209,8 +198,7 @@ class MainActivity : AppCompatActivity(),
         aToLocation: KNLocation,
         aChangeReason: KNGuideRouteChangeReason
     ) {
-        Logger.d { "guidanceRouteChanged" }
-        naviViewModel.guidanceRouteChanged(
+        viewModel.guidanceRouteChanged(
             aGuidance,
             aFromRoute,
             aFromLocation,
@@ -221,45 +209,38 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
-        Logger.d { "guidanceRouteUnchanged" }
-        naviViewModel.guidanceRouteUnchanged(aGuidance)
+        viewModel.guidanceRouteUnchanged(aGuidance)
     }
 
     override fun guidanceRouteUnchangedWithError(aGuidnace: KNGuidance, aError: KNError) {
-        Logger.d { "guidanceRouteUnchangedWithError" }
-        naviViewModel.guidanceRouteUnchangedWithError(aGuidnace, aError)
+        viewModel.guidanceRouteUnchangedWithError(aGuidnace, aError)
     }
 
     override fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
-        Logger.d { "didUpdateCitsGuide" }
-        naviViewModel.didUpdateCitsGuide(aGuidance, aCitsGuide)
+        viewModel.didUpdateCitsGuide(aGuidance, aCitsGuide)
     }
 
     override fun guidanceDidUpdateLocation(
         aGuidance: KNGuidance,
         aLocationGuide: KNGuide_Location
     ) {
-        Logger.d { "guidanceDidUpdateLocation" }
         aLocationGuide.location?.let { naviViewModel.updateCurrentLocation(it) }
-        naviViewModel.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
+        viewModel.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
     }
 
     override fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
-        Logger.d { "guidanceDidUpdateRouteGuide" }
-        naviViewModel.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
+        viewModel.guidanceDidUpdateRouteGuide(aGuidance, aRouteGuide)
     }
 
     override fun guidanceDidUpdateSafetyGuide(
         aGuidance: KNGuidance,
         aSafetyGuide: KNGuide_Safety?
     ) {
-        Logger.d { "guidanceDidUpdateSafetyGuide" }
-        naviViewModel.guidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide)
+        viewModel.guidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide)
     }
 
     override fun guidanceDidUpdateAroundSafeties(guidance: KNGuidance, safeties: List<KNSafety>?) {
-        Logger.d { "guidanceDidUpdateAroundSafeties" }
-        naviViewModel.guidanceDidUpdateAroundSafeties(guidance, safeties)
+        viewModel.guidanceDidUpdateAroundSafeties(guidance, safeties)
         safeties?.forEach { safety ->
             Toast.makeText(
                 this,
@@ -274,56 +255,52 @@ class MainActivity : AppCompatActivity(),
         aVoiceGuide: KNGuide_Voice,
         aNewData: MutableList<ByteArray>
     ): Boolean {
-        Logger.d { "shouldPlayVoiceGuide" }
-        naviViewModel.shouldPlayVoiceGuide(aGuidance,
+        viewModel.shouldPlayVoiceGuide(aGuidance,
             aVoiceGuide,
             aNewData)
         return true
     }
 
     override fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        Logger.d { "willPlayVoiceGuide" }
-        naviViewModel.willPlayVoiceGuide(aGuidance,
+        viewModel.willPlayVoiceGuide(aGuidance,
             aVoiceGuide)
     }
 
     override fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        Logger.d { "didFinishPlayVoiceGuide" }
-        naviViewModel.didFinishPlayVoiceGuide(aGuidance,
+        viewModel.didFinishPlayVoiceGuide(aGuidance,
             aVoiceGuide)
     }
 
     override fun naviViewGuideEnded() {
-        //naviViewModel.naviViewGuideEnded()
     }
 
     override fun naviViewGuideState(state: KNGuideState) {
-        //naviViewModel.naviViewGuideState(state)
     }
 }
 
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun HomeScreen(
     navController: NavHostController,
     mainViewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val cardItems = listOf(
-        CardItem("Title 1", "This is a description", MainViewModel.NavRoutes.DETAILS),
-        CardItem("Title 2", "This is a description", MainViewModel.NavRoutes.MAP),
+        CardItem("Title 1", "This is a description", MainViewModel.NavRoutes.Details),
+        CardItem("Title 2", "This is a description", MainViewModel.NavRoutes.Map),
     )
 
     LaunchedEffect(Unit) {
         mainViewModel.navigationEvent.collect { route ->
             route.let {
-                navController.navigate(it.toString())
+                navController.navigate(it.route)
             }
         }
     }
 
-    NavHost(navController, startDestination = MainViewModel.NavRoutes.HOME.toString(), modifier = modifier) {
-        composable(MainViewModel.NavRoutes.HOME.toString()) {
+    NavHost(navController, startDestination = MainViewModel.NavRoutes.Home.route, modifier = modifier) {
+        composable(MainViewModel.NavRoutes.Home.route) {
             // 기존의 Home 화면 컴포즈 코드
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -339,16 +316,16 @@ fun HomeScreen(
                 GridCard(cardItems)
             }
         }
-        composable(MainViewModel.NavRoutes.DETAILS.toString()) {
+        composable(MainViewModel.NavRoutes.Details.route) {
             Dashboard()
         }
-        composable(MainViewModel.NavRoutes.MAP.toString()) {
+        composable(MainViewModel.NavRoutes.Map.route) {
             MapEnterScreen()
         }
-        composable(MainViewModel.NavRoutes.NAV.toString()) {
-            NaviScreen(activity = LocalContext.current as MainActivity)
+        composable(MainViewModel.NavRoutes.Nav.route) {
+            NaviScreen(activity = LocalContext.current as MainActivity, guidanceEvent = mainViewModel.requestNavGuidance.value)
         }
-        composable(MainViewModel.NavRoutes.LOGS.toString()) {
+        composable(MainViewModel.NavRoutes.Logs.route) {
             LogsScreen()
         }
     }
@@ -509,7 +486,7 @@ fun GridCard(cardItem:List<CardItem>) {
                     .height(80.dp),
                 onClick = {
                     coroutineScope.launch {
-                       UIEventBus.post(UIEvents.reuestNavHost(cardItem[index].date))
+                       UIEventBus.post(UIEvents.reuestNavHost(cardItem[index].route))
                     }
                 },
                 cornerRadius = 12.dp
