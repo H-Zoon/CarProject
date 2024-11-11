@@ -1,6 +1,7 @@
 package com.devidea.chevy.ui.screen.map
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -41,6 +42,7 @@ import com.devidea.chevy.ui.theme.MainBackground
 
 @Composable
 fun SearchBar(
+    modifier: Modifier,
     searchText: TextFieldValue,
     onSearchTextChange: (TextFieldValue) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
@@ -49,21 +51,21 @@ fun SearchBar(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     Box(
-        modifier = Modifier.background(
+        modifier = modifier.background(
             when {
                 isSearchResult -> Color.White // uiState가 SearchResult일 때 흰색 배경
                 isFocused -> Color.White // 포커스가 있을 때도 흰색 배경
                 else -> Color.Transparent // 그 외에는 투명
             }
-        )
+        ).animateContentSize() // 크기 변화 애니메이션
     ) {
         TextField(
             value = searchText,
             onValueChange = onSearchTextChange,
             label = { Text("검색어 입력") },
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = modifier
                 .padding(16.dp)
+                .fillMaxWidth()
                 .onFocusChanged { state ->
                     onFocusChanged(state.isFocused)
                     isFocused = state.isFocused
@@ -81,15 +83,7 @@ fun SearchBar(
             shape = RoundedCornerShape(8.dp),
             keyboardActions = KeyboardActions(
                 onSearch = { onSearch() }
-            ),
-            /*leadingIcon = {
-                IconButton(onClick = onSearch) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "검색"
-                    )
-                }
-            }*/
+            )
         )
     }
 }

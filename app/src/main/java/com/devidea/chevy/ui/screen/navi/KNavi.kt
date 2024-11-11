@@ -1,11 +1,16 @@
 package com.devidea.chevy.ui.screen.navi
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.datas.navi.NavigationIconType
@@ -23,6 +28,7 @@ import com.kakaomobility.knsdk.KNRGCode
 import com.kakaomobility.knsdk.KNRouteAvoidOption
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
@@ -47,10 +53,6 @@ fun sendToCameraInfo(safetyGuide: List<KNSafety>?, currentLocation: KNLocation?)
                 val cameraDistance = currentLocation?.distToLocation(safety.location) ?: 0
                 ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
                 ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
-                ToDeviceCodec.sendNextInfo(
-                    NavigationIconType.NONE.value,
-                    cameraDistance
-                )
 
             } else {
                 ToDeviceCodec.sendCameraDistance(0, 0, 0)
@@ -154,127 +156,172 @@ private fun findGuideAsset(code: KNRGCode): NavigationIconType {
 
 @Composable
 fun NaviScreen(
-    activity: MainActivity,
     viewModel: NaviViewModel = hiltViewModel(),
     guidanceEvent: GuidanceStartEvent.RequestNavGuidance?,
     modifier: Modifier = Modifier,
 ) {
+    val activity = LocalContext.current as MainActivity
     // 상태 수집
     val currentLocation by viewModel.currentLocation.collectAsState()
     val safetyGuide by viewModel.safetyGuide.collectAsState()
     val routeGuide by viewModel.routeGuide.collectAsState()
+    val naviGuideState by viewModel.naviGuideState.collectAsState()
 
     LaunchedEffect(currentLocation) {
         safetyGuide?.let { sendToCameraInfo(it.safetiesOnGuide, currentLocation) }
         routeGuide?.let { updateToSafetyInfo(it, currentLocation) }
     }
 
-    AndroidView(
-        factory = {
-            KNNaviView(activity).apply {
-                sndVolume = 1f
-                useDarkMode = true
-                fuelType = KNCarFuel.KNCarFuel_Gasoline
-                carType = KNCarType.KNCarType_1
-                guideStateDelegate = activity
+    // knNaviView를 상태로 관리
+    var knNaviView by remember { mutableStateOf<KNNaviView?>(null) }
+    // LaunchedEffect를 사용하여 knNaviView 초기화
+    LaunchedEffect(Unit) {
+        // KNSDK 설정
+        // KNNaviView 생성 및 설정
+        val view = KNNaviView(activity).apply {
+            sndVolume = 1f
+            useDarkMode = true
+            fuelType = KNCarFuel.KNCarFuel_Gasoline
+            carType = KNCarType.KNCarType_1
+            guideStateDelegate = activity
+        }
+
+        // 상태 업데이트
+        knNaviView = view
+    }
+
+    // guidanceEvent 변경 시 초기화 로직 실행
+    LaunchedEffect(knNaviView) {
+        if(naviGuideState == KNGuideState.KNGuideState_OnRouteGuide || naviGuideState == KNGuideState.KNGuideState_OnSafetyGuide){
+            knNaviView?.guideCancel()
+            knNaviView?.guidance?.stop()
+            KNSDK.sharedGuidance()?.stop()
+        }
+
+        KNSDK.sharedGuidance()?.apply {
+            if (guidanceEvent != null) {
+                knNaviView?.initWithGuidance(
+                    this,
+                    guidanceEvent.knTrip,
+                    guidanceEvent.knRoutePriority,
+                    guidanceEvent.curAvoidOptions
+                )
             }
-        },
-        modifier = modifier.fillMaxSize(),
-        update = { view ->
-            KNSDK.sharedGuidance()?.apply {
-                if (guidanceEvent != null) {
-                    view.initWithGuidance(
-                        this,
-                        guidanceEvent.knTrip,
-                        guidanceEvent.knRoutePriority,
-                        guidanceEvent.curAvoidOptions
-                    )
-                } else {
-                    view.initWithGuidance(
-                        this,
-                        null,
-                        KNRoutePriority.KNRoutePriority_Recommand,
-                        KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
-                    )
-                }
-            }
+        }
 
-            CoroutineScope(Dispatchers.Main).launch {
-                KNNAVEventBus.events.collect { event ->
-                    when (event) {
-                        is GuidanceEvent.GuidanceCheckingRouteChange -> {
-                            view.guidanceCheckingRouteChange(event.guidance)
-                        }
+        KNSDK.sharedGuidance()?.apply {
+            guideStateDelegate = activity
+            locationGuideDelegate = activity
+            routeGuideDelegate = activity
+            safetyGuideDelegate = activity
+            voiceGuideDelegate = activity
+            citsGuideDelegate = activity
+        }
 
-                        is GuidanceEvent.GuidanceDidUpdateIndoorRoute -> {
-                            view.guidanceDidUpdateIndoorRoute(event.guidance, event.route)
-                        }
+        ToDeviceCodec.notifyIsNaviRunning(1)
 
-                        is GuidanceEvent.GuidanceDidUpdateRoutes -> {
-                            view.guidanceDidUpdateRoutes(event.guidance, event.routes, event.multiRouteInfo)
-                        }
+        CoroutineScope(Dispatchers.Main).launch {
+            KNNAVEventBus.events.collect { event ->
+                when (event) {
+                    is GuidanceEvent.GuidanceCheckingRouteChange -> {
+                        knNaviView?.guidanceCheckingRouteChange(event.guidance)
+                    }
 
-                        is GuidanceEvent.GuidanceGuideStarted -> {
-                            view.guidanceGuideStarted(event.guidance)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateIndoorRoute -> {
+                        knNaviView?.guidanceDidUpdateIndoorRoute(event.guidance, event.route)
+                    }
 
-                        is GuidanceEvent.GuidanceGuideEnded -> {
-                            view.guidanceGuideEnded(event.guidance)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateRoutes -> {
+                        knNaviView?.guidanceDidUpdateRoutes(event.guidance, event.routes, event.multiRouteInfo)
+                    }
 
-                        is GuidanceEvent.GuidanceOutOfRoute -> {
-                            view.guidanceOutOfRoute(event.guidance)
-                        }
+                    is GuidanceEvent.GuidanceGuideStarted -> {
+                        knNaviView?.guidanceGuideStarted(event.guidance)
+                    }
 
-                        is GuidanceEvent.GuidanceRouteChanged -> {
-                            view.guidanceRouteChanged(event.guidance)
-                        }
+                    is GuidanceEvent.GuidanceGuideEnded -> {
+                        knNaviView?.guidanceGuideEnded(event.guidance)
+                    }
 
-                        is GuidanceEvent.GuidanceRouteUnchanged -> {
-                            view.guidanceRouteUnchanged(event.guidance)
-                        }
+                    is GuidanceEvent.GuidanceOutOfRoute -> {
+                        knNaviView?.guidanceOutOfRoute(event.guidance)
+                    }
 
-                        is GuidanceEvent.GuidanceRouteUnchangedWithError -> {
-                            view.guidanceRouteUnchangedWithError(event.guidance, event.error)
-                        }
+                    is GuidanceEvent.GuidanceRouteChanged -> {
+                        knNaviView?.guidanceRouteChanged(event.guidance)
+                    }
 
-                        is GuidanceEvent.DidUpdateCitsGuide -> {
-                            view.didUpdateCitsGuide(event.guidance, event.citsGuide)
-                        }
+                    is GuidanceEvent.GuidanceRouteUnchanged -> {
+                        knNaviView?.guidanceRouteUnchanged(event.guidance)
+                    }
 
-                        is GuidanceEvent.GuidanceDidUpdateLocation -> {
-                            view.guidanceDidUpdateLocation(event.guidance, event.locationGuide)
-                            event.locationGuide.location?.let { viewModel.updateCurrentLocation(it) }
-                        }
+                    is GuidanceEvent.GuidanceRouteUnchangedWithError -> {
+                        knNaviView?.guidanceRouteUnchangedWithError(event.guidance, event.error)
+                    }
 
-                        is GuidanceEvent.GuidanceDidUpdateRouteGuide -> {
-                            view.guidanceDidUpdateRouteGuide(event.guidance, event.routeGuide)
-                            viewModel.updateRouteGuide(event.routeGuide)
-                        }
+                    is GuidanceEvent.DidUpdateCitsGuide -> {
+                        knNaviView?.didUpdateCitsGuide(event.guidance, event.citsGuide)
+                    }
 
-                        is GuidanceEvent.GuidanceDidUpdateSafetyGuide -> {
-                            view.guidanceDidUpdateSafetyGuide(event.guidance, event.safetyGuide)
-                            viewModel.updateSafetyGuide(event.safetyGuide)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateLocation -> {
+                        knNaviView?.guidanceDidUpdateLocation(event.guidance, event.locationGuide)
+                        event.locationGuide.location?.let { viewModel.updateCurrentLocation(it) }
+                    }
 
-                        is GuidanceEvent.GuidanceDidUpdateAroundSafeties -> {
-                            view.guidanceDidUpdateAroundSafeties(event.guidance, event.safeties)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateRouteGuide -> {
+                        knNaviView?.guidanceDidUpdateRouteGuide(event.guidance, event.routeGuide)
+                        viewModel.updateRouteGuide(event.routeGuide)
+                    }
 
-                        is GuidanceEvent.ShouldPlayVoiceGuide -> {
-                            view.shouldPlayVoiceGuide(event.guidance, event.voiceGuide, event.newData)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateSafetyGuide -> {
+                        knNaviView?.guidanceDidUpdateSafetyGuide(event.guidance, event.safetyGuide)
+                        viewModel.updateSafetyGuide(event.safetyGuide)
+                    }
 
-                        is GuidanceEvent.WillPlayVoiceGuide -> {
-                            view.willPlayVoiceGuide(event.guidance, event.voiceGuide)
-                        }
+                    is GuidanceEvent.GuidanceDidUpdateAroundSafeties -> {
+                        knNaviView?.guidanceDidUpdateAroundSafeties(event.guidance, event.safeties)
+                    }
 
-                        is GuidanceEvent.DidFinishPlayVoiceGuide -> {
-                            view.didFinishPlayVoiceGuide(event.guidance, event.voiceGuide)
+                    is GuidanceEvent.ShouldPlayVoiceGuide -> {
+                        knNaviView?.shouldPlayVoiceGuide(event.guidance, event.voiceGuide, event.newData)
+                    }
+
+                    is GuidanceEvent.WillPlayVoiceGuide -> {
+                        knNaviView?.willPlayVoiceGuide(event.guidance, event.voiceGuide)
+                    }
+
+                    is GuidanceEvent.DidFinishPlayVoiceGuide -> {
+                        knNaviView?.didFinishPlayVoiceGuide(event.guidance, event.voiceGuide)
+                    }
+
+                    GuidanceEvent.NaviViewGuideEnded -> {
+                        Toast.makeText(activity, "naviViewGuideEnded", Toast.LENGTH_SHORT).show()
+                        knNaviView?.guideCancel()
+                        knNaviView?.guidance?.stop()
+                        KNSDK.sharedGuidance()?.stop()
+
+                        KNSDK.sharedGuidance()?.apply {
+                            Toast.makeText(activity, "init", Toast.LENGTH_SHORT).show()
+                            knNaviView?.initWithGuidance(
+                                this,
+                                null,
+                                KNRoutePriority.KNRoutePriority_Recommand,
+                                KNRouteAvoidOption.KNRouteAvoidOption_None.value
+                            )
                         }
+                    }
+                    is GuidanceEvent.NaviViewGuideState -> {
+                        Toast.makeText(activity, "naviViewGuideState", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
-    )
+    }
+
+    knNaviView?.let { view ->
+        AndroidView(
+            factory = { view },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }

@@ -37,7 +37,7 @@ fun foundRoot(
 
     val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
     val curAvoidOptions =
-        KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value or KNRouteAvoidOption.KNRouteAvoidOption_SZone.value
+        KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value
 
     KNSDK.makeTripWithStart(
         aStart = startKNPOI,

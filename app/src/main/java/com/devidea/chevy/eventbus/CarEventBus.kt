@@ -8,6 +8,7 @@ import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.common.objects.KNError
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
 import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
@@ -89,7 +90,7 @@ sealed class UIEvents {
 }
 
 object KNAVStartEventBus : IEventBusBehavior<GuidanceStartEvent> {
-    private val _events = MutableSharedFlow<GuidanceStartEvent>(replay = 1, extraBufferCapacity = 1)
+    private val _events = MutableSharedFlow<GuidanceStartEvent>()
     override val events = _events.asSharedFlow()
     override suspend fun post(event: GuidanceStartEvent) {
         _events.emit(event)
@@ -97,7 +98,7 @@ object KNAVStartEventBus : IEventBusBehavior<GuidanceStartEvent> {
 }
 
 sealed class GuidanceStartEvent {
-    data class RequestNavGuidance(val knTrip: KNTrip, val knRoutePriority: KNRoutePriority, val curAvoidOptions: Int) : GuidanceStartEvent()
+    data class RequestNavGuidance(val knTrip: KNTrip?, val knRoutePriority: KNRoutePriority, val curAvoidOptions: Int) : GuidanceStartEvent()
 }
 
 object KNNAVEventBus : IEventBusBehavior<GuidanceEvent> {
@@ -154,4 +155,6 @@ sealed class GuidanceEvent {
 
     data class WillPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
     data class DidFinishPlayVoiceGuide(val guidance: KNGuidance, val voiceGuide: KNGuide_Voice) : GuidanceEvent()
+    object NaviViewGuideEnded : GuidanceEvent()
+    data class NaviViewGuideState(val state: KNGuideState) : GuidanceEvent()
 }

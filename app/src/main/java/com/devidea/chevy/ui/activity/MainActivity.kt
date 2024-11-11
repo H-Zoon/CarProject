@@ -47,6 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -111,15 +112,6 @@ class MainActivity : AppCompatActivity(),
 
         lifecycleScope.launch(Dispatchers.IO) {
             BluetoothModel.initBTModel(this@MainActivity)
-        }
-
-        KNSDK.sharedGuidance()?.apply {
-            guideStateDelegate = this@MainActivity
-            locationGuideDelegate = this@MainActivity
-            routeGuideDelegate = this@MainActivity
-            safetyGuideDelegate = this@MainActivity
-            voiceGuideDelegate = this@MainActivity
-            citsGuideDelegate = this@MainActivity
         }
 
         setContent {
@@ -272,9 +264,11 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun naviViewGuideEnded() {
+        viewModel.naviViewGuideEnded()
     }
 
     override fun naviViewGuideState(state: KNGuideState) {
+        viewModel.naviViewGuideState(state)
     }
 }
 
@@ -291,17 +285,23 @@ fun HomeScreen(
         CardItem("Title 2", "This is a description", MainViewModel.NavRoutes.Map),
     )
 
-    LaunchedEffect(Unit) {
+    // navigationEvent를 수집하여 네비게이션 처리
+    LaunchedEffect(mainViewModel.navigationEvent) {
         mainViewModel.navigationEvent.collect { route ->
-            route.let {
-                navController.navigate(it.route)
+            navController.navigate(route.route) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
             }
         }
     }
 
+    val guidanceEvent by mainViewModel.requestNavGuidance.collectAsState()
+
     NavHost(navController, startDestination = MainViewModel.NavRoutes.Home.route, modifier = modifier) {
         composable(MainViewModel.NavRoutes.Home.route) {
-            // 기존의 Home 화면 컴포즈 코드
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -323,7 +323,7 @@ fun HomeScreen(
             MapEnterScreen()
         }
         composable(MainViewModel.NavRoutes.Nav.route) {
-            NaviScreen(activity = LocalContext.current as MainActivity, guidanceEvent = mainViewModel.requestNavGuidance.value)
+            NaviScreen(guidanceEvent = guidanceEvent)
         }
         composable(MainViewModel.NavRoutes.Logs.route) {
             LogsScreen()

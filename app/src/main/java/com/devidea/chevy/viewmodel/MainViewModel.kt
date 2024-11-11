@@ -13,6 +13,7 @@ import com.devidea.chevy.repository.device.DataStoreRepository
 import com.kakaomobility.knsdk.common.objects.KNError
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
+import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
 import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
@@ -265,4 +266,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun naviViewGuideEnded() {
+        viewModelScope.launch {
+            KNNAVEventBus.post(GuidanceEvent.NaviViewGuideEnded)
+        }
+    }
+
+    fun naviViewGuideState(state: KNGuideState) {
+        viewModelScope.launch {
+            KNNAVEventBus.post(GuidanceEvent.NaviViewGuideState(state))
+        }
+    }
 }
