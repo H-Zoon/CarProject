@@ -1,6 +1,7 @@
 package com.devidea.chevy.ui.activity
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -52,6 +53,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devidea.chevy.DebugActivity
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BluetoothModel
@@ -283,7 +285,10 @@ fun HomeScreen(
     val cardItems = listOf(
         CardItem("Title 1", "This is a description", MainViewModel.NavRoutes.Details),
         CardItem("Title 2", "This is a description", MainViewModel.NavRoutes.Map),
+        CardItem("Debug", "This is a description", MainViewModel.NavRoutes.Debug),
     )
+
+    val context = LocalContext.current
 
     // navigationEvent를 수집하여 네비게이션 처리
     LaunchedEffect(mainViewModel.navigationEvent) {
@@ -327,6 +332,10 @@ fun HomeScreen(
         }
         composable(MainViewModel.NavRoutes.Logs.route) {
             LogsScreen()
+        }
+        composable(MainViewModel.NavRoutes.Debug.route) {
+            val intent = Intent(context, DebugActivity::class.java)
+            context.startActivity(intent)
         }
     }
 }

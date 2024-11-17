@@ -47,6 +47,7 @@ import com.kakaomobility.knsdk.ui.view.KNNaviView_GuideStateDelegate
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/*
 @AndroidEntryPoint
 class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate, KNGuidance_CitsGuideDelegate, KNGuidance_LocationGuideDelegate,
@@ -134,21 +135,26 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
             voiceGuideDelegate = this@NaviActivity
             citsGuideDelegate = this@NaviActivity
 
-            /*// 안전운전 설정
+            */
+/*//*
+/ 안전운전 설정
             binding.naviView.initWithGuidance(
                 this,
                 null,
                 KNRoutePriority.KNRoutePriority_Recommand,
                 KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value
-            )*/
+            )*//*
+
         }
 
         ToDeviceCodec.notifyIsNaviRunning(1)
-        /*ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        */
+/*ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-        }*/
+        }*//*
+
 
         binding.naviView.sndVolume = 1f
         binding.naviView.useDarkMode = true
@@ -382,7 +388,8 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
             // U턴
             KNRGCode.KNRGCode_UTurn -> NavigationIconType.TURN_AROUND
 
-            /*
+            */
+/*
             // 고속도로 출입구
             KNRGCode.KNRGCode_OutHighway -> NavigationIconType.OUT_ROUNDABOUT
             KNRGCode.KNRGCode_InHighway -> NavigationIconType.ENTER_ROUNDABOUT
@@ -390,7 +397,8 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
             // 페리 항로
             KNRGCode.KNRGCode_InFerry -> NavigationIconType.ENTER_ROUNDABOUT
             KNRGCode.KNRGCode_OutFerry -> NavigationIconType.OUT_ROUNDABOUT
-             */
+             *//*
+
 
             // 터널 및 톨게이트
             KNRGCode.KNRGCode_OverPath -> NavigationIconType.ARRIVED_TUNNEL
@@ -437,4 +445,4 @@ class NaviActivity : AppCompatActivity(), KNGuidance_GuideStateDelegate,
     override fun naviViewGuideState(state: KNGuideState) {
         Toast.makeText(this, "$state", Toast.LENGTH_SHORT).show()
     }
-}
+}*/

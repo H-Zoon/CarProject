@@ -83,7 +83,7 @@ class DebugActivity : AppCompatActivity() {
             /* CoroutineScope(Dispatchers.Main).launch {
                 while (true){
                     delay(3000L)*/
-            ToDeviceCodec.sendNextInfo(5, 100)  // 예시로 인덱스 1, 거리 1000 전달
+            ToDeviceCodec.sendNextInfo(0, 100)  // 예시로 인덱스 1, 거리 1000 전달
             //}
             //}
 

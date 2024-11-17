@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -16,7 +17,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.datas.navi.NavigationIconType
 import com.devidea.chevy.datas.navi.isCameraType
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
-import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec.sendLaneInfo
 import com.devidea.chevy.eventbus.GuidanceEvent
 import com.devidea.chevy.eventbus.GuidanceStartEvent
 import com.devidea.chevy.eventbus.KNNAVEventBus
@@ -25,61 +25,66 @@ import com.devidea.chevy.viewmodel.NaviViewModel
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
 import com.kakaomobility.knsdk.KNRGCode
-import com.kakaomobility.knsdk.KNRouteAvoidOption
-import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
 import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety_Camera
 import com.kakaomobility.knsdk.ui.view.KNNaviView
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
-fun sendToCameraInfo(safetyGuide: List<KNSafety>?, currentLocation: KNLocation?) {
-    // safetiesOnGuide가 비어있거나 null인지 확인합니다.
-    if (safetyGuide.isNullOrEmpty()) {
-        ToDeviceCodec.sendLimitSpeed(0, 0)
-        ToDeviceCodec.sendCameraDistance(0, 0, 0)
-        //ToDeviceCodec.sendCameraDistanceEx(0, 0, 0);
-    } else {
-        // safetiesOnGuide 리스트를 순회합니다.
-        for (safety in safetyGuide) {
-            // 과속 단속 카메라 (코드 81, 82, 86, 100, 102, 103) 처리
-            if (isCameraType(safety.code.value)) {
-                val speedLimit = (safety as KNSafety_Camera).speedLimit
-                val cameraDistance = currentLocation?.distToLocation(safety.location) ?: 0
-                ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
-                ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
+suspend fun sendToCameraInfo(safetyGuide: List<KNSafety>?, currentLocation: KNLocation?) {
+    withContext(Dispatchers.IO) {
+        // safetiesOnGuide가 비어있거나 null인지 확인합니다.
+        if (safetyGuide.isNullOrEmpty()) {
+            ToDeviceCodec.sendLimitSpeed(0, 0)
+            ToDeviceCodec.sendCameraDistance(0, 0, 0)
+            //ToDeviceCodec.sendCameraDistanceEx(0, 0, 0);
+        } else {
+            // safetiesOnGuide 리스트를 순회합니다.
+            for (safety in safetyGuide) {
+                // 과속 단속 카메라 (코드 81, 82, 86, 100, 102, 103) 처리
+                if (isCameraType(safety.code.value)) {
+                    val speedLimit = (safety as KNSafety_Camera).speedLimit
+                    val cameraDistance = currentLocation?.distToLocation(safety.location) ?: 0
+                    ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
+                    ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
 
-            } else {
-                ToDeviceCodec.sendCameraDistance(0, 0, 0)
-                ToDeviceCodec.sendLimitSpeed(0, 0)
+                } else {
+                    ToDeviceCodec.sendCameraDistance(0, 0, 0)
+                    ToDeviceCodec.sendLimitSpeed(0, 0)
+                }
             }
         }
     }
 }
 
-fun updateToSafetyInfo(routeGuide: KNGuide_Route, currentLocation: KNLocation?) {
-    // 목표의 거리와 진행 방향 계산
-    val distance = routeGuide.curDirection?.location?.let { currentLocation?.distToLocation(it) } ?: 0
-    val guidanceAsset = routeGuide.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
+suspend fun updateToSafetyInfo(routeGuide: KNGuide_Route, currentLocation: KNLocation?) {
+    withContext(Dispatchers.IO) {
+        // 목표의 거리와 진행 방향 계산
+        val distance = routeGuide.curDirection?.location?.let { currentLocation?.distToLocation(it) } ?: 0
+        val guidanceAsset = routeGuide.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
 
-    // 결과 전송
-    ToDeviceCodec.sendNextInfo(guidanceAsset.value, distance)
+        // 결과 전송
+        ToDeviceCodec.sendNextInfo(icon = guidanceAsset.value, distance = distance)
 
-    //차선 정보가 있다면 추천 차선 계산
-    routeGuide.lane?.laneInfos?.let {
-        val recommendArray = IntArray(it.size)
+        //차선 정보가 있다면 추천 차선 계산
+        routeGuide.lane?.laneInfos?.let {
+            val recommendArray = IntArray(it.size)
 
-        // 추천 차선이면 1, 아니면 0을 배열에 저장
-        for (i in it.indices) {
-            recommendArray[i] = if (it[i].suggest == 1.toByte()) 1 else 0
+            // 추천 차선이면 1, 아니면 0을 배열에 저장
+            for (i in it.indices) {
+                recommendArray[i] = if (it[i].suggest == 1.toByte()) 1 else 0
+            }
+            //결과 전송
+            ToDeviceCodec.sendLaneInfo(recommendArray)
+        }?.run {
+            ToDeviceCodec.sendLineInfo(distance, 1)
         }
-        //결과 전송
-        sendLaneInfo(recommendArray)
     }
 }
 
@@ -160,55 +165,64 @@ fun NaviScreen(
     guidanceEvent: GuidanceStartEvent.RequestNavGuidance?,
     modifier: Modifier = Modifier,
 ) {
+    // Mutex를 remember를 사용하여 선언
+    val mutex = remember { Mutex() }
+
+    // 마지막 호출 시간을 추적하기 위한 상태 변수
+    var lastCallTime by remember { mutableStateOf(0L) }
+
     val activity = LocalContext.current as MainActivity
     // 상태 수집
     val currentLocation by viewModel.currentLocation.collectAsState()
     val safetyGuide by viewModel.safetyGuide.collectAsState()
     val routeGuide by viewModel.routeGuide.collectAsState()
     val naviGuideState by viewModel.naviGuideState.collectAsState()
-
-    LaunchedEffect(currentLocation) {
-        safetyGuide?.let { sendToCameraInfo(it.safetiesOnGuide, currentLocation) }
-        routeGuide?.let { updateToSafetyInfo(it, currentLocation) }
-    }
-
+    val coroutineScope = rememberCoroutineScope()
     // knNaviView를 상태로 관리
     var knNaviView by remember { mutableStateOf<KNNaviView?>(null) }
-    // LaunchedEffect를 사용하여 knNaviView 초기화
-    LaunchedEffect(Unit) {
-        // KNSDK 설정
-        // KNNaviView 생성 및 설정
-        val view = KNNaviView(activity).apply {
-            sndVolume = 1f
-            useDarkMode = true
-            fuelType = KNCarFuel.KNCarFuel_Gasoline
-            carType = KNCarType.KNCarType_1
-            guideStateDelegate = activity
-        }
 
-        // 상태 업데이트
-        knNaviView = view
-    }
+    AndroidView(
+        factory = {
+            KNNaviView(it).apply {
+                sndVolume = 1f
+                useDarkMode = true
+                fuelType = KNCarFuel.KNCarFuel_Gasoline
+                carType = KNCarType.KNCarType_1
+                guideStateDelegate = activity
+            }.also { view ->
+                knNaviView = view
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 
-    // guidanceEvent 변경 시 초기화 로직 실행
-    LaunchedEffect(knNaviView) {
-        if(naviGuideState == KNGuideState.KNGuideState_OnRouteGuide || naviGuideState == KNGuideState.KNGuideState_OnSafetyGuide){
-            knNaviView?.guideCancel()
-            knNaviView?.guidance?.stop()
-            KNSDK.sharedGuidance()?.stop()
-        }
+    // LaunchedEffect는 currentLocation이 변경될 때마다 실행됩니다.
+    LaunchedEffect(currentLocation) {
+        val currentTime = System.currentTimeMillis()
 
-        KNSDK.sharedGuidance()?.apply {
-            if (guidanceEvent != null) {
-                knNaviView?.initWithGuidance(
-                    this,
-                    guidanceEvent.knTrip,
-                    guidanceEvent.knRoutePriority,
-                    guidanceEvent.curAvoidOptions
-                )
+        // 마지막 호출 시점으로부터 1초(1000ms)가 경과했는지 확인
+        if (currentTime - lastCallTime >= 1000) {
+            mutex.withLock {
+                try {
+                    // 쓰로틀 조건을 만족하는 경우 함수 호출
+                    /*safetyGuide?.let {
+                        sendToCameraInfo(it.safetiesOnGuide, currentLocation)
+                    }*/
+                    routeGuide?.let {
+                        updateToSafetyInfo(it, currentLocation)
+                    }
+
+                    // 마지막 호출 시간을 현재 시간으로 업데이트
+                    lastCallTime = currentTime
+                } catch (e: Exception) {
+                    // 에러 처리 로직 (예: 로그 출력, 사용자에게 알림 등)
+                    e.printStackTrace()
+                }
             }
         }
+    }
 
+    LaunchedEffect(Unit) {
         KNSDK.sharedGuidance()?.apply {
             guideStateDelegate = activity
             locationGuideDelegate = activity
@@ -218,9 +232,9 @@ fun NaviScreen(
             citsGuideDelegate = activity
         }
 
-        ToDeviceCodec.notifyIsNaviRunning(1)
+        //ToDeviceCodec.notifyIsNaviRunning(1)
 
-        CoroutineScope(Dispatchers.Main).launch {
+        coroutineScope.launch {
             KNNAVEventBus.events.collect { event ->
                 when (event) {
                     is GuidanceEvent.GuidanceCheckingRouteChange -> {
@@ -299,29 +313,24 @@ fun NaviScreen(
                         knNaviView?.guideCancel()
                         knNaviView?.guidance?.stop()
                         KNSDK.sharedGuidance()?.stop()
-
-                        KNSDK.sharedGuidance()?.apply {
-                            Toast.makeText(activity, "init", Toast.LENGTH_SHORT).show()
-                            knNaviView?.initWithGuidance(
-                                this,
-                                null,
-                                KNRoutePriority.KNRoutePriority_Recommand,
-                                KNRouteAvoidOption.KNRouteAvoidOption_None.value
-                            )
-                        }
                     }
+
                     is GuidanceEvent.NaviViewGuideState -> {
-                        Toast.makeText(activity, "naviViewGuideState", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(activity, "value : ${event.state}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
     }
 
-    knNaviView?.let { view ->
-        AndroidView(
-            factory = { view },
-            modifier = Modifier.fillMaxSize()
-        )
+    LaunchedEffect(knNaviView){
+        KNSDK.sharedGuidance()?.apply {
+            knNaviView?.initWithGuidance(
+                this,
+                guidanceEvent?.knTrip,
+                guidanceEvent!!.knRoutePriority,
+                guidanceEvent.curAvoidOptions
+            )
+        }
     }
 }

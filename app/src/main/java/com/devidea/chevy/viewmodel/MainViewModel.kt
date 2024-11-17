@@ -41,6 +41,7 @@ class MainViewModel @Inject constructor(
         object Map: NavRoutes("map")
         object Nav: NavRoutes("nav")
         object Logs : NavRoutes("log")
+        object Debug : NavRoutes("debug")
     }
 
     private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
