@@ -85,7 +85,7 @@ fun MainScreen(viewModel: MapViewModel) {
                     isSearchResult = uiState is MapViewModel.UiState.SearchResult, // 상태 전달
                     modifier = Modifier
                         .weight(1f) // SearchBar가 가능한 많은 공간을 차지하도록 설정
-                        .height(65.dp) // SearchBar의 높이를 고정 (필요 시 조정)
+                        .height(85.dp) // SearchBar의 높이를 고정 (필요 시 조정)
                 )
 
                 // 버튼과 검색창 사이의 간격을 AnimatedVisibility로 감싸 애니메이션 처리

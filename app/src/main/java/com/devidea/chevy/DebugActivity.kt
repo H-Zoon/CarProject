@@ -83,7 +83,7 @@ class DebugActivity : AppCompatActivity() {
             /* CoroutineScope(Dispatchers.Main).launch {
                 while (true){
                     delay(3000L)*/
-            ToDeviceCodec.sendNextInfo(0, 100)  // 예시로 인덱스 1, 거리 1000 전달
+            ToDeviceCodec.sendNextInfo(2, 100)  // 예시로 인덱스 1, 거리 1000 전달
             //}
             //}
 
@@ -106,7 +106,7 @@ class DebugActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistance).setOnClickListener {
-            ToDeviceCodec.sendCameraDistance(10, 10, 2)  // 예시로 거리 300, 속도 40, 60 전달
+            ToDeviceCodec.sendCameraDistance(0, 0, 0)  // 예시로 거리 300, 속도 40, 60 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistanceEx).setOnClickListener {
