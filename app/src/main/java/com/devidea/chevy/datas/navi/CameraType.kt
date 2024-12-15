@@ -1,5 +1,7 @@
 package com.devidea.chevy.datas.navi
 
+import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
+
 /**
  * public static final int	BICYCLE	6
  * public static final int	BREAKRULE	3
@@ -33,4 +35,12 @@ enum class CameraType(val code: Int) {
 
 fun isCameraType(code: Int): Boolean {
     return CameraType.values().any { it.code == code }
+}
+
+// 확장 함수 또는 유틸리티 함수 (필요에 따라 구현)
+fun KNSafety.isCameraType(): Boolean {
+    return when (this.code.value) {
+        81, 82, 86, 100, 102, 103 -> true
+        else -> false
+    }
 }

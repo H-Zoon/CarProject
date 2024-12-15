@@ -1,6 +1,5 @@
 package com.devidea.chevy.ui.screen.navi
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.navi.NavigationIconType
-import com.devidea.chevy.datas.navi.isCameraType
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import com.devidea.chevy.eventbus.GuidanceEvent
 import com.devidea.chevy.eventbus.GuidanceStartEvent
@@ -40,92 +38,78 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/*suspend fun sendToCameraInfo(safetyGuide: List<KNSafety>, currentLocation: KNLocation?) {
-    withContext(Dispatchers.IO) {
-        // safetiesOnGuide 리스트를 순회합니다.
-        for (safety in safetyGuide) {
-            // 과속 단속 카메라 (코드 81, 82, 86, 100, 102, 103) 처리
-            if (isCameraType(safety.code.value)) {
-                val speedLimit = (safety as KNSafety_Camera).speedLimit
-                val cameraDistance = currentLocation?.distToLocation(safety.location) ?: 0
-                ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
-                ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
-            } else {
-                ToDeviceCodec.sendCameraDistance(0, 0, 0)
-                ToDeviceCodec.sendLimitSpeed(0, 0)
-            }
-        }
-    }
-}*/
+/*fun sendGuide(routeGuide: KNGuide_Route?, currentLocation: KNLocation?) {
+    val distance =
+        routeGuide?.curDirection?.location?.let { currentLocation?.distToLocation(it) } ?: 0
+    val guidanceAsset =
+        routeGuide?.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
 
-/*suspend fun updateToSafetyInfo(routeGuide: KNGuide_Route?, currentLocation: KNLocation?) {
-    withContext(Dispatchers.IO) {
-        // 목표의 거리와 진행 방향 계산
-        val distance = routeGuide?.curDirection?.location?.let { currentLocation?.distToLocation(it) } ?: 0
-        val guidanceAsset = routeGuide?.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
-
-        //차선 정보가 있다면 추천 차선 계산
-        routeGuide?.lane?.laneInfos?.let {
-            val recommendArray = IntArray(it.size)
-            for (i in it.indices) {
-                recommendArray[i] = if (it[i].suggest == 1.toByte()) 1 else 0
-            }
-            ToDeviceCodec.sendLaneInfo(recommendArray)
-        }
-        // 결과 전송
-        ToDeviceCodec.sendNextInfo(icon = guidanceAsset.value, distance = distance)
-    }
-}*/
-
-// 확장 함수 또는 유틸리티 함수 (필요에 따라 구현)
-private fun KNSafety.isCameraType(): Boolean {
-    return when (this.code.value) {
-        81, 82, 86, 100, 102, 103 -> true
-        else -> false
-    }
+    ToDeviceCodec.sendNextInfo(icon = guidanceAsset.value, distance = distance)
+    Logger.w(shouldUpdate = true) { "안내전송 : ${guidanceAsset.value}, 거리:$distance" }
 }
 
-suspend fun updateToSafetyInfo(
-    safetyGuide: KNGuide_Safety?,
-    routeGuide: KNGuide_Route?,
-    currentLocation: KNLocation?
-) = withContext(Dispatchers.IO) {
-    try {
-        safetyGuide?.safetiesOnGuide?.filter { it.isCameraType() }?.forEach { safety ->
-            if (safety is KNSafety_Camera) {
-                val speedLimit = safety.speedLimit
-                val cameraDistance = currentLocation?.distToLocation(safety.location) ?: 0
-                Logger.d(shouldUpdate = true) { "카메라 speed: $speedLimit cameraDistance $cameraDistance" }
-                ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
-                ToDeviceCodec.sendCameraDistance(cameraDistance, speedLimit, 1)
-            }
+fun sendLane(routeGuide: KNGuide_Route?) {
+    // laneInfos가 존재하고 비어있지 않은지 확인
+    val laneInfos = routeGuide?.lane?.laneInfos
+
+    if (laneInfos.isNullOrEmpty()) {
+        // 요구조건 1 & 2: routeGuide가 null이거나 laneInfos가 비어있는 경우
+        Logger.w(shouldUpdate = true) { "routeGuide가 null이거나 laneInfos가 비어있습니다. 기본값을 전송합니다." }
+        ToDeviceCodec.sendLaneInfo(intArrayOf(0))
+        return
+    }
+
+    // laneInfos가 존재하고 비어있지 않은 경우
+    val recommendArray = laneInfos.map { if (it.suggest == 1.toByte()) 1 else 0 }.toIntArray()
+    Logger.w(shouldUpdate = true) { "추천차선 : ${recommendArray[0]}" }
+
+    ToDeviceCodec.sendLaneInfo(recommendArray)
+}
+
+fun sendSafety(safetyGuide: KNGuide_Safety?, currentLocation: KNLocation?) {
+    // 요구조건 1: safetyGuide 또는 currentLocation이 null인 경우 기본값 전송 후 종료
+    if (safetyGuide == null || currentLocation == null) {
+        Logger.w(shouldUpdate = true) { "safetyGuide 또는 currentLocation이 null입니다. 기본값을 전송합니다." }
+        ToDeviceCodec.sendCameraDistance(0, 0, 0)
+        ToDeviceCodec.sendLimitSpeed(0, 0)
+        return
+    }
+
+    // 카메라 유형의 안전 정보 필터링 및 KNSafety_Camera 타입으로 캐스팅
+    val cameraSafeties = safetyGuide.safetiesOnGuide
+        ?.filter { it.isCameraType() }
+        ?.filterIsInstance<KNSafety_Camera>()
+        ?: emptyList()
+
+    if (cameraSafeties.isNotEmpty()) {
+        // 요구조건 2: 가장 가까운 카메라 하나만 선택
+        val closestSafety = cameraSafeties.minByOrNull { safety ->
+            currentLocation.distToLocation(safety.location)
         }
 
-        // 기본값 설정: 카메라가 없는 경우에만 전송
-        if (safetyGuide?.safetiesOnGuide?.none { it.isCameraType() } == true) {
+        if (closestSafety != null) {
+            val speedLimit = closestSafety.speedLimit
+            val cameraDistance = currentLocation.distToLocation(closestSafety.location)
+
+            Logger.w(shouldUpdate = true) { "가장 가까운 카메라 - 속도 제한: $speedLimit, 거리: $cameraDistance" }
+
+            ToDeviceCodec.sendCameraDistance(cameraDistance, 1, 1)
+            ToDeviceCodec.sendLimitSpeed(cameraDistance, speedLimit)
+        } else {
+            // 예상하지 못한 경우 기본값 전송
+            Logger.w(shouldUpdate = true) { "가장 가까운 안전 정보가 존재하지 않습니다. 기본값을 전송합니다." }
             ToDeviceCodec.sendCameraDistance(0, 0, 0)
             ToDeviceCodec.sendLimitSpeed(0, 0)
         }
-
-        val distance = routeGuide?.curDirection?.location?.let { currentLocation?.distToLocation(it) } ?: 0
-        val guidanceAsset = routeGuide?.curDirection?.let { findGuideAsset(it.rgCode) } ?: NavigationIconType.NONE
-
-        // 차선 정보 처리
-        routeGuide?.lane?.laneInfos?.takeIf { it.isNotEmpty() }?.let { laneInfos ->
-            val recommendArray = laneInfos.map { if (it.suggest == 1.toByte()) 1 else 0 }.toIntArray()
-            Logger.d(shouldUpdate = true) { "추천차선 : $recommendArray" }
-            //ToDeviceCodec.sendLaneInfo(recommendArray)
-        }
-
-        // 최종 정보 전송
-        ToDeviceCodec.sendNextInfo(icon = guidanceAsset.value, distance = distance)
-    } catch (e: Exception) {
-        // 적절한 로깅 또는 에러 처리
-        Logger.e(shouldUpdate = true) { "에러  : $e" }
+    } else {
+        //  모든 isCameraType()이 false인 경우 기본값 전송
+        Logger.w(shouldUpdate = true) { "카메라 유형의 안전 정보가 없습니다. 기본값을 전송합니다." }
+        ToDeviceCodec.sendCameraDistance(0, 0, 0)
+        ToDeviceCodec.sendLimitSpeed(0, 0)
     }
-}
+}*/
 
-private fun findGuideAsset(code: KNRGCode): NavigationIconType {
+fun findGuideAsset(code: KNRGCode): NavigationIconType {
     return when (code) {
         KNRGCode.KNRGCode_Start -> NavigationIconType.NONE
         KNRGCode.KNRGCode_Goal -> NavigationIconType.ARRIVED_DESTINATION
@@ -209,10 +193,6 @@ fun NaviScreen(
 
     val activity = LocalContext.current as MainActivity
     // 상태 수집
-    val currentLocation by viewModel.currentLocation.collectAsState()
-    val safetyGuide by viewModel.safetyGuide.collectAsState()
-    val routeGuide by viewModel.routeGuide.collectAsState()
-    val naviGuideState by viewModel.naviGuideState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     // knNaviView를 상태로 관리
     var knNaviView by remember { mutableStateOf<KNNaviView?>(null) }
@@ -231,24 +211,6 @@ fun NaviScreen(
         },
         modifier = Modifier.fillMaxSize()
     )
-
-    // LaunchedEffect는 currentLocation이 변경될 때마다 실행됩니다.
-    LaunchedEffect(currentLocation) {
-        val currentTime = System.currentTimeMillis()
-        // 마지막 호출 시점으로부터 1초(1000ms)가 경과했는지 확인
-        if (currentTime - lastCallTime >= 1000) {
-            mutex.withLock {
-                try {
-                    updateToSafetyInfo(safetyGuide, routeGuide, currentLocation)
-                    // 마지막 호출 시간을 현재 시간으로 업데이트
-                    lastCallTime = currentTime
-                } catch (e: Exception) {
-                    // 에러 처리 로직 (예: 로그 출력, 사용자에게 알림 등)
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
 
     LaunchedEffect(Unit) {
         KNSDK.sharedGuidance()?.apply {
@@ -274,7 +236,11 @@ fun NaviScreen(
                     }
 
                     is GuidanceEvent.GuidanceDidUpdateRoutes -> {
-                        knNaviView?.guidanceDidUpdateRoutes(event.guidance, event.routes, event.multiRouteInfo)
+                        knNaviView?.guidanceDidUpdateRoutes(
+                            event.guidance,
+                            event.routes,
+                            event.multiRouteInfo
+                        )
                     }
 
                     is GuidanceEvent.GuidanceGuideStarted -> {
@@ -325,7 +291,11 @@ fun NaviScreen(
                     }
 
                     is GuidanceEvent.ShouldPlayVoiceGuide -> {
-                        knNaviView?.shouldPlayVoiceGuide(event.guidance, event.voiceGuide, event.newData)
+                        knNaviView?.shouldPlayVoiceGuide(
+                            event.guidance,
+                            event.voiceGuide,
+                            event.newData
+                        )
                     }
 
                     is GuidanceEvent.WillPlayVoiceGuide -> {
@@ -341,10 +311,16 @@ fun NaviScreen(
                         knNaviView?.guideCancel()
                         knNaviView?.guidance?.stop()
                         KNSDK.sharedGuidance()?.stop()
+                        ToDeviceCodec.sendCameraDistance(0, 0, 0)
+                        ToDeviceCodec.sendLimitSpeed(0, 0)
+                        ToDeviceCodec.sendNextInfo(icon = 0, distance = 0)
+                        ToDeviceCodec.sendLaneInfo(intArrayOf(0))
                     }
 
                     is GuidanceEvent.NaviViewGuideState -> {
-                        Toast.makeText(activity, "value : ${event.state}", Toast.LENGTH_SHORT).show()
+                        viewModel.setNaviGuideState(event.state)
+                        Toast.makeText(activity, "value : ${event.state}", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }

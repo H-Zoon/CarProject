@@ -218,7 +218,9 @@ class MainActivity : AppCompatActivity(),
         aGuidance: KNGuidance,
         aLocationGuide: KNGuide_Location
     ) {
-        aLocationGuide.location?.let { naviViewModel.updateCurrentLocation(it) }
+        lifecycleScope.launch(Dispatchers.IO) {
+            aLocationGuide.location?.let { naviViewModel.updateCurrentLocation(it) }
+        }
         viewModel.guidanceDidUpdateLocation(aGuidance, aLocationGuide)
     }
 

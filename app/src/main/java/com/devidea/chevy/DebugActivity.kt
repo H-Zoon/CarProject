@@ -94,7 +94,7 @@ class DebugActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendLineInfo).setOnClickListener {
-            ToDeviceCodec.sendLineInfo(1, 0)  // 예시로 두 개의 인수 전달
+            //ToDeviceCodec.sendLineInfo(1, 0)  // 예시로 두 개의 인수 전달
         }
 
         findViewById<Button>(R.id.buttonNotifyIsNaviRunning).setOnClickListener {
@@ -102,11 +102,11 @@ class DebugActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.buttonSendLimitSpeed).setOnClickListener {
-            ToDeviceCodec.sendLimitSpeed(10, 10)  // 예시로 거리 120, 제한속도 80 전달
+            ToDeviceCodec.sendLimitSpeed(120, 10)  // 예시로 거리 120, 제한속도 80 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistance).setOnClickListener {
-            ToDeviceCodec.sendCameraDistance(0, 0, 0)  // 예시로 거리 300, 속도 40, 60 전달
+            ToDeviceCodec.sendCameraDistance(120, 10, 2)  // 예시로 거리 300, 속도 40, 60 전달
         }
 
         findViewById<Button>(R.id.buttonSendCameraDistanceEx).setOnClickListener {
@@ -118,7 +118,7 @@ class DebugActivity : AppCompatActivity() {
          * 0 = 점등
          */
         findViewById<Button>(R.id.buttonSendLaneInfo).setOnClickListener {
-            ToDeviceCodec.sendLaneInfo(intArrayOf(0, 0, 0, 0))  // 예시로 배열 전달
+            ToDeviceCodec.sendLaneInfo(intArrayOf(0, 0, 1, 0))  // 예시로 배열 전달
         }
 
         findViewById<Button>(R.id.buttonSendLaneInfoEx).setOnClickListener {

@@ -1,6 +1,5 @@
 package com.devidea.chevy.datas.obd.protocol.codec
 
-import android.util.Log
 import com.devidea.chevy.Logger
 import com.devidea.chevy.bluetooth.BluetoothModel
 import java.util.Calendar
@@ -56,25 +55,25 @@ object ToDeviceCodec {
             }
         }
     }
-    @JvmStatic
+
     fun sendJumpPage(i: Int) {
         val bArr = byteArrayOf(0, i.toByte())
         packAndSendMsg(8, bArr, bArr.size)
     }
 
-    @JvmStatic
+
     fun sendChangeSetting(i: Int, i2: Int) {
         val bArr = byteArrayOf(1, i.toByte(), i2.toByte())
         packAndSendMsg(8, bArr, bArr.size)
     }
 
-    @JvmStatic
+
     fun sendAdjustHeight(i: Int) {
         val bArr = byteArrayOf(2, i.toByte())
         packAndSendMsg(8, bArr, bArr.size)
     }
 
-    @JvmStatic
+
     fun sendTrafficStatus(bArr: ByteArray) {
         val bArr2 = ByteArray(bArr.size + 1)
         bArr2[0] = 49
@@ -82,7 +81,7 @@ object ToDeviceCodec {
         packAndSendMsg(52, bArr2, bArr2.size)
     }
 
-    @JvmStatic
+
     fun sendNotification(i: Int, str: String?, str2: String?) {
         var i2 = str?.toByteArray()?.size ?: 0
         if (i2 > 255) {
@@ -120,7 +119,13 @@ object ToDeviceCodec {
         )
     }
 
-    fun sendLineInfo(distance: Int, lane: Int) {
+
+    /*
+    distance : 목적지까지 남은 총 거리
+    lane : 누적 주행거리
+    OBD에서 미사용
+     */
+    /*fun sendLineInfo(distance: Int, lane: Int) {
         val bArr = byteArrayOf(
             2,
             (distance and 255).toByte(),
@@ -133,7 +138,7 @@ object ToDeviceCodec {
             ((lane and 0xff000000.toInt()) shr 24).toByte()
         )
         packAndSendMsg(bArr, bArr.size)
-    }
+    }*/
 
     fun notifyIsNaviRunning(b: Byte) {
         Logger.i{"notifyIsNaviRunning:${b.toInt()}"}
@@ -152,13 +157,13 @@ object ToDeviceCodec {
         )
     }
 
-    fun sendCameraDistance(distance: Int, limitedSpeed: Int, type: Int) {
+    fun sendCameraDistance(distance: Int, alert: Int, type: Int) {
         packAndSendMsg(
             byteArrayOf(
                 16,
                 (distance and 255).toByte(),
                 ((distance and 65280) shr 8).toByte(),
-                limitedSpeed.toByte(),
+                alert.toByte(),
                 type.toByte()
             ), 5
         )
