@@ -75,6 +75,10 @@ class LeBTService : Service() {
         startForeground(1, notification)
     }
 
+    fun requestMtu(mtu: Int) {
+        bluetoothGatt?.requestMtu(mtu)
+    }
+
     internal fun updateNotification(state: BTState) {
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -195,7 +199,9 @@ class LeBTService : Service() {
             super.onMtuChanged(gatt, mtu, status)
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Logger.d { "change MTU succeed = $mtu" }
+                mBleServiceCallback?.onMtuChanged(mtu)
             }
+
         }
 
 
@@ -293,6 +299,7 @@ class LeBTService : Service() {
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                mBleServiceCallback?.onMessageSent()
                 Logger.d { "Characteristic written successfully" }
             }
         }
@@ -313,7 +320,6 @@ class LeBTService : Service() {
                 characteristic.value = value
                 bluetoothGatt?.writeCharacteristic(characteristic)
             } else {
-
                 bluetoothGatt?.writeCharacteristic(
                     characteristic,
                     value,
@@ -326,5 +332,7 @@ class LeBTService : Service() {
     interface BleServiceCallback {
         fun onBTStateChange(state: BTState)
         fun onReceived(data: ByteArray, length: Int)
+        fun onMtuChanged(mtu: Int)
+        fun onMessageSent()
     }
 }

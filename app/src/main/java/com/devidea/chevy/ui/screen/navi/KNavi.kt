@@ -186,11 +186,6 @@ fun NaviScreen(
     guidanceEvent: GuidanceStartEvent.RequestNavGuidance?,
     modifier: Modifier = Modifier,
 ) {
-    // Mutex를 remember를 사용하여 선언
-    val mutex = remember { Mutex() }
-    // 마지막 호출 시간을 추적하기 위한 상태 변수
-    var lastCallTime by remember { mutableStateOf(0L) }
-
     val activity = LocalContext.current as MainActivity
     // 상태 수집
     val coroutineScope = rememberCoroutineScope()
