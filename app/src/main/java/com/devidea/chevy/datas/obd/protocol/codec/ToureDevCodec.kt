@@ -1,6 +1,6 @@
 package com.devidea.chevy.datas.obd.protocol.codec
 
-import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.bluetooth.BluetoothModelV2
 
 object ToureDevCodec {
     private fun packAndSendMsg(bArr: ByteArray, i: Int) {
@@ -19,7 +19,7 @@ object ToureDevCodec {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                BluetoothModel.sendMessage(bArr2)
+                BluetoothModelV2.sendMessage(bArr2)
                 return
             }
         }

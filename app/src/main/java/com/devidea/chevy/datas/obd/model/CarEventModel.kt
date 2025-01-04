@@ -3,7 +3,7 @@ package com.devidea.chevy.datas.obd.model;
 import android.widget.Toast
 import com.devidea.chevy.App
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.protocol.pid.OBDData
 import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
 import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
@@ -526,7 +526,7 @@ class CarEventModel @Inject constructor() {
             i3++
         }
         bArr2[i + 4] = (i2 and 255).toByte()
-        BluetoothModel.sendMessage(bArr2)
+        BluetoothModelV2.sendMessage(bArr2)
     }
 
     private fun postViewEvent(event: CarEvents) {

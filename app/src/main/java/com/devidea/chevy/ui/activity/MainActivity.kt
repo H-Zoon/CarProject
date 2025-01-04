@@ -56,7 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.chevy.DebugActivity
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.eventbus.UIEventBus
 import com.devidea.chevy.eventbus.UIEvents
 import com.devidea.chevy.ui.components.CardItem
@@ -69,7 +69,6 @@ import com.devidea.chevy.ui.screen.navi.NaviScreen
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.NaviViewModel
-import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_CitsGuideDelegate
@@ -113,7 +112,7 @@ class MainActivity : AppCompatActivity(),
         enableEdgeToEdge()
 
         lifecycleScope.launch(Dispatchers.IO) {
-            BluetoothModel.initBTModel(this@MainActivity)
+            BluetoothModelV2.initBTModel(this@MainActivity)
         }
 
         setContent {
@@ -350,11 +349,11 @@ fun BluetoothActionComponent(viewModel: MainViewModel) {
     val onClickAction = remember(bluetoothState) {
         when (bluetoothState) {
             BTState.CONNECTED -> {
-                { BluetoothModel.disconnectBT() }
+                { BluetoothModelV2.disconnectBT() }
             }
 
             else -> {
-                { BluetoothModel.connectBT() }
+                { BluetoothModelV2.connectBT() }
             }
         }
     }

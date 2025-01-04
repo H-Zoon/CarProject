@@ -1,7 +1,7 @@
 package com.devidea.chevy.datas.obd.model
 
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.ControlFuncs
 
 class ControlModule {
@@ -253,7 +253,7 @@ class ControlModule {
         bArr2[3] = 5
         System.arraycopy(bArr, 0, bArr2, 4, length)
         bArr2[length + 4] = bArr2.drop(2).take(length + 2).sumOf { it.toInt() and 255 }.toByte()
-        BluetoothModel.sendMessage(bArr2)
+        BluetoothModelV2.sendMessage(bArr2)
     }
 
     private fun packAndSendMsgID06(bArr: ByteArray, length: Int) {
@@ -264,7 +264,7 @@ class ControlModule {
         bArr2[3] = 6
         System.arraycopy(bArr, 0, bArr2, 4, length)
         bArr2[length + 4] = bArr2.drop(2).take(length + 2).sumOf { it.toInt() and 255 }.toByte()
-        BluetoothModel.sendMessage(bArr2)
+        BluetoothModelV2.sendMessage(bArr2)
     }
 
     private fun packHudMsgAndSend(bArr: ByteArray, i: Int) {
@@ -288,7 +288,7 @@ class ControlModule {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                BluetoothModel.sendMessage(bArr2)
+                BluetoothModelV2.sendMessage(bArr2)
                 return
             }
         }

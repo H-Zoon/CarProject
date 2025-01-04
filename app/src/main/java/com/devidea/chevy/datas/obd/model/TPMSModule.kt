@@ -1,7 +1,7 @@
 package com.devidea.chevy.datas.obd.model;
 
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModel
+import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.protocol.OBDProtocol
 import com.devidea.chevy.datas.obd.TPMSData
 
@@ -79,7 +79,7 @@ class TPMSModule {
             i2 += bArr2[i3].toInt() and 255
         }
         bArr2[i + 4] = (i2 and 255).toByte()
-        BluetoothModel.sendMessage(bArr2)
+        BluetoothModelV2.sendMessage(bArr2)
     }
 
     // 타이어 데이터를 처리하는 메서드
