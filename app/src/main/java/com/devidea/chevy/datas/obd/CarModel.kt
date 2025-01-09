@@ -1,14 +1,6 @@
 package com.devidea.chevy.datas.obd
 
-import com.devidea.chevy.Logger
-import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
-import com.devidea.chevy.eventbus.Event
-import com.devidea.chevy.eventbus.EventBus
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
-object CarModel {
+/*object CarModel {
     private var mMsgEndPos = 0
     private var mMsgLen = 0
     var mMsgBuf = ByteArray(1024)
@@ -99,16 +91,16 @@ object CarModel {
                 3 -> EventBus.post(Event.carStateEvent(bArr))
                 //4 -> tpmsModule.onRecvTPMS(bArr) 추후 고도화
                 //5, 6 -> controlModule.onRecvMsg(bArr, bArr.size) 추후 고도화
-                /*52 -> {
+                *//*52 -> {
                 ImageSender.getInstance().onRecvMessage(bArr2, i)
                 if (bArr2[1] == 49.toByte()) {
                     NaviModel.getInstance().onRequestTrafficData()
                 }
-            }*/
+            }*//*
                 //53 -> PhoneModel.getIns(SinjetApplication.getInstance()).onRecvMsg(bArr2, bArr2.size)
                 //54 -> DynamicFontModel.getInstance().onRecvDynamicFontMsg(bArr2)
                 55 -> ToureDevCodec.sendHeartbeat()
-                /*55, 56, 57 -> {
+                *//*55, 56, 57 -> {
                 CarModel.getInstance().devModule.setMCUUpgradeMethod(1)
                 McuUpgradeModel.getInstance().onRecvUpgradeMsg(bArr2, i)
             }
@@ -120,8 +112,8 @@ object CarModel {
                         Data.byte2int(bArr2[10], bArr2[11], bArr2[12], bArr2[13])
                     )
                 }
-            }*/
+            }*//*
             }
         }
     }
-}
+}*/

@@ -1,17 +1,13 @@
-package com.devidea.chevy.datas.obd.model;
+package com.devidea.chevy.datas.obd.model
 
-import android.widget.Toast
-import com.devidea.chevy.App
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.protocol.pid.OBDData
-import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
-import com.devidea.chevy.datas.obd.protocol.codec.ToureDevCodec
 import com.devidea.chevy.datas.obd.protocol.OBDProtocol
 import com.devidea.chevy.eventbus.Event
 import com.devidea.chevy.eventbus.EventBus
 import com.devidea.chevy.eventbus.CarEvents
 import com.devidea.chevy.eventbus.CarEventBus
+import com.devidea.chevy.service.BleServiceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -19,10 +15,13 @@ import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.util.Locale
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.experimental.and
 
-class CarEventModel @Inject constructor() {
-
+@Singleton
+class CarEventModel @Inject constructor(
+    private val serviceManager: BleServiceManager
+) {
     companion object {
         const val MSG_NO_INFO_TIMEOUT = 100
         const val TEMPERATURE_RANGE_MAX = 112
@@ -31,6 +30,7 @@ class CarEventModel @Inject constructor() {
         const val VOLTAGE_RANGE_MIN = 10.0f
         private const val TAG = "CarEventModule"
     }
+    private val bleService by lazy { serviceManager.getService() }
 
     init {
         CoroutineScope(Dispatchers.Main).launch {
@@ -85,7 +85,8 @@ class CarEventModel @Inject constructor() {
         when (bArr[1]) {
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
-                    ToureDevCodec.sendConnectECU(0)
+                    //packAndSendMsg(byteArrayOf(2, i.toByte()), 2)
+                    bleService?.sendHandleMsg(Pair(byteArrayOf(2, i.toByte()), 2))
                 }
             }
 
@@ -422,14 +423,13 @@ class CarEventModel @Inject constructor() {
     private fun onRecvHudMsg(bArr: ByteArray) {
         if (bArr[1] == 7.toByte()) {
             when (bArr[2]) {
-                0.toByte() -> ToDeviceCodec.sendCurrentTime()
+                //0.toByte() -> ToDeviceCodec.sendCurrentTime()
                 1.toByte() -> isTimeSync = true
             }
         }
     }
 
     fun handlePid(i: Int, b: Byte, b2: Byte, b3: Byte, b4: Byte) {
-        Toast.makeText(App.ApplicationContext(), "call", Toast.LENGTH_SHORT).show()
         mObdData.handlePid(i, b, b2, b3, b4)
     }
 
@@ -509,7 +509,8 @@ class CarEventModel @Inject constructor() {
 
     private fun sendGearFunSet(i: Int, i2: Int) {
         val bArr = byteArrayOf(33, (i and 15 or (i2 and 15 shl 4)).toByte())
-        packAndSendMsg(bArr, bArr.size)
+        //packAndSendMsg(bArr, bArr.size)
+        bleService?.sendHandleMsg(Pair(bArr, bArr.size))
     }
 
     private fun packAndSendMsg(bArr: ByteArray, i: Int) {
@@ -526,7 +527,7 @@ class CarEventModel @Inject constructor() {
             i3++
         }
         bArr2[i + 4] = (i2 and 255).toByte()
-        BluetoothModelV2.sendMessage(bArr2)
+        //bleService?.sendHandleMsg(bArr2)
     }
 
     private fun postViewEvent(event: CarEvents) {

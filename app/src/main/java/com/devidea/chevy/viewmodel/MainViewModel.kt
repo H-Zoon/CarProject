@@ -2,36 +2,27 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.App
 import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.eventbus.GuidanceEvent
 import com.devidea.chevy.eventbus.GuidanceStartEvent
-import com.devidea.chevy.eventbus.KNNAVEventBus
 import com.devidea.chevy.eventbus.KNAVStartEventBus
-import com.devidea.chevy.eventbus.UIEventBus
-import com.devidea.chevy.eventbus.UIEvents
 import com.devidea.chevy.repository.device.DataStoreRepository
-import com.kakaomobility.knsdk.common.objects.KNError
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
-import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
-import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
-import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
-import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
-import com.kakaomobility.knsdk.guidance.knguidance.routeguide.objects.KNMultiRouteInfo
-import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
-import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
-import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
-import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
+import com.devidea.chevy.service.BleService
+import com.devidea.chevy.service.BleServiceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val repository: DataStoreRepository
+    private val repository: DataStoreRepository,
+    private val serviceManager: BleServiceManager
 ) : ViewModel() {
 
     // NavRoutes를 sealed class로 변경
@@ -40,21 +31,27 @@ class MainViewModel @Inject constructor(
         object Details: NavRoutes("details")
         object Map: NavRoutes("map")
         object Nav: NavRoutes("nav")
-        object Logs : NavRoutes("log")
-        object Debug : NavRoutes("debug")
     }
 
     private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
     val bluetoothStatus: StateFlow<BTState> get() = _bluetoothStatus
 
-    private val _navigationEvent = MutableStateFlow<NavRoutes>(NavRoutes.Home)
-    val navigationEvent: StateFlow<NavRoutes> get() = _navigationEvent
+    private val _navigationEvent = MutableSharedFlow<NavRoutes>(replay = 0)
+    val navigationEvent = _navigationEvent.asSharedFlow()
 
     private val _requestNavGuidance = MutableStateFlow<GuidanceStartEvent.RequestNavGuidance?>(null)
     val requestNavGuidance: StateFlow<GuidanceStartEvent.RequestNavGuidance?> get() = _requestNavGuidance
 
     init {
         viewModelScope.launch {
+            launch {
+                serviceManager.serviceState.collect { service ->
+                    if (service != null) {
+                        observeBtState(service)
+                    }
+                }
+            }
+
             launch {
                 repository.getConnectDate().collect { difference ->
                     _lastConnectDate.value =
@@ -85,24 +82,11 @@ class MainViewModel @Inject constructor(
             }
 
             launch {
-                UIEventBus.events.collect {
-                    when(it){
-                        is UIEvents.reuestNavHost -> {
-                            _navigationEvent.value = it.value
-                        }
-                        is UIEvents.reuestBluetooth -> {
-                            _bluetoothStatus.value = it.value
-                        }
-                    }
-                }
-            }
-
-            launch {
                 KNAVStartEventBus.events.collect{
                     when(it){
                         is GuidanceStartEvent.RequestNavGuidance -> {
                             _requestNavGuidance.value = it
-                            _navigationEvent.value = NavRoutes.Nav
+                            _navigationEvent.emit(NavRoutes.Nav)
                         }
                     }
                 }
@@ -119,163 +103,16 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-    fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceCheckingRouteChange(aGuidance))
-        }
+    suspend fun requestNavHost(value : NavRoutes){
+        _navigationEvent.emit(value)
     }
 
-    // 실내 경로 업데이트 시 호출
-    fun guidanceDidUpdateIndoorRoute(aGuidance: KNGuidance, aRoute: KNRoute?) {
+    private fun observeBtState(service: BleService) {
         viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateIndoorRoute(aGuidance, aRoute))
-        }
-    }
-
-    // 주행 중 경로 변경 시 호출
-    fun guidanceDidUpdateRoutes(
-        aGuidance: KNGuidance,
-        aRoutes: List<KNRoute>,
-        aMultiRouteInfo: KNMultiRouteInfo?
-    ) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateRoutes(aGuidance, aRoutes, aMultiRouteInfo))
-        }
-    }
-
-    // 길 안내 시작 시 호출
-    fun guidanceGuideStarted(aGuidance: KNGuidance) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceGuideStarted(aGuidance))
-        }
-    }
-
-    // 길 안내 종료 시 호출
-    fun guidanceGuideEnded(aGuidance: KNGuidance) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceGuideEnded(aGuidance))
-        }
-    }
-
-    // 경로 이탈 시 호출
-    fun guidanceOutOfRoute(aGuidance: KNGuidance) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceOutOfRoute(aGuidance))
-        }
-    }
-
-    // 경로 변경 시 호출
-    fun guidanceRouteChanged(
-        aGuidance: KNGuidance,
-        aFromRoute: KNRoute,
-        aFromLocation: KNLocation,
-        aToRoute: KNRoute,
-        aToLocation: KNLocation,
-        aChangeReason: KNGuideRouteChangeReason
-    ) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(
-                GuidanceEvent.GuidanceRouteChanged(
-                    aGuidance,
-                    aFromRoute,
-                    aFromLocation,
-                    aToRoute,
-                    aToLocation,
-                    aChangeReason
-                )
-            )
-        }
-    }
-
-    // 경로가 변경되지 않았을 때 호출
-    fun guidanceRouteUnchanged(aGuidance: KNGuidance) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceRouteUnchanged(aGuidance))
-        }
-    }
-
-    // 경로 변경 오류 시 호출
-    fun guidanceRouteUnchangedWithError(aGuidance: KNGuidance, aError: KNError) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceRouteUnchangedWithError(aGuidance, aError))
-        }
-    }
-
-    // C-ITS 안내 업데이트 시 호출
-    fun didUpdateCitsGuide(aGuidance: KNGuidance, aCitsGuide: KNGuide_Cits) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.DidUpdateCitsGuide(aGuidance, aCitsGuide))
-        }
-    }
-
-    // 위치 정보 업데이트 시 호출
-    fun guidanceDidUpdateLocation(
-        aGuidance: KNGuidance,
-        aLocationGuide: KNGuide_Location
-    ) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateLocation(aGuidance, aLocationGuide))
-        }
-    }
-
-    // 경로 안내 정보 업데이트 시 호출
-    fun guidanceDidUpdateRouteGuide(aGuidance: KNGuidance, aRouteGuide: KNGuide_Route) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateRouteGuide(aGuidance, aRouteGuide))
-        }
-    }
-
-    // 안전 운행 정보 업데이트 시 호출
-    fun guidanceDidUpdateSafetyGuide(
-        aGuidance: KNGuidance,
-        aSafetyGuide: KNGuide_Safety?
-    ) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateSafetyGuide(aGuidance, aSafetyGuide))
-        }
-    }
-
-    // 주변 안전 정보 업데이트 시 호출
-    fun guidanceDidUpdateAroundSafeties(aGuidance: KNGuidance, aSafeties: List<KNSafety>?) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.GuidanceDidUpdateAroundSafeties(aGuidance, aSafeties))
-        }
-    }
-
-    // 음성 안내 사용 여부 결정 시 호출
-    fun shouldPlayVoiceGuide(
-        aGuidance: KNGuidance,
-        aVoiceGuide: KNGuide_Voice,
-        aNewData: MutableList<ByteArray>
-    ) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.ShouldPlayVoiceGuide(aGuidance, aVoiceGuide, aNewData))
-        }
-    }
-
-    // 음성 안내 시작 시 호출
-    fun willPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.WillPlayVoiceGuide(aGuidance, aVoiceGuide))
-        }
-    }
-
-    // 음성 안내 종료 시 호출
-    fun didFinishPlayVoiceGuide(aGuidance: KNGuidance, aVoiceGuide: KNGuide_Voice) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.DidFinishPlayVoiceGuide(aGuidance, aVoiceGuide))
-        }
-    }
-
-    fun naviViewGuideEnded() {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.NaviViewGuideEnded)
-        }
-    }
-
-    fun naviViewGuideState(state: KNGuideState) {
-        viewModelScope.launch {
-            KNNAVEventBus.post(GuidanceEvent.NaviViewGuideState(state))
+            service.btState.collect { state ->
+                _bluetoothStatus.value = state
+                // 필요에 따라 추가 로직 구현
+            }
         }
     }
 }

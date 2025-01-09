@@ -15,8 +15,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.devidea.chevy.eventbus.GuidanceStartEvent
 import com.devidea.chevy.eventbus.KNAVStartEventBus
-import com.devidea.chevy.eventbus.UIEventBus
-import com.devidea.chevy.eventbus.UIEvents
 import com.devidea.chevy.ui.LocationDetailBottomSheet
 import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
@@ -25,7 +23,7 @@ import com.kakaomobility.knsdk.KNRoutePriority
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen(viewModel: MapViewModel) {
+fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
     val coroutineScope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
@@ -48,7 +46,7 @@ fun MainScreen(viewModel: MapViewModel) {
                     focusManager.clearFocus()
                 } else {
                     coroutineScope.launch {
-                        UIEventBus.post(UIEvents.reuestNavHost(MainViewModel.NavRoutes.Home))
+                        mainViewModel.requestNavHost(MainViewModel.NavRoutes.Home)
                     }
                 }
             }

@@ -1,10 +1,17 @@
 package com.devidea.chevy.datas.obd.model
 
+import com.devidea.chevy.App
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.ControlFuncs
+import com.devidea.chevy.service.BleService
+import com.devidea.chevy.service.BleServiceManager
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ControlModule {
+@Singleton
+class ControlModule @Inject constructor(
+    private val serviceManager: BleServiceManager
+) {
     companion object {
         private const val CMD_LOCK = 3
         private const val CMD_POWER = 1
@@ -15,6 +22,7 @@ class ControlModule {
         private const val ON = 1
         private const val TAG = "ControlModule"
     }
+    private val bleService by lazy { serviceManager.getService() }
 
     private var mControllingItem = ControlFuncs.CAR_TRUNK_OPEN
     private var mIsSettingPassword = false
@@ -253,7 +261,7 @@ class ControlModule {
         bArr2[3] = 5
         System.arraycopy(bArr, 0, bArr2, 4, length)
         bArr2[length + 4] = bArr2.drop(2).take(length + 2).sumOf { it.toInt() and 255 }.toByte()
-        BluetoothModelV2.sendMessage(bArr2)
+        //bleService?.sendMessage(bArr2)
     }
 
     private fun packAndSendMsgID06(bArr: ByteArray, length: Int) {
@@ -264,7 +272,7 @@ class ControlModule {
         bArr2[3] = 6
         System.arraycopy(bArr, 0, bArr2, 4, length)
         bArr2[length + 4] = bArr2.drop(2).take(length + 2).sumOf { it.toInt() and 255 }.toByte()
-        BluetoothModelV2.sendMessage(bArr2)
+        //bleService?.sendMessage(bArr2)
     }
 
     private fun packHudMsgAndSend(bArr: ByteArray, i: Int) {
@@ -288,7 +296,7 @@ class ControlModule {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                BluetoothModelV2.sendMessage(bArr2)
+                //bleService?.sendMessage(bArr2)
                 return
             }
         }

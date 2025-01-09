@@ -1,17 +1,19 @@
 package com.devidea.chevy.datas.obd.protocol.codec
 
+import com.devidea.chevy.App
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModelV2
 import java.util.Calendar
 
-object ToDeviceCodec {
+/*object ToDeviceCodec {
 
     const val HUD_PAGE_MAIN = 1
     const val HUD_PAGE_SETTING = 4
     const val HUD_PAGE_TPMS = 2
     const val HUD_PAGE_VOLTAGE_TEMP = 3
 
-    private fun packAndSendMsg(i: Int, bArr: ByteArray, i2: Int) {
+    val bleService = App.instance.serviceManager.getService()
+
+    private fun SendControlMsg(i: Int, bArr: ByteArray, i2: Int) {
         val bArr2 = ByteArray(i2 + 5)
         var i3 = 0
         bArr2[0] = -1
@@ -27,14 +29,14 @@ object ToDeviceCodec {
                 i4++
             } else {
                 bArr2[i5] = (i3 and 255).toByte()
-                BluetoothModelV2.sendMessage(bArr2)
+                bleService?.sendMessage(bArr2)
                 return
             }
         }
     }
 
 
-    private fun packAndSendMsg(bArr: ByteArray, i: Int) {
+    private fun sendNaviMsg(bArr: ByteArray, i: Int) {
         val bArr2 = ByteArray(i + 5)
         var i2 = 0
         bArr2[0] = -1
@@ -50,7 +52,7 @@ object ToDeviceCodec {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                BluetoothModelV2.sendMessage(bArr2)
+                bleService?.sendMessage(bArr2)
                 return
             }
         }
@@ -58,19 +60,19 @@ object ToDeviceCodec {
 
     fun sendJumpPage(i: Int) {
         val bArr = byteArrayOf(0, i.toByte())
-        packAndSendMsg(8, bArr, bArr.size)
+        SendControlMsg(8, bArr, bArr.size)
     }
 
 
     fun sendChangeSetting(i: Int, i2: Int) {
         val bArr = byteArrayOf(1, i.toByte(), i2.toByte())
-        packAndSendMsg(8, bArr, bArr.size)
+        SendControlMsg(8, bArr, bArr.size)
     }
 
 
     fun sendAdjustHeight(i: Int) {
         val bArr = byteArrayOf(2, i.toByte())
-        packAndSendMsg(8, bArr, bArr.size)
+        SendControlMsg(8, bArr, bArr.size)
     }
 
 
@@ -78,7 +80,7 @@ object ToDeviceCodec {
         val bArr2 = ByteArray(bArr.size + 1)
         bArr2[0] = 49
         System.arraycopy(bArr, 0, bArr2, 1, bArr.size)
-        packAndSendMsg(52, bArr2, bArr2.size)
+        SendControlMsg(52, bArr2, bArr2.size)
     }
 
 
@@ -103,11 +105,11 @@ object ToDeviceCodec {
         str2?.toByteArray()?.let {
             System.arraycopy(it, 0, bArr, i4, i3)
         }
-        packAndSendMsg(52, bArr, bArr.size)
+        SendControlMsg(52, bArr, bArr.size)
     }
 
     fun sendNextInfo(icon: Int, distance: Int) {
-        packAndSendMsg(
+        sendNaviMsg(
             byteArrayOf(
                 0,
                 icon.toByte(),
@@ -120,12 +122,12 @@ object ToDeviceCodec {
     }
 
 
-    /*
+    *//*
     distance : 목적지까지 남은 총 거리
     lane : 누적 주행거리
     OBD에서 미사용
-     */
-    /*fun sendLineInfo(distance: Int, lane: Int) {
+     *//*
+    *//*fun sendLineInfo(distance: Int, lane: Int) {
         val bArr = byteArrayOf(
             2,
             (distance and 255).toByte(),
@@ -138,15 +140,15 @@ object ToDeviceCodec {
             ((lane and 0xff000000.toInt()) shr 24).toByte()
         )
         packAndSendMsg(bArr, bArr.size)
-    }*/
+    }*//*
 
     fun notifyIsNaviRunning(b: Byte) {
         Logger.i{"notifyIsNaviRunning:${b.toInt()}"}
-        packAndSendMsg(byteArrayOf(-32, b), 2)
+        sendNaviMsg(byteArrayOf(-32, b), 2)
     }
 
     fun sendLimitSpeed(distance: Int, limitedSpeed: Int) {
-        packAndSendMsg(
+        sendNaviMsg(
             byteArrayOf(
                 1,
                 (distance and 255).toByte(),
@@ -158,7 +160,7 @@ object ToDeviceCodec {
     }
 
     fun sendCameraDistance(distance: Int, alert: Int, type: Int) {
-        packAndSendMsg(
+        sendNaviMsg(
             byteArrayOf(
                 16,
                 (distance and 255).toByte(),
@@ -170,7 +172,7 @@ object ToDeviceCodec {
     }
 
     fun sendCameraDistanceEx(i: Int, i2: Int, i3: Int) {
-        packAndSendMsg(
+        sendNaviMsg(
             byteArrayOf(
                 19,
                 (i and 255).toByte(),
@@ -184,7 +186,7 @@ object ToDeviceCodec {
     fun sendLaneInfo(iArr: IntArray?) {
         if (iArr == null) {
             val bArr = byteArrayOf(17, 0)
-            packAndSendMsg(bArr, bArr.size)
+            sendNaviMsg(bArr, bArr.size)
             return
         }
         val bArr2 = ByteArray(iArr.size + 2)
@@ -193,13 +195,13 @@ object ToDeviceCodec {
         for (i in 2 until bArr2.size) {
             bArr2[i] = iArr[i - 2].toByte()
         }
-        packAndSendMsg(bArr2, bArr2.size)
+        sendNaviMsg(bArr2, bArr2.size)
     }
 
     fun sendLaneInfoEx(iArr: IntArray?) {
         if (iArr == null) {
             val bArr = byteArrayOf(18)
-            packAndSendMsg(bArr, bArr.size)
+            sendNaviMsg(bArr, bArr.size)
             return
         }
         val bArr2 = ByteArray(iArr.size + 1)
@@ -207,13 +209,13 @@ object ToDeviceCodec {
         for (i in 1 until bArr2.size) {
             bArr2[i] = iArr[i - 1].toByte()
         }
-        packAndSendMsg(bArr2, bArr2.size)
+        sendNaviMsg(bArr2, bArr2.size)
     }
 
     fun sendLaneInfoExV2(iArr: IntArray?) {
         if (iArr == null) {
             val bArr = byteArrayOf(21)
-            packAndSendMsg(bArr, bArr.size)
+            sendNaviMsg(bArr, bArr.size)
             return
         }
         val bArr2 = ByteArray(iArr.size + 1)
@@ -221,7 +223,7 @@ object ToDeviceCodec {
         for (i in 1 until bArr2.size) {
             bArr2[i] = iArr[i - 1].toByte()
         }
-        packAndSendMsg(bArr2, bArr2.size)
+        sendNaviMsg(bArr2, bArr2.size)
     }
 
     fun sendNextRoadName(str: String?) {
@@ -231,7 +233,7 @@ object ToDeviceCodec {
         val bArr = ByteArray(str.toByteArray().size + 1)
         bArr[0] = 5
         System.arraycopy(str.toByteArray(), 0, bArr, 1, str.toByteArray().size)
-        packAndSendMsg(bArr, bArr.size)
+        sendNaviMsg(bArr, bArr.size)
     }
 
     fun sendCurrentTime() {
@@ -255,12 +257,12 @@ object ToDeviceCodec {
             i6.toByte()
         )
         Logger.d {"sendCurrentTime$i,$i2,$i3,$i4,$i5,$i6"}
-        packAndSendMsg(bArr, bArr.size)
+        sendNaviMsg(bArr, bArr.size)
 
 
         val bArr2 =
             byteArrayOf(0xFF.toByte(), 0x55, 6, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x1F.toByte())
-        packAndSendMsg(bArr2, bArr2.size)
+        sendNaviMsg(bArr2, bArr2.size)
 
     }
-}
+}*/

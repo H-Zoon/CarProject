@@ -1,12 +1,10 @@
+/*
 package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.Logger
-import com.devidea.chevy.datas.navi.NavigationIconType
 import com.devidea.chevy.datas.navi.isCameraType
-import com.devidea.chevy.datas.obd.protocol.codec.ToDeviceCodec
-import com.devidea.chevy.ui.screen.navi.findGuideAsset
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
 import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
 import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
@@ -50,7 +48,7 @@ class NaviViewModel @Inject constructor() : ViewModel() {
                 }
         }
     }
-    
+
     // 상태 업데이트 메서드
     suspend fun updateCurrentLocation(location: KNLocation) {
         _currentLocation.emit(location)
@@ -70,7 +68,7 @@ class NaviViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun sendGuide(currentLocation: KNLocation?) {
-        val distance =
+ val distance =
             routeGuide.value?.curDirection?.location?.let { currentLocation?.distToLocation(it) }
                 ?: 0
         val guidanceAsset =
@@ -79,6 +77,7 @@ class NaviViewModel @Inject constructor() : ViewModel() {
 
         ToDeviceCodec.sendNextInfo(icon = guidanceAsset.value, distance = distance)
         Logger.w(shouldUpdate = true) { "안내전송 : ${guidanceAsset.value}, 거리:$distance" }
+
     }
 
     private fun sendLane() {
@@ -149,3 +148,4 @@ class NaviViewModel @Inject constructor() : ViewModel() {
         }
     }
 }
+*/

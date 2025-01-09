@@ -1,3 +1,4 @@
+/*
 package com.devidea.chevy
 
 import android.Manifest
@@ -67,7 +68,8 @@ class DebugActivity : AppCompatActivity() {
             ToDeviceCodec.sendNotification(1, "Title", "Message")  // 예시로 인덱스 1, 타이틀, 메시지 전달
         }
 
-        /**
+        */
+/**
          * 2 = 좌
          * 3 = 우
          * 4 = 11시
@@ -78,11 +80,14 @@ class DebugActivity : AppCompatActivity() {
          * 9 = 직진
          * 10 = ?
          * 11 = 회전교차로 직진
-         */
+         *//*
+
         findViewById<Button>(R.id.buttonSendNaviInfo).setOnClickListener {
-            /* CoroutineScope(Dispatchers.Main).launch {
+            */
+/* CoroutineScope(Dispatchers.Main).launch {
                 while (true){
-                    delay(3000L)*/
+                    delay(3000L)*//*
+
             ToDeviceCodec.sendNextInfo(2, 100)  // 예시로 인덱스 1, 거리 1000 전달
             //}
             //}
@@ -113,10 +118,12 @@ class DebugActivity : AppCompatActivity() {
             ToDeviceCodec.sendCameraDistanceEx(1, 1, 1)  // 예시로 거리 300, 속도 50, 70 전달
         }
 
-        /**
+        */
+/**
          * 1 = 점멸
          * 0 = 점등
-         */
+         *//*
+
         findViewById<Button>(R.id.buttonSendLaneInfo).setOnClickListener {
             ToDeviceCodec.sendLaneInfo(intArrayOf(0, 0, 1, 0))  // 예시로 배열 전달
         }
@@ -133,7 +140,8 @@ class DebugActivity : AppCompatActivity() {
             ToDeviceCodec.sendNextRoadName("Main Street")  // 예시로 도로명 전달
         }
 
-        /*        fun hendle() {
+        */
+/*        fun hendle() {
             a.handleAllPid(byteArrayOf(1, 0, 7, -27, 0), 5)
             a.handleAllPid(byteArrayOf(3, 2, 0), 3)
             a.handleAllPid(byteArrayOf(4, 81), 2)
@@ -191,6 +199,7 @@ class DebugActivity : AppCompatActivity() {
                 println("Name: ${item.strName}, Value: ${item.strValue}")
             }
         }
-    */
+    *//*
+
     }
-}
+}*/

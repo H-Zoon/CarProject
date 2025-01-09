@@ -68,7 +68,7 @@
         </activity>
 
         <service
-            android:name=".bluetooth.LeBTService"
+            android:name=".service.BleService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />

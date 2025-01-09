@@ -4,33 +4,23 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
-import android.util.Log
-import com.kakao.sdk.common.util.Utility
-import com.kakao.sdk.v2.common.BuildConfig.VERSION_NAME
+import com.devidea.chevy.service.BleServiceManager
 import com.kakao.vectormap.KakaoMapSdk
-import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.KNSDKDelegate
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
 class App : Application() {
-
-    init{
-        instance = this
-    }
+    @Inject
+    lateinit var serviceManager: BleServiceManager
 
     companion object {
         const val CHANNEL_ID = "LeBluetoothServiceChannel"
         lateinit var instance: App
-        fun ApplicationContext() : Context {
-            return instance.applicationContext
-        }
     }
 
     override fun onCreate() {
@@ -41,6 +31,9 @@ class App : Application() {
             NotificationManager.IMPORTANCE_DEFAULT
         )
         getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
+
+        instance = this
+        serviceManager.bindService()
 
         KNSDK.apply {
             // 콘텍스트 등록 및 DB, 파일 등의 저장 경로 설정

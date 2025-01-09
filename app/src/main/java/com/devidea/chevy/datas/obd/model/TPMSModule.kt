@@ -1,12 +1,18 @@
 package com.devidea.chevy.datas.obd.model;
 
+import com.devidea.chevy.App
 import com.devidea.chevy.Logger
-import com.devidea.chevy.bluetooth.BluetoothModelV2
 import com.devidea.chevy.datas.obd.protocol.OBDProtocol
 import com.devidea.chevy.datas.obd.TPMSData
+import com.devidea.chevy.service.BleService
+import com.devidea.chevy.service.BleServiceManager
+import javax.inject.Inject
 
 // 자동차 TPMS 데이터를 관리하는 클래스
-class TPMSModule {
+class TPMSModule @Inject constructor(
+    private val serviceManager: BleServiceManager
+) {
+    private val bleService by lazy { serviceManager.getService() }
     private var mIsPairing = false
     private val mTPMSData = Array(4) { TPMSData() }
     private var mIsRecvedTireData = false
@@ -79,7 +85,7 @@ class TPMSModule {
             i2 += bArr2[i3].toInt() and 255
         }
         bArr2[i + 4] = (i2 and 255).toByte()
-        BluetoothModelV2.sendMessage(bArr2)
+        //bleService?.sendMessage(bArr2)
     }
 
     // 타이어 데이터를 처리하는 메서드

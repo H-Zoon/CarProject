@@ -2,7 +2,6 @@ package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.datas.obd.CarModel
 import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import com.devidea.chevy.eventbus.CarEvents

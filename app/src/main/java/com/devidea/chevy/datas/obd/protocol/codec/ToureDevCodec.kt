@@ -1,9 +1,14 @@
 package com.devidea.chevy.datas.obd.protocol.codec
 
-import com.devidea.chevy.bluetooth.BluetoothModelV2
+import com.devidea.chevy.service.BleService
+import javax.inject.Inject
 
-object ToureDevCodec {
-    private fun packAndSendMsg(bArr: ByteArray, i: Int) {
+/*
+class ToureDevCodec @Inject constructor(
+    private val bleService: BleService
+) {
+
+    private fun sendHandleMsg(bArr: ByteArray, i: Int) {
         val bArr2 = ByteArray(i + 5)
         var i2 = 0
         bArr2[0] = -1
@@ -19,33 +24,33 @@ object ToureDevCodec {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                BluetoothModelV2.sendMessage(bArr2)
+                bleService?.sendMessage(bArr2)
                 return
             }
         }
     }
 
     fun sendInit(i: Int) {
-        packAndSendMsg(byteArrayOf(0, i.toByte()), 2)
+        sendHandleMsg(byteArrayOf(0, i.toByte()), 2)
     }
 
     fun sendAppPage(i: Int) {
-        packAndSendMsg(byteArrayOf(13, i.toByte()), 2)
+        sendHandleMsg(byteArrayOf(13, i.toByte()), 2)
     }
 
     fun sendConnectECU(i: Int) {
-        packAndSendMsg(byteArrayOf(2, i.toByte()), 2)
+        sendHandleMsg(byteArrayOf(2, i.toByte()), 2)
     }
 
     fun sendClearErr() {
-        packAndSendMsg(byteArrayOf(6, 0), 2)
+        sendHandleMsg(byteArrayOf(6, 0), 2)
     }
 
     fun sendStartFastDetect() {
-        packAndSendMsg(byteArrayOf(14, 0), 2)
+        sendHandleMsg(byteArrayOf(14, 0), 2)
     }
 
     fun sendHeartbeat() {
-        packAndSendMsg(byteArrayOf(-86, 0), 2)
+        sendHandleMsg(byteArrayOf(-86, 0), 2)
     }
-}
+}*/
