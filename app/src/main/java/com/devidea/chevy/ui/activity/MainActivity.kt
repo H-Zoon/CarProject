@@ -67,30 +67,15 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private val viewModel: MainViewModel by viewModels()
-    //private val bleService by lazy { App.instance.serviceManager.getService() }
-    private var bleService: BleService? = null
     @Inject
     lateinit var serviceManager: BleServiceManager
     @Inject
     lateinit var kNavi: KNavi
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // 서비스 상태를 관찰
-        lifecycleScope.launch {
-            serviceManager.serviceState.collect { service ->
-                bleService = service
-                if (service != null) {
-                    // 서비스가 연결된 상태에서의 작업 수행
-                    // 예: viewModel 연결 상태 업데이트
-                } else {
-                    // 서비스가 연결 해제된 상태에서의 작업 수행
-                }
-            }
-        }
 
         setContent {
             CarProjectTheme {
@@ -153,7 +138,11 @@ class MainActivity : AppCompatActivity() {
     @Composable
     fun HomeScreen(viewModel: MainViewModel, cardItems: List<CardItem>) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxSize() // 전체 화면을 채우도록 설정
+                .padding(20.dp), // 원하는 패딩 값으로 수정 (예: 16dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             BluetoothActionComponent(viewModel = viewModel)
             CarImage(viewModel = viewModel)
@@ -178,8 +167,8 @@ class MainActivity : AppCompatActivity() {
             NeumorphicCard(
                 modifier = Modifier.size(48.dp), defaultShadowOffset = 10, onClick = {
                     when (bluetoothState) {
-                        BTState.CONNECTED -> bleService?.requestDisconnect()
-                        else -> bleService?.requestScan()
+                        BTState.CONNECTED -> viewModel.disconnect()
+                        else -> viewModel.connect()
                     }
                 }, cornerRadius = 50.dp
             ) {

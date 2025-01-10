@@ -239,7 +239,6 @@ class BleService : Service() {
     private fun startSending() {
         sendScope.launch {
             for (chunk in sendChannel) {
-                Log.e("startSending", "chunk : $chunk")
                 sendMutex.withLock {
                     try {
                         bleManager.sendMessage(chunk)

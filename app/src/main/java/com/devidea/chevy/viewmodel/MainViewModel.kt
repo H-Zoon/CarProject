@@ -1,6 +1,7 @@
 package com.devidea.chevy.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App
 import com.devidea.chevy.bluetooth.BTState
@@ -27,10 +28,10 @@ class MainViewModel @Inject constructor(
 
     // NavRoutes를 sealed class로 변경
     sealed class NavRoutes(val route: String) {
-        object Home: NavRoutes("home")
-        object Details: NavRoutes("details")
-        object Map: NavRoutes("map")
-        object Nav: NavRoutes("nav")
+        object Home : NavRoutes("home")
+        object Details : NavRoutes("details")
+        object Map : NavRoutes("map")
+        object Nav : NavRoutes("nav")
     }
 
     private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
@@ -42,12 +43,18 @@ class MainViewModel @Inject constructor(
     private val _requestNavGuidance = MutableStateFlow<GuidanceStartEvent.RequestNavGuidance?>(null)
     val requestNavGuidance: StateFlow<GuidanceStartEvent.RequestNavGuidance?> get() = _requestNavGuidance
 
+    private val _isServiceInitialized = MutableStateFlow(false)
+    val isServiceInitialized: StateFlow<Boolean> get() = _isServiceInitialized
+
     init {
         viewModelScope.launch {
             launch {
                 serviceManager.serviceState.collect { service ->
                     if (service != null) {
                         observeBtState(service)
+                        _isServiceInitialized.value = true
+                    } else {
+                        _isServiceInitialized.value = true
                     }
                 }
             }
@@ -82,8 +89,8 @@ class MainViewModel @Inject constructor(
             }
 
             launch {
-                KNAVStartEventBus.events.collect{
-                    when(it){
+                KNAVStartEventBus.events.collect {
+                    when (it) {
                         is GuidanceStartEvent.RequestNavGuidance -> {
                             _requestNavGuidance.value = it
                             _navigationEvent.emit(NavRoutes.Nav)
@@ -103,7 +110,7 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-    suspend fun requestNavHost(value : NavRoutes){
+    suspend fun requestNavHost(value: NavRoutes) {
         _navigationEvent.emit(value)
     }
 
@@ -111,8 +118,15 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             service.btState.collect { state ->
                 _bluetoothStatus.value = state
-                // 필요에 따라 추가 로직 구현
             }
         }
+    }
+
+    fun connect() {
+        if(isServiceInitialized.value) serviceManager.getService()?.requestScan()
+    }
+
+    fun disconnect() {
+        if(isServiceInitialized.value) serviceManager.getService()?.requestDisconnect()
     }
 }

@@ -52,6 +52,7 @@ import com.kakaomobility.knsdk.ui.view.KNNaviView_GuideStateDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,23 +74,36 @@ class KNavi @Inject constructor(
     KNGuidance_VoiceGuideDelegate,
     KNNaviView_GuideStateDelegate {
 
-    init {
-        CoroutineScope(Dispatchers.IO).launch {
+    private val job = Job()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+    private var collectionJob: Job? = null
+
+    fun startLocationCollection() {
+        if (collectionJob?.isActive == true) return
+
+        collectionJob = scope.launch {
             currentLocation
-                .sample(1500)
+                .sample(1500) // 1500ms마다 샘플링
                 .collect { location ->
-                    //sendSafety(location)
-                    //sendLane()
+                    sendSafety(location)
+                    // sendLane()
                     sendGuide(location)
                 }
         }
     }
 
+    fun stopLocationCollection() {
+        collectionJob?.cancel()
+        collectionJob = null
+    }
+
+    var lastSafetyState: Boolean = false
+
     var knNaviView: KNNaviView? = null
     private val bleService by lazy { serviceManager.getService() }
 
-    private val _currentLocation = MutableSharedFlow<KNLocation>()
-    val currentLocation: SharedFlow<KNLocation> = _currentLocation
+    private val _currentLocation = MutableSharedFlow<KNLocation?>()
+    val currentLocation: SharedFlow<KNLocation?> = _currentLocation
 
     private val _routeGuide = MutableStateFlow<KNGuide_Route?>(null)
     val routeGuide: StateFlow<KNGuide_Route?> = _routeGuide.asStateFlow()
@@ -319,7 +333,8 @@ class KNavi @Inject constructor(
     }
 
     override fun naviViewGuideState(state: KNGuideState) {
-
+        startLocationCollection()
+        Logger.i { "$state" }
     }
 
     private fun sendGuide(currentLocation: KNLocation?) {
@@ -330,8 +345,10 @@ class KNavi @Inject constructor(
             routeGuide.value?.curDirection?.let { findGuideAsset(it.rgCode) }
                 ?: NavigationIconType.NONE
 
-        bleService?.sendNaviMsg(sendNextInfo(icon = guidanceAsset.value, distance = distance))
-        Logger.w(shouldUpdate = true) { "안내전송 : ${guidanceAsset.value}, 거리:$distance" }
+        if(!lastSafetyState) {
+            bleService?.sendNaviMsg(sendNextInfo(icon = guidanceAsset.value, distance = distance))
+            Logger.w(shouldUpdate = true) { "안내전송 : ${guidanceAsset.value}, 거리:$distance" }
+        }
 
     }
 
@@ -353,58 +370,6 @@ class KNavi @Inject constructor(
         }
     }
 
-    private fun sendSafety(currentLocation: KNLocation?) {
-        // 요구조건 1: safetyGuide 또는 currentLocation이 null인 경우 기본값 전송 후 종료
-        if (safetyGuide.value == null || currentLocation == null) {
-            Logger.w(shouldUpdate = true) { "safetyGuide 또는 currentLocation이 null입니다. 기본값을 전송합니다." }
-            bleService?.sendNaviMsg(sendCameraDistance(0, 0, 0))
-            bleService?.sendNaviMsg(sendLimitSpeed(0, 0))
-            return
-        }
-
-        // 카메라 유형의 안전 정보 필터링 및 KNSafety_Camera 타입으로 캐스팅
-        val cameraSafeties = safetyGuide.value?.safetiesOnGuide
-            ?.filter { it.isCameraType() }
-            ?.filterIsInstance<KNSafety_Camera>()
-            ?: emptyList()
-
-        if (cameraSafeties.isNotEmpty()) {
-            // 요구조건 2: 가장 가까운 카메라 하나만 선택
-            val closestSafety = cameraSafeties.minByOrNull { safety ->
-                currentLocation.distToLocation(safety.location)
-            }
-
-            if (closestSafety != null) {
-                val speedLimit = closestSafety.speedLimit
-                val cameraDistance = currentLocation.distToLocation(closestSafety.location)
-
-                Logger.w(shouldUpdate = true) { "가장 가까운 카메라 - 속도 제한: $speedLimit, 거리: $cameraDistance" }
-
-                bleService?.sendNaviMsg(sendCameraDistance(cameraDistance, 1, 1))
-                bleService?.sendNaviMsg(sendLimitSpeed(cameraDistance, speedLimit))
-                if (naviGuideState.value == KNGuideState.KNGuideState_OnSafetyGuide) {
-                    bleService?.sendNaviMsg(
-                        sendNextInfo(
-                            icon = 0,
-                            distance = cameraDistance
-                        )
-                    )
-                }
-                return
-            } else {
-                // 예상하지 못한 경우 기본값 전송
-                Logger.w(shouldUpdate = true) { "가장 가까운 안전 정보가 존재하지 않습니다. 기본값을 전송합니다." }
-                bleService?.sendNaviMsg(sendCameraDistance(0, 0, 0))
-                bleService?.sendNaviMsg(sendLimitSpeed(0, 0))
-            }
-        } else {
-            //  모든 isCameraType()이 false인 경우 기본값 전송
-            Logger.w(shouldUpdate = true) { "카메라 유형의 안전 정보가 없습니다. 기본값을 전송합니다." }
-            bleService?.sendNaviMsg(sendCameraDistance(0, 0, 0))
-            bleService?.sendNaviMsg(sendLimitSpeed(0, 0))
-        }
-    }
-
     // 상태 업데이트 메서드
     suspend fun updateCurrentLocation(location: KNLocation) {
         _currentLocation.emit(location)
@@ -418,9 +383,70 @@ class KNavi @Inject constructor(
         _safetyGuide.value = safetyGuide
     }
 
-    // 에러 상태 업데이트 메서드
-    fun setNaviGuideState(knGuideState: KNGuideState?) {
-        _naviGuideState.value = knGuideState
+
+    //TODO Test
+    private fun sendSafety(currentLocation: KNLocation?) {
+        if (safetyGuide.value == null || currentLocation == null) {
+            sendDefaultSafetyState()
+            return
+        }
+
+        val cameraSafeties = safetyGuide.value?.safetiesOnGuide
+            ?.filterIsInstance<KNSafety_Camera>()
+            ?.filter { it.isCameraType() }
+            ?: emptyList()
+
+        if (cameraSafeties.isNotEmpty()) {
+            val closestSafety = findClosestSafety(cameraSafeties, currentLocation)
+            if (closestSafety != null) {
+                sendSafetyMessages(currentLocation, closestSafety)
+                return
+            } else {
+                sendDefaultSafetyState()
+                return
+            }
+        } else {
+            sendDefaultSafetyState()
+            return
+        }
+    }
+
+    private fun findClosestSafety(
+        safeties: List<KNSafety_Camera>,
+        currentLocation: KNLocation
+    ): KNSafety_Camera? {
+        return safeties.minByOrNull { safety ->
+            currentLocation.distToLocation(safety.location)
+        }
+    }
+
+    private fun sendSafetyMessages(currentLocation: KNLocation, safety: KNSafety_Camera) {
+        val speedLimit = safety.speedLimit
+        val cameraDistance = currentLocation.distToLocation(safety.location)
+
+        Logger.w(shouldUpdate = true) { "가장 가까운 카메라 - 속도 제한: $speedLimit, 거리: $cameraDistance" }
+
+        bleService?.let { service ->
+            service.sendNaviMsg(sendCameraDistance(cameraDistance, 1, 1))
+            service.sendNaviMsg(sendLimitSpeed(cameraDistance, speedLimit))
+            service.sendNaviMsg(sendNextInfo(icon = 0, distance = cameraDistance))
+        } ?: run {
+            Logger.e { "BLE 서비스가 초기화되지 않았습니다." }
+        }
+        lastSafetyState = true
+    }
+
+    private fun sendDefaultSafetyState() {
+        if (lastSafetyState) {
+            Logger.w(shouldUpdate = true) { "기본값을 전송합니다." }
+            bleService?.let { service ->
+                service.sendNaviMsg(sendCameraDistance(0, 0, 0))
+                service.sendNaviMsg(sendLimitSpeed(0, 0))
+            } ?: run {
+                Logger.e { "BLE 서비스가 초기화되지 않았습니다." }
+            }
+            lastSafetyState = false
+        }
     }
 }
 
