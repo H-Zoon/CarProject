@@ -1,5 +1,7 @@
 package com.devidea.chevy.datas.navi
 
+import com.kakaomobility.knsdk.KNRGCode
+
 enum class NavigationIconType(val value: Int) {
     ARRIVED_DESTINATION(15),  // 목적지 도착 아이콘
     ARRIVED_SERVICE_AREA(13), // 서비스 구역 도착 아이콘
@@ -18,4 +20,75 @@ enum class NavigationIconType(val value: Int) {
     RIGHT_BACK(7),            // 우후방 아이콘
     RIGHT_FRONT(5),           // 우전방 아이콘
     STRAIGHT(9)               // 직진 아이콘
+}
+
+fun findGuideAsset(code: KNRGCode): NavigationIconType {
+    return when (code) {
+        KNRGCode.KNRGCode_Start -> NavigationIconType.NONE
+        KNRGCode.KNRGCode_Goal -> NavigationIconType.ARRIVED_DESTINATION
+        KNRGCode.KNRGCode_Via -> NavigationIconType.ARRIVED_WAYPOINT
+        KNRGCode.KNRGCode_Straight -> NavigationIconType.STRAIGHT
+
+        // 좌회전 관련 방향
+        KNRGCode.KNRGCode_LeftTurn -> NavigationIconType.LEFT
+
+        KNRGCode.KNRGCode_LeftDirection,
+        KNRGCode.KNRGCode_LeftOutHighway,
+        KNRGCode.KNRGCode_LeftInHighway,
+        KNRGCode.KNRGCode_LeftOutCityway,
+        KNRGCode.KNRGCode_LeftInCityway,
+        KNRGCode.KNRGCode_LeftStraight,
+        KNRGCode.KNRGCode_ChangeLeftHighway -> NavigationIconType.LEFT_FRONT
+
+        // 우회전 관련 방향
+        KNRGCode.KNRGCode_RightTurn -> NavigationIconType.RIGHT
+
+        KNRGCode.KNRGCode_RightDirection,
+        KNRGCode.KNRGCode_RightOutHighway,
+        KNRGCode.KNRGCode_RightInHighway,
+        KNRGCode.KNRGCode_RightOutCityway,
+        KNRGCode.KNRGCode_RightInCityway,
+        KNRGCode.KNRGCode_RightStraight,
+        KNRGCode.KNRGCode_ChangeRightHighway -> NavigationIconType.RIGHT_FRONT
+
+        // 후방 방향
+        KNRGCode.KNRGCode_Direction_7 -> NavigationIconType.LEFT_BACK
+        KNRGCode.KNRGCode_Direction_5 -> NavigationIconType.RIGHT_BACK
+
+        // U턴
+        KNRGCode.KNRGCode_UTurn -> NavigationIconType.TURN_AROUND
+
+        /*
+        // 고속도로 출입구
+        KNRGCode.KNRGCode_OutHighway -> NavigationIconType.OUT_ROUNDABOUT
+        KNRGCode.KNRGCode_InHighway -> NavigationIconType.ENTER_ROUNDABOUT
+
+        // 페리 항로
+        KNRGCode.KNRGCode_InFerry -> NavigationIconType.ENTER_ROUNDABOUT
+        KNRGCode.KNRGCode_OutFerry -> NavigationIconType.OUT_ROUNDABOUT
+         */
+
+        // 터널 및 톨게이트
+        KNRGCode.KNRGCode_OverPath -> NavigationIconType.ARRIVED_TUNNEL
+        KNRGCode.KNRGCode_Tollgate -> NavigationIconType.ARRIVED_TOLLGATE
+        KNRGCode.KNRGCode_NonstopTollgate -> NavigationIconType.ARRIVED_TOLLGATE
+        KNRGCode.KNRGCode_JoinAfterBranch -> NavigationIconType.ARRIVED_SERVICE_AREA
+
+        // 로터리 방향
+        KNRGCode.KNRGCode_RotaryDirection_1,
+        KNRGCode.KNRGCode_RotaryDirection_2,
+        KNRGCode.KNRGCode_RotaryDirection_3,
+        KNRGCode.KNRGCode_RotaryDirection_4,
+        KNRGCode.KNRGCode_RotaryDirection_5,
+        KNRGCode.KNRGCode_RotaryDirection_6,
+        KNRGCode.KNRGCode_RotaryDirection_7,
+        KNRGCode.KNRGCode_RotaryDirection_8,
+        KNRGCode.KNRGCode_RotaryDirection_9,
+        KNRGCode.KNRGCode_RotaryDirection_10,
+        KNRGCode.KNRGCode_RotaryDirection_11,
+        KNRGCode.KNRGCode_RotaryDirection_12 -> NavigationIconType.ENTER_ROUNDABOUT
+
+        // 기본적으로 매핑되지 않은 경우 null 반환
+        else -> NavigationIconType.NONE
+    }
 }

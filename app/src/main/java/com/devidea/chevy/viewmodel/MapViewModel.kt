@@ -1,10 +1,12 @@
 package com.devidea.chevy.viewmodel
 
+import android.provider.Settings
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.repository.remote.AddressRepository
 import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.Logger
@@ -161,7 +163,7 @@ class MapViewModel @Inject constructor(
                 initializeWithAppKey(
                     aAppKey = "e31e85ed66b03658041340618628e93f",
                     aClientVersion = "1.0.0",
-                    aAppUserId = null,
+                    aAppUserId = Settings.Secure.getString(instance.contentResolver, Settings.Secure.ANDROID_ID),
                     aLangType = KNLanguageType.KNLanguageType_KOREAN,
                     aCompletion = { result ->
                         result?.let {

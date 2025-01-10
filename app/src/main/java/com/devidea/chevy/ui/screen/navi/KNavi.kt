@@ -14,6 +14,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.App
 import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.navi.NavigationIconType
+import com.devidea.chevy.datas.navi.findGuideAsset
 import com.devidea.chevy.datas.navi.isCameraType
 import com.devidea.chevy.datas.obd.protocol.codec.Msgs.sendCameraDistance
 import com.devidea.chevy.datas.obd.protocol.codec.Msgs.sendLaneInfo
@@ -156,77 +157,6 @@ class KNavi @Inject constructor(
         }
     }
 
-    fun findGuideAsset(code: KNRGCode): NavigationIconType {
-        return when (code) {
-            KNRGCode.KNRGCode_Start -> NavigationIconType.NONE
-            KNRGCode.KNRGCode_Goal -> NavigationIconType.ARRIVED_DESTINATION
-            KNRGCode.KNRGCode_Via -> NavigationIconType.ARRIVED_WAYPOINT
-            KNRGCode.KNRGCode_Straight -> NavigationIconType.STRAIGHT
-
-            // 좌회전 관련 방향
-            KNRGCode.KNRGCode_LeftTurn -> NavigationIconType.LEFT
-
-            KNRGCode.KNRGCode_LeftDirection,
-            KNRGCode.KNRGCode_LeftOutHighway,
-            KNRGCode.KNRGCode_LeftInHighway,
-            KNRGCode.KNRGCode_LeftOutCityway,
-            KNRGCode.KNRGCode_LeftInCityway,
-            KNRGCode.KNRGCode_LeftStraight,
-            KNRGCode.KNRGCode_ChangeLeftHighway -> NavigationIconType.LEFT_FRONT
-
-            // 우회전 관련 방향
-            KNRGCode.KNRGCode_RightTurn -> NavigationIconType.RIGHT
-
-            KNRGCode.KNRGCode_RightDirection,
-            KNRGCode.KNRGCode_RightOutHighway,
-            KNRGCode.KNRGCode_RightInHighway,
-            KNRGCode.KNRGCode_RightOutCityway,
-            KNRGCode.KNRGCode_RightInCityway,
-            KNRGCode.KNRGCode_RightStraight,
-            KNRGCode.KNRGCode_ChangeRightHighway -> NavigationIconType.RIGHT_FRONT
-
-            // 후방 방향
-            KNRGCode.KNRGCode_Direction_7 -> NavigationIconType.LEFT_BACK
-            KNRGCode.KNRGCode_Direction_5 -> NavigationIconType.RIGHT_BACK
-
-            // U턴
-            KNRGCode.KNRGCode_UTurn -> NavigationIconType.TURN_AROUND
-
-            /*
-            // 고속도로 출입구
-            KNRGCode.KNRGCode_OutHighway -> NavigationIconType.OUT_ROUNDABOUT
-            KNRGCode.KNRGCode_InHighway -> NavigationIconType.ENTER_ROUNDABOUT
-
-            // 페리 항로
-            KNRGCode.KNRGCode_InFerry -> NavigationIconType.ENTER_ROUNDABOUT
-            KNRGCode.KNRGCode_OutFerry -> NavigationIconType.OUT_ROUNDABOUT
-             */
-
-            // 터널 및 톨게이트
-            KNRGCode.KNRGCode_OverPath -> NavigationIconType.ARRIVED_TUNNEL
-            KNRGCode.KNRGCode_Tollgate -> NavigationIconType.ARRIVED_TOLLGATE
-            KNRGCode.KNRGCode_NonstopTollgate -> NavigationIconType.ARRIVED_TOLLGATE
-            KNRGCode.KNRGCode_JoinAfterBranch -> NavigationIconType.ARRIVED_SERVICE_AREA
-
-            // 로터리 방향
-            KNRGCode.KNRGCode_RotaryDirection_1,
-            KNRGCode.KNRGCode_RotaryDirection_2,
-            KNRGCode.KNRGCode_RotaryDirection_3,
-            KNRGCode.KNRGCode_RotaryDirection_4,
-            KNRGCode.KNRGCode_RotaryDirection_5,
-            KNRGCode.KNRGCode_RotaryDirection_6,
-            KNRGCode.KNRGCode_RotaryDirection_7,
-            KNRGCode.KNRGCode_RotaryDirection_8,
-            KNRGCode.KNRGCode_RotaryDirection_9,
-            KNRGCode.KNRGCode_RotaryDirection_10,
-            KNRGCode.KNRGCode_RotaryDirection_11,
-            KNRGCode.KNRGCode_RotaryDirection_12 -> NavigationIconType.ENTER_ROUNDABOUT
-
-            // 기본적으로 매핑되지 않은 경우 null 반환
-            else -> NavigationIconType.NONE
-        }
-    }
-
     // Delegate Methods
     override fun guidanceCheckingRouteChange(aGuidance: KNGuidance) {
         knNaviView?.guidanceCheckingRouteChange(aGuidance)
@@ -345,7 +275,7 @@ class KNavi @Inject constructor(
             routeGuide.value?.curDirection?.let { findGuideAsset(it.rgCode) }
                 ?: NavigationIconType.NONE
 
-        if(!lastSafetyState) {
+        if (!lastSafetyState) {
             bleService?.sendNaviMsg(sendNextInfo(icon = guidanceAsset.value, distance = distance))
             Logger.w(shouldUpdate = true) { "안내전송 : ${guidanceAsset.value}, 거리:$distance" }
         }
