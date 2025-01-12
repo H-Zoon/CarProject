@@ -15,9 +15,6 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class App : Application() {
-    @Inject
-    lateinit var serviceManager: BleServiceManager
-
     companion object {
         const val CHANNEL_ID = "LeBluetoothServiceChannel"
         lateinit var instance: App
@@ -25,15 +22,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val serviceChannel = NotificationChannel(
-            CHANNEL_ID,
-            "LeBluetoothService Channel",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-        getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
-
         instance = this
-        serviceManager.bindService()
 
         KNSDK.apply {
             // 콘텍스트 등록 및 DB, 파일 등의 저장 경로 설정

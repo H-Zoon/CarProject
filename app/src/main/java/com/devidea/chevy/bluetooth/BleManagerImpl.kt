@@ -57,7 +57,6 @@ class BleManagerImpl(
     private var scanJob: Job? = null
 
     private val scanCallback = object : ScanCallback() {
-        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
             bleCallback?.onStateChanged(BTState.SCANNING)
@@ -189,7 +188,6 @@ class BleManagerImpl(
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun setCharacteristicNotification(
         gatt: BluetoothGatt,
         characteristic: BluetoothGattCharacteristic
@@ -252,7 +250,6 @@ class BleManagerImpl(
         }
     }
 
-    @SuppressLint("MissingPermission")
     override fun startScan() {
         scanJob?.cancel()
         bluetoothAdapter.bluetoothLeScanner.startScan(scanCallback)
@@ -262,14 +259,12 @@ class BleManagerImpl(
         }
     }
 
-    @SuppressLint("MissingPermission")
     override fun stopScan() {
         bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallback)
         scanJob?.cancel()
         bleCallback?.onStateChanged(BTState.NOT_FOUND)
     }
 
-    @SuppressLint("MissingPermission")
     override fun disconnect() {
         bluetoothGatt?.disconnect()
         bluetoothGatt?.close()
@@ -277,7 +272,6 @@ class BleManagerImpl(
         bleCallback?.onStateChanged(BTState.DISCONNECTED)
     }
 
-    @SuppressLint("MissingPermission")
     override fun sendMessage(value: ByteArray) {
         val service = bluetoothGatt?.getService(SERVICE_UUID)
         val characteristic = service?.getCharacteristic(CHARACTERISTIC_WRITE_UUID)

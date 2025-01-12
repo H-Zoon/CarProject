@@ -1,8 +1,8 @@
 package com.devidea.chevy.ui.activity
 
-import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -31,8 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -41,22 +43,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.devidea.chevy.App
+import com.devidea.chevy.App.Companion.CHANNEL_ID
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.service.BleService
 import com.devidea.chevy.service.BleServiceManager
 import com.devidea.chevy.ui.components.CardItem
 import com.devidea.chevy.ui.screen.dashboard.Dashboard
 import com.devidea.chevy.ui.screen.map.MapEnterScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
+import com.devidea.chevy.ui.components.PermissionRequestScreen
 import com.devidea.chevy.ui.screen.navi.KNavi
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.MainViewModel
@@ -66,7 +67,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-
     @Inject
     lateinit var serviceManager: BleServiceManager
     @Inject
@@ -86,12 +86,43 @@ class MainActivity : AppCompatActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-                        MainNavHost(
+                        RootNavigationScreen(
                             navController = navController, mainViewModel = viewModel
                         )
                     }
                 })
             }
+        }
+    }
+
+    @Composable
+    fun RootNavigationScreen(
+        navController: NavHostController,
+        mainViewModel: MainViewModel
+    ) {
+        // 권한 화면 보여줄지 여부를 State로 관리
+        var showPermissionScreen by remember { mutableStateOf(true) }
+
+        if (showPermissionScreen) {
+            // 권한 요청 전용 화면
+            PermissionRequestScreen(mainViewModel,
+                onAllRequiredPermissionsGranted = {
+                    showPermissionScreen = true
+                },
+                onPermissionDenied = {
+                    showPermissionScreen = false
+                }
+            )
+        } else {
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "LeBluetoothService Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
+            serviceManager.bindService()
+
+            MainNavHost(navController = navController, mainViewModel = mainViewModel)
         }
     }
 

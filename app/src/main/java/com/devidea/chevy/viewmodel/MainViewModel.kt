@@ -46,6 +46,9 @@ class MainViewModel @Inject constructor(
     private val _isServiceInitialized = MutableStateFlow(false)
     val isServiceInitialized: StateFlow<Boolean> get() = _isServiceInitialized
 
+    private val _isFirstLunch = MutableStateFlow(false)
+    val isFirstLunch: StateFlow<Boolean> get() = _isFirstLunch
+
     init {
         viewModelScope.launch {
             launch {
@@ -98,6 +101,11 @@ class MainViewModel @Inject constructor(
                     }
                 }
             }
+            launch {
+                repository.getFirstLunch().collect { difference ->
+                    _isFirstLunch.value = difference
+                }
+            }
         }
     }
 
@@ -120,6 +128,10 @@ class MainViewModel @Inject constructor(
                 _bluetoothStatus.value = state
             }
         }
+    }
+
+    suspend fun saveFirstLunch() {
+        repository.saveFirstLunch(false)
     }
 
     fun connect() {
