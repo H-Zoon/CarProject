@@ -61,6 +61,7 @@ dependencies {
 
     implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
     implementation ("com.google.dagger:hilt-android:2.44")
+    implementation("androidx.compose.material:material-icons-extended:1.2.0")
     implementation(libs.androidx.runtime.livedata)
     implementation ("com.kakao.maps.open:android:2.11.9")
 
@@ -74,7 +75,6 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

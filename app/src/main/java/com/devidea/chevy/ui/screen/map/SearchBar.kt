@@ -23,11 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -81,7 +81,7 @@ fun SearchBar(
             TextField(
                 value = searchText,
                 onValueChange = onSearchTextChange,
-                label = { Text("검색어 입력") },
+                label = { Text("목적지") },
                 modifier = Modifier
                     .weight(1f)
                     .padding(10.dp)
@@ -144,7 +144,10 @@ fun SearchBar(
 fun CustomSearchButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFFFF722B),
+            contentColor = Color.White
+        ),
         shape = RoundedCornerShape(8.dp),
         contentPadding = PaddingValues(0.dp), // 기본 패딩 제거,
         modifier = Modifier
@@ -155,16 +158,13 @@ fun CustomSearchButton(onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Search, // 원하는 아이콘으로 변경
-                contentDescription = "Search",
-                modifier = Modifier.size(24.dp),
-                tint = Color.Black
+                imageVector = Icons.Default.Directions, // 원하는 아이콘으로 변경
+                contentDescription = "SafeDrive",
+                modifier = Modifier.size(30.dp)
             )
-            Spacer(modifier = Modifier.height(1.dp))
             Text(
                 text = "안전운전",
-                fontSize = 10.sp,
-                color = Color.Black
+                fontSize = 10.sp
             )
         }
     }

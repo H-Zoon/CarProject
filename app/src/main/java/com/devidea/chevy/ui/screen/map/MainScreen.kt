@@ -72,7 +72,7 @@ fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
                 isSearchResult = uiState is MapViewModel.UiState.SearchResult,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(85.dp)
+                    .height(135.dp)
             )
 
             when (uiState) {

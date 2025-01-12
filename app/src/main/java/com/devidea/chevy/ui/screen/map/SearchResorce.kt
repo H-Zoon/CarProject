@@ -165,9 +165,9 @@ fun AddressList(
             ) {
                 Text(text = item.place_name ?: "", style = MaterialTheme.typography.titleMedium)
                 Text(text = "주소: ${item.address_name}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "도로명 주소: ${item.road_address}", style = MaterialTheme.typography.bodySmall)
+                //Text(text = "도로명 주소: ${item.road_address}", style = MaterialTheme.typography.bodySmall)
             }
-            Divider()
+            HorizontalDivider()
         }
     }
 }
