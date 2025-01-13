@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui
+package com.devidea.chevy.ui.screen.map
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*

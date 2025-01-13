@@ -101,28 +101,26 @@ class MainActivity : AppCompatActivity() {
         mainViewModel: MainViewModel
     ) {
         // 권한 화면 보여줄지 여부를 State로 관리
-        var showPermissionScreen by remember { mutableStateOf(true) }
+        var showPermissionScreen by remember { mutableStateOf(false) }
 
         if (showPermissionScreen) {
             // 권한 요청 전용 화면
             PermissionRequestScreen(mainViewModel,
                 onAllRequiredPermissionsGranted = {
                     showPermissionScreen = true
+                    val serviceChannel = NotificationChannel(
+                        CHANNEL_ID,
+                        "LeBluetoothService Channel",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    )
+                    getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
+                    serviceManager.bindService()
+                    MainNavHost(navController = navController, mainViewModel = mainViewModel)
                 },
                 onPermissionDenied = {
                     showPermissionScreen = false
                 }
             )
-        } else {
-            val serviceChannel = NotificationChannel(
-                CHANNEL_ID,
-                "LeBluetoothService Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
-            serviceManager.bindService()
-
-            MainNavHost(navController = navController, mainViewModel = mainViewModel)
         }
     }
 

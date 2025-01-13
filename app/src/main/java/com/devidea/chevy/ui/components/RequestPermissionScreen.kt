@@ -20,7 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -48,6 +57,7 @@ import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
+import com.kakao.vectormap.label.TrackingManager
 import kotlinx.coroutines.launch
 
 // 권한 정보를 관리하는 데이터 클래스
@@ -56,7 +66,7 @@ data class PermissionInfo(
     val titleRes: Int,            // UI에 표시할 권한 이름 (문자열 리소스 ID)
     val descriptionRes: Int,      // 왜 필요한지 설명 (문자열 리소스 ID)
     val isRequired: Boolean,      // 필수 권한 여부
-    @DrawableRes val iconRes: Int // 아이콘 리소스(예: R.drawable.ic_camera 등)
+    val imageVector: ImageVector // 아이콘 리소스(예: R.drawable.ic_camera 등)
 )
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -66,9 +76,18 @@ fun PermissionRequestScreen(
     onAllRequiredPermissionsGranted: () -> Unit,
     onPermissionDenied: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    var trackingManager by remember { mutableStateOf<Boolean>(false) }
     val permissions = rememberPermissionList()
     val multiplePermissionsState = rememberMultiplePermissionsState(
-        permissions = permissions.map { it.permission }
+        permissions = permissions.map { it.permission },
+        onPermissionsResult = { permissionsResult ->
+            if(trackingManager) {
+                coroutineScope.launch { mainViewModel.saveFirstLunch() }
+            }else {
+                trackingManager = true
+            }
+        }
     )
     val isFirstLaunch by mainViewModel.isFirstLunch.collectAsState()
 
@@ -98,19 +117,15 @@ fun PermissionRequestScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        if(multiplePermissionsState.permissions.all { !it.status.isGranted }){
+
+        if (multiplePermissionsState.permissions.all { it.status.isGranted }) {
             onAllRequiredPermissionsGranted.invoke()
         }
 
         // 설정으로 이동 버튼
         if (multiplePermissionsState.permissions.any { !it.status.isGranted && !it.status.shouldShowRationale && !isFirstLaunch }) {
             PermanentlyDeniedSection()
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 모든 권한을 요청할 수 있도록 버튼 제공
-        if (!multiplePermissionsState.allPermissionsGranted) {
+        } else {
             Button(onClick = {
                 multiplePermissionsState.launchMultiplePermissionRequest()
             }) {
@@ -133,11 +148,8 @@ fun PermissionItem(
             .padding(vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = permissionInfo.iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(40.dp)
-            )
+            Icon(imageVector = permissionInfo.imageVector , contentDescription = "")
+
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
@@ -230,28 +242,28 @@ fun rememberPermissionList(): List<PermissionInfo> {
                         titleRes = R.string.permission_bluetooth_scan_title,
                         descriptionRes = R.string.permission_bluetooth_scan_description,
                         isRequired = true,
-                        iconRes = R.drawable.icon_search
+                        imageVector = Icons.Default.Search,
                     ),
                     PermissionInfo(
                         permission = Manifest.permission.BLUETOOTH_CONNECT,
                         titleRes = R.string.permission_bluetooth_connect_title,
                         descriptionRes = R.string.permission_bluetooth_connect_description,
                         isRequired = true,
-                        iconRes = R.drawable.icon_search
+                        imageVector = Icons.Default.Link,
                     ),
                     PermissionInfo(
                         permission = Manifest.permission.POST_NOTIFICATIONS,
                         titleRes = R.string.permission_post_notifications_title,
                         descriptionRes = R.string.permission_post_notifications_description,
-                        isRequired = false,  // 알림은 선택 권한으로 처리 가능
-                        iconRes = R.drawable.icon_search
+                        isRequired = true,  // 알림은 선택 권한으로 처리 가능
+                        imageVector = Icons.Default.Notifications,
                     ),
                     PermissionInfo(
                         permission = Manifest.permission.ACCESS_FINE_LOCATION,
                         titleRes = R.string.permission_location_title,
                         descriptionRes = R.string.permission_location_description,
-                        isRequired = false,  // BLE 스캔에 필요하지만, 앱 설계에 따라 필수/선택 결정
-                        iconRes = R.drawable.icon_search
+                        isRequired = true,  // BLE 스캔에 필요하지만, 앱 설계에 따라 필수/선택 결정
+                        imageVector = Icons.Default.MyLocation,
                     )
                 )
             }
@@ -264,21 +276,21 @@ fun rememberPermissionList(): List<PermissionInfo> {
                         titleRes = R.string.permission_bluetooth_scan_title,
                         descriptionRes = R.string.permission_bluetooth_scan_description,
                         isRequired = true,
-                        iconRes = R.drawable.icon_search
+                        imageVector = Icons.Default.Search,
                     ),
                     PermissionInfo(
                         permission = Manifest.permission.BLUETOOTH_CONNECT,
                         titleRes = R.string.permission_bluetooth_connect_title,
                         descriptionRes = R.string.permission_bluetooth_connect_description,
                         isRequired = true,
-                        iconRes = R.drawable.icon_search
+                        imageVector = Icons.Default.Link,
                     ),
                     PermissionInfo(
                         permission = Manifest.permission.ACCESS_FINE_LOCATION,
                         titleRes = R.string.permission_location_title,
                         descriptionRes = R.string.permission_location_description,
-                        isRequired = false,
-                        iconRes = R.drawable.icon_search
+                        isRequired = true,
+                        imageVector = Icons.Default.MyLocation,
                     )
                 )
             }
@@ -292,7 +304,7 @@ fun rememberPermissionList(): List<PermissionInfo> {
                         titleRes = R.string.permission_location_title,
                         descriptionRes = R.string.permission_location_description,
                         isRequired = true,
-                        iconRes = R.drawable.icon_search
+                        imageVector = Icons.Default.Search,
                     )
                 )
             }
