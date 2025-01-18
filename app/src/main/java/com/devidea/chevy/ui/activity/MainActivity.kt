@@ -69,6 +69,7 @@ import javax.inject.Inject
 class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var serviceManager: BleServiceManager
+
     @Inject
     lateinit var kNavi: KNavi
     private val viewModel: MainViewModel by viewModels()
@@ -86,41 +87,10 @@ class MainActivity : AppCompatActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-                        RootNavigationScreen(
-                            navController = navController, mainViewModel = viewModel
-                        )
+                        MainNavHost(navController = navController, mainViewModel = viewModel)
                     }
                 })
             }
-        }
-    }
-
-    @Composable
-    fun RootNavigationScreen(
-        navController: NavHostController,
-        mainViewModel: MainViewModel
-    ) {
-        // 권한 화면 보여줄지 여부를 State로 관리
-        var showPermissionScreen by remember { mutableStateOf(false) }
-
-        if (showPermissionScreen) {
-            // 권한 요청 전용 화면
-            PermissionRequestScreen(mainViewModel,
-                onAllRequiredPermissionsGranted = {
-                    showPermissionScreen = true
-                    val serviceChannel = NotificationChannel(
-                        CHANNEL_ID,
-                        "LeBluetoothService Channel",
-                        NotificationManager.IMPORTANCE_DEFAULT
-                    )
-                    getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
-                    serviceManager.bindService()
-                    MainNavHost(navController = navController, mainViewModel = mainViewModel)
-                },
-                onPermissionDenied = {
-                    showPermissionScreen = false
-                }
-            )
         }
     }
 
@@ -142,13 +112,20 @@ class MainActivity : AppCompatActivity() {
                     popUpTo(navController.graph.findStartDestination().id) {
                         saveState = true
                     }
+                    popUpTo("permission") {
+                        inclusive = true // permission 화면도 스택에서 제거
+                    }
                 }
             }
         }
 
         val guidanceEvent by mainViewModel.requestNavGuidance.collectAsState()
+        val coroutineScope = rememberCoroutineScope()
 
-        NavHost(navController = navController, startDestination = MainViewModel.NavRoutes.Home.route) {
+        NavHost(
+            navController = navController,
+            startDestination = MainViewModel.NavRoutes.PERMISSION.route
+        ) {
             composable(MainViewModel.NavRoutes.Home.route) {
                 HomeScreen(mainViewModel, cardItems)
             }
@@ -160,6 +137,26 @@ class MainActivity : AppCompatActivity() {
             }
             composable(MainViewModel.NavRoutes.Nav.route) {
                 kNavi.NaviScreen(guidanceEvent = guidanceEvent)
+            }
+            composable(MainViewModel.NavRoutes.PERMISSION.route) {
+                PermissionRequestScreen(mainViewModel,
+                    onAllRequiredPermissionsGranted = {
+                        val serviceChannel = NotificationChannel(
+                            CHANNEL_ID,
+                            "LeBluetoothService Channel",
+                            NotificationManager.IMPORTANCE_DEFAULT
+                        )
+                        getSystemService(NotificationManager::class.java).createNotificationChannel(
+                            serviceChannel
+                        )
+                        serviceManager.bindService()
+                        coroutineScope.launch {
+                            viewModel.requestNavHost(MainViewModel.NavRoutes.Home)
+                        }
+                    },
+                    onPermissionDenied = {
+                    }
+                )
             }
         }
     }
@@ -187,10 +184,13 @@ class MainActivity : AppCompatActivity() {
         val context = LocalContext.current
 
         Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = bluetoothState.description(context), style = MaterialTheme.typography.titleMedium
+                text = bluetoothState.description(context),
+                style = MaterialTheme.typography.titleMedium
             )
 
             NeumorphicCard(
@@ -204,19 +204,25 @@ class MainActivity : AppCompatActivity() {
                 when (bluetoothState) {
                     BTState.CONNECTED -> {
                         Image(
-                            painter = painterResource(id = R.drawable.icon_link), contentDescription = stringResource(R.string.bluetooth_connected), modifier = Modifier.size(38.dp)
+                            painter = painterResource(id = R.drawable.icon_link),
+                            contentDescription = stringResource(R.string.bluetooth_connected),
+                            modifier = Modifier.size(38.dp)
                         )
                     }
 
                     BTState.DISCONNECTED, BTState.NOT_FOUND -> {
                         Image(
-                            painter = painterResource(id = R.drawable.icon_search), contentDescription = stringResource(R.string.bluetooth_disconnected), modifier = Modifier.size(38.dp)
+                            painter = painterResource(id = R.drawable.icon_search),
+                            contentDescription = stringResource(R.string.bluetooth_disconnected),
+                            modifier = Modifier.size(38.dp)
                         )
                     }
 
                     BTState.SCANNING, BTState.CONNECTING -> {
                         CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary, strokeWidth = 4.dp, modifier = Modifier.size(32.dp)
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 4.dp,
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -239,7 +245,10 @@ class MainActivity : AppCompatActivity() {
         val painter = painterResource(id = R.drawable.asset_car)
 
         Image(
-            painter = painter, contentDescription = stringResource(R.string.car_image_description), modifier = Modifier.size(200.dp), colorFilter = colorFilter
+            painter = painter,
+            contentDescription = stringResource(R.string.car_image_description),
+            modifier = Modifier.size(200.dp),
+            colorFilter = colorFilter
         )
     }
 
@@ -256,15 +265,18 @@ class MainActivity : AppCompatActivity() {
                     .padding(16.dp), horizontalArrangement = Arrangement.SpaceAround
             ) {
                 InfoSection(
-                    title = stringResource(R.string.summary_last_connect), content = viewModel.lastConnectDate.collectAsState().value
+                    title = stringResource(R.string.summary_last_connect),
+                    content = viewModel.lastConnectDate.collectAsState().value
                 )
                 VerticalDivider(modifier = Modifier.fillMaxHeight())
                 InfoSection(
-                    title = stringResource(R.string.summary_recent_mileage), content = viewModel.recentMileage.collectAsState().value
+                    title = stringResource(R.string.summary_recent_mileage),
+                    content = viewModel.recentMileage.collectAsState().value
                 )
                 VerticalDivider(modifier = Modifier.fillMaxHeight())
                 InfoSection(
-                    title = stringResource(R.string.summary_recent_fuel_efficiency), content = viewModel.fullEfficiency.collectAsState().value
+                    title = stringResource(R.string.summary_recent_fuel_efficiency),
+                    content = viewModel.fullEfficiency.collectAsState().value
                 )
             }
         }
@@ -273,7 +285,9 @@ class MainActivity : AppCompatActivity() {
     @Composable
     fun InfoSection(title: String, content: String, modifier: Modifier = Modifier) {
         Column(
-            modifier = modifier.padding(5.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceAround
+            modifier = modifier.padding(5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceAround
         ) {
             Text(
                 text = title,
@@ -314,9 +328,14 @@ class MainActivity : AppCompatActivity() {
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = cardItem[index].title, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = cardItem[index].title,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }

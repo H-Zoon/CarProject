@@ -82,10 +82,15 @@ fun PermissionRequestScreen(
     val multiplePermissionsState = rememberMultiplePermissionsState(
         permissions = permissions.map { it.permission },
         onPermissionsResult = { permissionsResult ->
-            if(trackingManager) {
-                coroutineScope.launch { mainViewModel.saveFirstLunch() }
-            }else {
-                trackingManager = true
+            val allGranted = permissionsResult.values.all { it }
+            if (allGranted) {
+                onAllRequiredPermissionsGranted()
+            } else {
+                if (trackingManager) {
+                    coroutineScope.launch { mainViewModel.saveFirstLunch() }
+                } else {
+                    trackingManager = true
+                }
             }
         }
     )
@@ -119,7 +124,7 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (multiplePermissionsState.permissions.all { it.status.isGranted }) {
-            onAllRequiredPermissionsGranted.invoke()
+            onAllRequiredPermissionsGranted()
         }
 
         // 설정으로 이동 버튼
