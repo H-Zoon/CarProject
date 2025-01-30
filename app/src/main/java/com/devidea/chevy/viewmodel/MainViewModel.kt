@@ -31,7 +31,7 @@ class MainViewModel @Inject constructor(
         object Home : NavRoutes("home")
         object Details : NavRoutes("details")
         object Map : NavRoutes("map")
-        object Nav : NavRoutes("nav")
+        //object Nav : NavRoutes("nav")
         object PERMISSION : NavRoutes("permission")
     }
 
@@ -92,7 +92,7 @@ class MainViewModel @Inject constructor(
                 }
             }
 
-            launch {
+            /*launch {
                 KNAVStartEventBus.events.collect {
                     when (it) {
                         is GuidanceStartEvent.RequestNavGuidance -> {
@@ -101,7 +101,7 @@ class MainViewModel @Inject constructor(
                         }
                     }
                 }
-            }
+            }*/
             launch {
                 repository.getFirstLunch().collect { difference ->
                     _isFirstLunch.value = difference

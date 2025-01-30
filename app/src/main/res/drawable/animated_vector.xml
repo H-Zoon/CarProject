@@ -1,0 +1,8 @@
+<!-- res/drawable/animated_vector.xml -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/layer1">
+
+    <target
+        android:name="rotatingGroup"
+        android:animation="@animator/rotate_anim" />
+</animated-vector>

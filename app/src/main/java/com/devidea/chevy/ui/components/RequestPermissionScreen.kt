@@ -72,7 +72,7 @@ data class PermissionInfo(
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionRequestScreen(
-    mainViewModel: MainViewModel, // 필수 권한 모두 허용 시 콜백
+    mainViewModel: MainViewModel,
     onAllRequiredPermissionsGranted: () -> Unit,
     onPermissionDenied: () -> Unit
 ) {

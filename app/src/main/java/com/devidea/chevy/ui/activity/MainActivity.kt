@@ -3,6 +3,7 @@ package com.devidea.chevy.ui.activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Bundle
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -43,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -58,15 +60,18 @@ import com.devidea.chevy.ui.screen.map.MapEnterScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.components.PermissionRequestScreen
+import com.devidea.chevy.ui.components.rememberPermissionList
 import com.devidea.chevy.ui.screen.navi.KNavi
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.MainViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
     @Inject
     lateinit var serviceManager: BleServiceManager
 
@@ -77,7 +82,26 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val splashScreen = installSplashScreen()
 
+        splashScreen.setOnExitAnimationListener { splashScreenView ->
+            // 스플래시 아이콘(View)을 가져온 뒤
+            val iconView = splashScreenView.iconView
+
+            iconView.animate()
+                .translationY(iconView.height.toFloat())
+                .alpha(0f)
+                .setDuration(500L)
+                .withEndAction {
+                    splashScreenView.remove()
+                }
+                .start()
+        }
+
+        // 스플래시 화면을 조금 더 유지하고 싶다면 setKeepOnScreenCondition 이용
+        /*splashScreen.setKeepOnScreenCondition {
+            true
+        }*/
         setContent {
             CarProjectTheme {
                 val navController = rememberNavController()
@@ -87,6 +111,9 @@ class MainActivity : AppCompatActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
+
+
+
                         MainNavHost(navController = navController, mainViewModel = viewModel)
                     }
                 })
@@ -103,7 +130,7 @@ class MainActivity : AppCompatActivity() {
             CardItem("네비게이션", "This is a description", MainViewModel.NavRoutes.Map)
         )
 
-        // navigationEvent를 수집하여 네비게이션 처리
+        /*// navigationEvent를 수집하여 네비게이션 처리
         LaunchedEffect(mainViewModel.navigationEvent) {
             mainViewModel.navigationEvent.collect { route ->
                 navController.navigate(route.route) {
@@ -117,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        }
+        }*/
 
         val guidanceEvent by mainViewModel.requestNavGuidance.collectAsState()
         val coroutineScope = rememberCoroutineScope()
@@ -135,9 +162,6 @@ class MainActivity : AppCompatActivity() {
             composable(MainViewModel.NavRoutes.Map.route) {
                 MapEnterScreen(mainViewModel)
             }
-            composable(MainViewModel.NavRoutes.Nav.route) {
-                kNavi.NaviScreen(guidanceEvent = guidanceEvent)
-            }
             composable(MainViewModel.NavRoutes.PERMISSION.route) {
                 PermissionRequestScreen(mainViewModel,
                     onAllRequiredPermissionsGranted = {
@@ -150,9 +174,7 @@ class MainActivity : AppCompatActivity() {
                             serviceChannel
                         )
                         serviceManager.bindService()
-                        coroutineScope.launch {
-                            viewModel.requestNavHost(MainViewModel.NavRoutes.Home)
-                        }
+                        navController.navigate(MainViewModel.NavRoutes.Home.route)
                     },
                     onPermissionDenied = {
                     }

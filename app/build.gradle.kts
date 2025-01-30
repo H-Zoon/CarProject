@@ -58,6 +58,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core-splashscreen:1.0.0")
     implementation("com.google.accompanist:accompanist-permissions:0.37.0")
     implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
     implementation ("com.google.dagger:hilt-android:2.44")
