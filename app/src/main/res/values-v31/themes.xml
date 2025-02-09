@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.CarProject" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.CarProject" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- 스플래시 아이콘(로고) 지정 -->
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/animated_vector</item>
 

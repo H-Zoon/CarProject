@@ -28,6 +28,7 @@ class MainViewModel @Inject constructor(
 
     // NavRoutes를 sealed class로 변경
     sealed class NavRoutes(val route: String) {
+        object A : NavRoutes("a")
         object Home : NavRoutes("home")
         object Details : NavRoutes("details")
         object Map : NavRoutes("map")

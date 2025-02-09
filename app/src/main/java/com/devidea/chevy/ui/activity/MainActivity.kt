@@ -3,7 +3,6 @@ package com.devidea.chevy.ui.activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -29,7 +28,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +43,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -60,18 +57,19 @@ import com.devidea.chevy.ui.screen.map.MapEnterScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.components.PermissionRequestScreen
-import com.devidea.chevy.ui.components.rememberPermissionList
+import com.devidea.chevy.ui.screen.navi.NavigateData
 import com.devidea.chevy.ui.screen.navi.KNavi
 import com.devidea.chevy.ui.theme.CarProjectTheme
 import com.devidea.chevy.viewmodel.MainViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.kakaomobility.knsdk.KNRouteAvoidOption
+import com.kakaomobility.knsdk.KNRoutePriority
+import com.kakaomobility.knsdk.trip.kntrip.KNTrip
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var serviceManager: BleServiceManager
 
@@ -84,24 +82,22 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val splashScreen = installSplashScreen()
 
-        splashScreen.setOnExitAnimationListener { splashScreenView ->
-            // 스플래시 아이콘(View)을 가져온 뒤
+        /*splashScreen.setOnExitAnimationListener { splashScreenView ->
+            // 아이콘 애니메이션의 전체 지속시간과 시작 시간을 가져옵니다.
+            val iconAnimationDuration = splashScreenView.iconAnimationDurationMillis
+            val iconAnimationStart = splashScreenView.iconAnimationStartMillis
             val iconView = splashScreenView.iconView
-
-            iconView.animate()
-                .translationY(iconView.height.toFloat())
-                .alpha(0f)
-                .setDuration(500L)
-                .withEndAction {
+            val remainingDuration = (iconAnimationDuration - (iconAnimationStart - System.currentTimeMillis())).coerceAtLeast(0L)
+            iconView.animate().translationY(iconView.height.toFloat()).alpha(0f).setStartDelay(remainingDuration).setDuration(500L).withEndAction {
                     splashScreenView.remove()
-                }
-                .start()
+                }.start()
         }
 
         // 스플래시 화면을 조금 더 유지하고 싶다면 setKeepOnScreenCondition 이용
-        /*splashScreen.setKeepOnScreenCondition {
-            true
+        splashScreen.setKeepOnScreenCondition {
+            false
         }*/
+
         setContent {
             CarProjectTheme {
                 val navController = rememberNavController()
@@ -111,9 +107,6 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-
-
-
                         MainNavHost(navController = navController, mainViewModel = viewModel)
                     }
                 })
@@ -125,66 +118,102 @@ class MainActivity : ComponentActivity() {
     fun MainNavHost(
         navController: NavHostController, mainViewModel: MainViewModel
     ) {
-        val cardItems = listOf(
-            CardItem("차량정보", "This is a description", MainViewModel.NavRoutes.Details),
-            CardItem("네비게이션", "This is a description", MainViewModel.NavRoutes.Map)
-        )
-
-        /*// navigationEvent를 수집하여 네비게이션 처리
-        LaunchedEffect(mainViewModel.navigationEvent) {
-            mainViewModel.navigationEvent.collect { route ->
-                navController.navigate(route.route) {
-                    launchSingleTop = true
-                    restoreState = true
-                    popUpTo(navController.graph.findStartDestination().id) {
-                        saveState = true
-                    }
-                    popUpTo("permission") {
-                        inclusive = true // permission 화면도 스택에서 제거
-                    }
-                }
-            }
-        }*/
-
-        val guidanceEvent by mainViewModel.requestNavGuidance.collectAsState()
-        val coroutineScope = rememberCoroutineScope()
-
         NavHost(
-            navController = navController,
-            startDestination = MainViewModel.NavRoutes.PERMISSION.route
+            navController = navController, startDestination = "home"
         ) {
-            composable(MainViewModel.NavRoutes.Home.route) {
-                HomeScreen(mainViewModel, cardItems)
+            composable("home") {
+                HomeScreen(mainViewModel, navController)
             }
-            composable(MainViewModel.NavRoutes.Details.route) {
+            composable("details") {
                 Dashboard()
             }
-            composable(MainViewModel.NavRoutes.Map.route) {
-                MapEnterScreen(mainViewModel)
+            composable("map") {
+                MapEnterScreen(navHostController = navController)
             }
-            composable(MainViewModel.NavRoutes.PERMISSION.route) {
-                PermissionRequestScreen(mainViewModel,
-                    onAllRequiredPermissionsGranted = {
-                        val serviceChannel = NotificationChannel(
-                            CHANNEL_ID,
-                            "LeBluetoothService Channel",
-                            NotificationManager.IMPORTANCE_DEFAULT
-                        )
-                        getSystemService(NotificationManager::class.java).createNotificationChannel(
-                            serviceChannel
-                        )
-                        serviceManager.bindService()
-                        navController.navigate(MainViewModel.NavRoutes.Home.route)
-                    },
-                    onPermissionDenied = {
-                    }
-                )
+            composable("navi") { backStackEntry ->
+                // SavedStateHandle에서 데이터를 가져옴
+                val knTrip = backStackEntry.savedStateHandle.get<KNTrip>("knTrip")
+                val curRoutePriority = backStackEntry.savedStateHandle.get<KNRoutePriority>("curRoutePriority")
+                    ?: KNRoutePriority.KNRoutePriority_Recommand
+                val curAvoidOptions = backStackEntry.savedStateHandle.get<KNRouteAvoidOption>("curAvoidOptions")
+                    ?: KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent
+
+                // SafetyScreen에 데이터를 전달
+                kNavi.NaviScreen(null)
+            }
+
+            composable("findLoad") { backStackEntry ->
+                val aaaInstance = navController.previousBackStackEntry?.savedStateHandle?.get<NavigateData>("aaaKey")
+                if (aaaInstance != null) {
+                    kNavi.FindLoadScreen(aaaInstance)
+                }
             }
         }
     }
 
     @Composable
-    fun HomeScreen(viewModel: MainViewModel, cardItems: List<CardItem>) {
+    fun HomeScreen(
+        viewModel: MainViewModel, navController: NavHostController
+    ) {
+        // 권한 승인 상태를 저장하는 상태 변수
+        var permissionsGranted by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+
+        // 권한이 아직 승인되지 않은 경우 PermissionRequestScreen을 보여줌
+        if (!permissionsGranted) {
+            PermissionRequestScreen(mainViewModel = viewModel, onAllRequiredPermissionsGranted = {
+                coroutineScope.launch {
+                    val serviceChannel = NotificationChannel(
+                        CHANNEL_ID, "LeBluetoothService Channel", NotificationManager.IMPORTANCE_DEFAULT
+                    )
+                    getSystemService(NotificationManager::class.java).createNotificationChannel(
+                        serviceChannel
+                    )
+                    serviceManager.bindService()
+                    // 상태 업데이트: 권한이 승인되었으므로 메인 화면(Column)을 보여줌
+                    permissionsGranted = true
+                }
+            }, onPermissionDenied = {
+                permissionsGranted = false
+            })
+        } else {
+            // 권한이 모두 승인된 경우 메인 화면을 보여줌
+            val cardItems = listOf(
+                CardItem("차량정보", "This is a description", "details"), CardItem("네비게이션", "This is a description", "map")
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+            ) {
+                BluetoothActionComponent(viewModel = viewModel)
+                CarImage(viewModel = viewModel)
+                CarInformationSummary(viewModel = viewModel)
+                Spacer(modifier = Modifier.height(32.dp))
+                GridCard(cardItems = cardItems, navController = navController)
+            }
+        }
+    }
+
+    /*@Composable
+    fun HomeScreen(viewModel: MainViewModel, cardItems: List<CardItem>, navController: NavHostController) {
+        PermissionRequestScreen(viewModel,
+            onAllRequiredPermissionsGranted = {
+                val serviceChannel = NotificationChannel(
+                    CHANNEL_ID,
+                    "LeBluetoothService Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
+                getSystemService(NotificationManager::class.java).createNotificationChannel(
+                    serviceChannel
+                )
+                serviceManager.bindService()
+            },
+            onPermissionDenied = {
+            }
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize() // 전체 화면을 채우도록 설정
@@ -196,9 +225,9 @@ class MainActivity : ComponentActivity() {
             CarImage(viewModel = viewModel)
             CarInformationSummary(viewModel = viewModel)
             Spacer(modifier = Modifier.height(32.dp))
-            GridCard(cardItems, viewModel)
+            GridCard(cardItems, viewModel, navController)
         }
-    }
+    }*/
 
     @Composable
     fun BluetoothActionComponent(viewModel: MainViewModel) {
@@ -206,45 +235,38 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = bluetoothState.description(context),
-                style = MaterialTheme.typography.titleMedium
+                text = bluetoothState.description(context), style = MaterialTheme.typography.titleMedium
             )
 
             NeumorphicCard(
                 modifier = Modifier.size(48.dp), defaultShadowOffset = 10, onClick = {
                     when (bluetoothState) {
                         BTState.CONNECTED -> viewModel.disconnect()
-                        else -> viewModel.connect()
+                        else -> {
+                            viewModel.connect()
+                        }
                     }
                 }, cornerRadius = 50.dp
             ) {
                 when (bluetoothState) {
                     BTState.CONNECTED -> {
                         Image(
-                            painter = painterResource(id = R.drawable.icon_link),
-                            contentDescription = stringResource(R.string.bluetooth_connected),
-                            modifier = Modifier.size(38.dp)
+                            painter = painterResource(id = R.drawable.icon_link), contentDescription = stringResource(R.string.bluetooth_connected), modifier = Modifier.size(38.dp)
                         )
                     }
 
                     BTState.DISCONNECTED, BTState.NOT_FOUND -> {
                         Image(
-                            painter = painterResource(id = R.drawable.icon_search),
-                            contentDescription = stringResource(R.string.bluetooth_disconnected),
-                            modifier = Modifier.size(38.dp)
+                            painter = painterResource(id = R.drawable.icon_search), contentDescription = stringResource(R.string.bluetooth_disconnected), modifier = Modifier.size(38.dp)
                         )
                     }
 
                     BTState.SCANNING, BTState.CONNECTING -> {
                         CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 4.dp,
-                            modifier = Modifier.size(32.dp)
+                            color = MaterialTheme.colorScheme.primary, strokeWidth = 4.dp, modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -267,10 +289,7 @@ class MainActivity : ComponentActivity() {
         val painter = painterResource(id = R.drawable.asset_car)
 
         Image(
-            painter = painter,
-            contentDescription = stringResource(R.string.car_image_description),
-            modifier = Modifier.size(200.dp),
-            colorFilter = colorFilter
+            painter = painter, contentDescription = stringResource(R.string.car_image_description), modifier = Modifier.size(200.dp), colorFilter = colorFilter
         )
     }
 
@@ -287,18 +306,15 @@ class MainActivity : ComponentActivity() {
                     .padding(16.dp), horizontalArrangement = Arrangement.SpaceAround
             ) {
                 InfoSection(
-                    title = stringResource(R.string.summary_last_connect),
-                    content = viewModel.lastConnectDate.collectAsState().value
+                    title = stringResource(R.string.summary_last_connect), content = viewModel.lastConnectDate.collectAsState().value
                 )
                 VerticalDivider(modifier = Modifier.fillMaxHeight())
                 InfoSection(
-                    title = stringResource(R.string.summary_recent_mileage),
-                    content = viewModel.recentMileage.collectAsState().value
+                    title = stringResource(R.string.summary_recent_mileage), content = viewModel.recentMileage.collectAsState().value
                 )
                 VerticalDivider(modifier = Modifier.fillMaxHeight())
                 InfoSection(
-                    title = stringResource(R.string.summary_recent_fuel_efficiency),
-                    content = viewModel.fullEfficiency.collectAsState().value
+                    title = stringResource(R.string.summary_recent_fuel_efficiency), content = viewModel.fullEfficiency.collectAsState().value
                 )
             }
         }
@@ -307,9 +323,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun InfoSection(title: String, content: String, modifier: Modifier = Modifier) {
         Column(
-            modifier = modifier.padding(5.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround
+            modifier = modifier.padding(5.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceAround
         ) {
             Text(
                 text = title,
@@ -324,11 +338,8 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun GridCard(
-        cardItem: List<CardItem>, viewModel: MainViewModel
+        cardItems: List<CardItem>, navController: NavHostController
     ) {
-
-        val coroutineScope = rememberCoroutineScope()
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
@@ -337,26 +348,21 @@ class MainActivity : ComponentActivity() {
             horizontalArrangement = Arrangement.spacedBy(25.dp),
             userScrollEnabled = false
         ) {
-            items(cardItem.size) { index ->
+            items(cardItems.size) { index ->
                 NeumorphicCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(80.dp), onClick = {
-                        coroutineScope.launch {
-                            viewModel.requestNavHost(cardItem[index].route)
-                        }
+                        navController.navigate(cardItems[index].route)
                     }, cornerRadius = 12.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = cardItem[index].title,
-                            style = MaterialTheme.typography.bodyLarge
+                            text = cardItems[index].title, style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }

@@ -56,7 +56,7 @@ fun MapScreen(viewModel: MapViewModel) {
 
     val context = LocalContext.current
 
-    val mapView = rememberMapViewWithLifecycle(viewModel, context) { map ->
+    val mapView = rememberMapViewWithLifecycle(context) { map ->
         kakaoMap = map // onMapReady 콜백에서 kakaoMap 저장
         trackingManager = map.trackingManager
     }
@@ -119,7 +119,7 @@ fun MapScreen(viewModel: MapViewModel) {
 
 @Composable
 fun rememberMapViewWithLifecycle(
-    viewModel: MapViewModel,
+    //viewModel: MapViewModel,
     context: Context,
     onMapReady: (KakaoMap) -> Unit // 콜백 매개변수 추가
 ): View {
@@ -139,7 +139,7 @@ fun rememberMapViewWithLifecycle(
                     }
                 }, object : KakaoMapReadyCallback() {
                     override fun getPosition(): LatLng {
-                        return viewModel.userLocation.value ?: LatLng.from(37.5665, 126.9780)
+                        return LatLng.from(37.5665, 126.9780)
                     }
 
                     override fun onMapReady(kakaoMap: KakaoMap) {

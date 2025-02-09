@@ -9,13 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import com.devidea.chevy.ui.screen.navi.KNavi
 import com.devidea.chevy.viewmodel.MainViewModel
 import com.devidea.chevy.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
-    val coroutineScope = rememberCoroutineScope()
+fun MainScreen(viewModel: MapViewModel, navHostController: NavHostController) {
     val uiState by viewModel.uiState.collectAsState(MapViewModel.UiState.Idle)
     val focusManager = LocalFocusManager.current
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
@@ -36,9 +37,7 @@ fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
                     isSearchHistoryVisible = false
                     focusManager.clearFocus()
                 } else {
-                    coroutineScope.launch {
-                        mainViewModel.requestNavHost(MainViewModel.NavRoutes.Home)
-                    }
+                    navHostController.popBackStack()
                 }
             }
         }
@@ -64,6 +63,16 @@ fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
                 onSearch = {
                     viewModel.addSearchQuery(searchText.text)
                     viewModel.onEvent(MapViewModel.UiEvent.Search(searchText.text))
+                },
+                onSafety = {
+                    // 현재 백스택 엔트리의 SavedStateHandle에 데이터를 저장
+                    navHostController.currentBackStackEntry?.savedStateHandle?.apply {
+                        set("knTrip", null)
+                        set("curRoutePriority", null)
+                        set("curAvoidOptions", null)
+                    }
+                    // "safety"라는 라우트로 이동 (Navigation Graph에서 해당 destination을 정의해야 합니다)
+                    navHostController.navigate("navi")
                 },
                 // 상태 전달
                 isSearchResult = uiState is MapViewModel.UiState.SearchResult,
@@ -114,7 +123,8 @@ fun MainScreen(mainViewModel: MainViewModel, viewModel: MapViewModel) {
                     val selectedDocument = (uiState as MapViewModel.UiState.ShowDetail).item
                     LocationDetailBottomSheet(
                         viewModel = viewModel,
-                        document = selectedDocument
+                        document = selectedDocument,
+                        navHostController = navHostController
                     )
                 }
             }

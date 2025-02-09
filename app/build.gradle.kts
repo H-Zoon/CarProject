@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.devidea.chevy"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         ndk {
@@ -17,7 +17,7 @@ android {
         }
         applicationId = "com.devidea.chevy"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -58,16 +58,16 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-splashscreen:1.0.0")
-    implementation("com.google.accompanist:accompanist-permissions:0.37.0")
-    implementation ("com.kakaomobility.knsdk:knsdk_ui:1.10.4-beta.2")
-    implementation ("com.google.dagger:hilt-android:2.44")
-    implementation("androidx.compose.material:material-icons-extended:1.2.0")
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.accompanist.permissions)
+    implementation (libs.knsdk.ui)
+    implementation (libs.hilt.android.v244)
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.runtime.livedata)
-    implementation ("com.kakao.maps.open:android:2.11.9")
+    implementation (libs.android)
 
-    implementation ("com.squareup.okhttp3:okhttp:4.11.0")   // OkHttp 의존성 추가
-    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation (libs.okhttp)   // OkHttp 의존성 추가
+    implementation (libs.converter.gson)
 
     //implementation (libs.androidx.hilt.lifecycle.viewmodel)
     implementation (libs.androidx.hilt.navigation.compose)
