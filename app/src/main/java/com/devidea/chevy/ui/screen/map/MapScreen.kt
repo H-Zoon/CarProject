@@ -124,7 +124,7 @@ fun rememberMapViewWithLifecycle(
     onMapReady: (KakaoMap) -> Unit // 콜백 매개변수 추가
 ): View {
     val mapView = remember { MapView(context) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
 
     DisposableEffect(lifecycle) {
         val observer = object : DefaultLifecycleObserver {

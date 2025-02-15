@@ -139,13 +139,13 @@ class MainActivity : AppCompatActivity() {
                     ?: KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent
 
                 // SafetyScreen에 데이터를 전달
-                kNavi.NaviScreen(null)
+                kNavi.Navigation(null, navController = navController)
             }
 
             composable("findLoad") { backStackEntry ->
                 val aaaInstance = navController.previousBackStackEntry?.savedStateHandle?.get<NavigateData>("aaaKey")
                 if (aaaInstance != null) {
-                    kNavi.FindLoadScreen(aaaInstance)
+                    kNavi.LoadRequestScreen(aaaInstance, navController)
                 }
             }
         }

@@ -25,12 +25,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 
 class BleService : Service() {
@@ -217,20 +220,22 @@ class BleService : Service() {
 
     private val sendMutex = Mutex()
 
-    private fun sendMessage(data: ByteArray) {
-        if (currentMTU == 0) {
-            Log.e("TAG", "error")
-            return
-        } else {
-            sendScope.launch {
-                var length = data.size
-                var offset = 0
-                while (length > 0) {
-                    val chunkSize = if (length > currentMTU) currentMTU else length
-                    val chunk = data.copyOfRange(offset, offset + chunkSize)
-                    offset += chunkSize
-                    length -= chunkSize
-                    sendChannel.send(chunk)
+    fun sendMessage(data: ByteArray) {
+        sendScope.launch {
+            sendMutex.withLock {
+                if (currentMTU == 0) {
+                    Log.e("TAG", "error")
+                    return@launch
+                } else {
+                    var length = data.size
+                    var offset = 0
+                    while (length > 0) {
+                        val chunkSize = if (length > currentMTU) currentMTU else length
+                        val chunk = data.copyOfRange(offset, offset + chunkSize)
+                        offset += chunkSize
+                        length -= chunkSize
+                        sendChannel.send(chunk)
+                    }
                 }
             }
         }
@@ -239,12 +244,10 @@ class BleService : Service() {
     private fun startSending() {
         sendScope.launch {
             for (chunk in sendChannel) {
-                sendMutex.withLock {
-                    try {
-                        bleManager.sendMessage(chunk)
-                    } catch (e: Exception) {
-                        Logger.e { "전송 중 에러 발생: ${e.message}" }
-                    }
+                try {
+                    bleManager.sendMessage(chunk)
+                } catch (e: Exception) {
+                    Logger.e { "전송 중 에러 발생: ${e.message}" }
                 }
             }
         }
@@ -254,11 +257,11 @@ class BleService : Service() {
         _btState.value = newState
     }
 
-    fun requestScan () {
+    fun requestScan() {
         bleManager.startScan()
     }
 
-    fun requestDisconnect () {
+    fun requestDisconnect() {
         bleManager.disconnect()
     }
 
@@ -287,27 +290,34 @@ class BleService : Service() {
         }
     }
 
-    fun sendNaviMsg(pair: Pair<ByteArray, Int>) {
-        val bArr = pair.first
-        val i = pair.second
+    private val sendNaviMsgMutex = Mutex()
 
-        val bArr2 = ByteArray(i + 5)
-        var i2 = 0
-        bArr2[0] = -1
-        bArr2[1] = 85
-        var i3 = 2
-        bArr2[2] = (i + 1).toByte()
-        bArr2[3] = 1
-        System.arraycopy(bArr, 0, bArr2, 4, i)
-        while (true) {
-            val i4 = i + 4
-            if (i3 < i4) {
-                i2 += bArr2[i3].toInt() and 255
-                i3++
-            } else {
-                bArr2[i4] = (i2 and 255).toByte()
-                sendMessage(bArr2)
-                return
+    suspend fun sendNaviMsg(pair: Pair<ByteArray, Int>) {
+        sendNaviMsgMutex.withLock {
+            suspendCoroutine<Unit> { cont ->
+                val bArr = pair.first
+                val i = pair.second
+
+                val bArr2 = ByteArray(i + 5)
+                var i2 = 0
+                bArr2[0] = -1
+                bArr2[1] = 85
+                var i3 = 2
+                bArr2[2] = (i + 1).toByte()
+                bArr2[3] = 1
+                System.arraycopy(bArr, 0, bArr2, 4, i)
+                while (true) {
+                    val i4 = i + 4
+                    if (i3 < i4) {
+                        i2 += bArr2[i3].toInt() and 255
+                        i3++
+                    } else {
+                        bArr2[i4] = (i2 and 255).toByte()
+                        sendMessage(bArr2)
+                        break
+                    }
+                }
+                cont.resume(Unit)
             }
         }
     }

@@ -1,7 +1,7 @@
 package com.devidea.chevy.ui.screen.navi
 
 import android.graphics.Color
-import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.NavController
 import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.navi.NavigationIconType
 import com.devidea.chevy.datas.navi.findGuideAsset
@@ -111,10 +114,9 @@ class KNavi @Inject constructor(
 
         collectionJob = scope.launch {
             currentLocation
-                .sample(1500) // 1500ms마다 샘플링
+                .sample(1000)
                 .collect { location ->
                     sendSafety(location)
-                    delay(500L)
                     // sendLane()
                     sendGuide(location)
                 }
@@ -127,6 +129,7 @@ class KNavi @Inject constructor(
     }
 
     var lastSafetyState: Boolean = false
+    var lastGuideState: KNGuideState? = null
 
     var knNaviView: KNNaviView? = null
     private val bleService by lazy { serviceManager.getService() }
@@ -259,7 +262,6 @@ class KNavi @Inject constructor(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(8.dp)
-                // 포커싱된 카드인 경우 테두리로 강조
                 .then(
                     if (isFocused) Modifier.border(BorderStroke(2.dp, MaterialTheme.colorScheme.primary))
                     else Modifier
@@ -282,19 +284,18 @@ class KNavi @Inject constructor(
     }
 
     @Composable
-    fun FindLoadScreen(data: NavigateData) {
+    fun LoadRequestScreen(data: NavigateData, navController: NavController) {
         val stateList = remember { mutableStateListOf<KNRoute>() }
         var focusedRoute by remember { mutableStateOf<KNRoute?>(null) }
-        var selectedRoute by remember { mutableStateOf<KNRoute?>(null) }
+        var selectedRoute by remember { mutableStateOf(false) }
         var knTrip by remember { mutableStateOf<KNTrip?>(null) }
 
         val context = LocalContext.current
-        var kakaoMap by remember { mutableStateOf<com.kakao.vectormap.KakaoMap?>(null) }
+        var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
 
         // Compose의 Lifecycle에 맞게 MapView 생성
         val mapView = rememberMapViewWithLifecycle(context) { map ->
             kakaoMap = map
-            //onMapReady(map)
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -302,17 +303,23 @@ class KNavi @Inject constructor(
                 factory = { mapView },
                 modifier = Modifier.fillMaxSize()
             )
-            RouteList(stateList, onRouteFocused = { focusedRoute = it }, onRouteSelected = { selectedRoute = it })
+            RouteList(stateList, onRouteFocused = { focusedRoute = it }, onRouteSelected = { selectedRoute = true })
         }
 
         // 상태에 따라 NaviScreen(또는 상세 화면)을 표시합니다.
         focusedRoute?.let { route ->
-            kakaoMap?.let { drawRouteLine(it, route.routePolylineWGS84()) }
+            kakaoMap?.let { DrawRouteLine(it, route.routePolylineWGS84()) }
         }
 
-        selectedRoute?.let { route ->
-            NaviScreen(knTrip, route.priority!!, route.avoidOptions)
+        if (selectedRoute) {
+            focusedRoute?.let {
+                Navigation(knTrip, it.priority!!, it.avoidOptions, navController)
+            } ?: {
+                selectedRoute = false
+                Logger.e { "error" }
+            }
         }
+
 
         LaunchedEffect(data) {
             makeTrip(
@@ -356,8 +363,8 @@ class KNavi @Inject constructor(
     }
 
     @Composable
-    fun drawRouteLine(
-        map: com.kakao.vectormap.KakaoMap,
+    private fun DrawRouteLine(
+        map: KakaoMap,
         mapList: List<Map<String, Number>>?
     ) {
 
@@ -424,14 +431,14 @@ class KNavi @Inject constructor(
         val cameraUpdate =
             CameraUpdateFactory.newCenterPosition(
                 LatLng.from(
-                    (mapList?.get((mapList.size)/2))?.get("y")!!.toDouble(),
-                        (mapList.get(mapList.size/2)).get("x")!!.toDouble()
+                    (mapList?.get((mapList.size) / 2))?.get("y")!!.toDouble(),
+                    (mapList.get(mapList.size / 2)).get("x")!!.toDouble()
                 )
             )
         val zoom = CameraUpdateFactory.zoomTo(
             when (mapList.size) {
-                in 1..150 -> 15
-                in 151..500 -> 10
+                in 1..300 -> 14
+                in 301..500 -> 10
                 else -> 7
             }
         )
@@ -440,11 +447,58 @@ class KNavi @Inject constructor(
     }
 
     @Composable
-    fun NaviScreen(
+    fun Navigation(
         knTrip: KNTrip?,
         curRoutePriority: KNRoutePriority = KNRoutePriority.KNRoutePriority_Recommand,
-        curAvoidOptions: Int = 0
+        curAvoidOptions: Int = 0,
+        navController: NavController
     ) {
+        var showExitDialog by remember { mutableStateOf(false) }
+
+        BackHandler {
+            if (showExitDialog) {
+                showExitDialog = false
+            } else {
+                showExitDialog = true
+            }
+        }
+
+        // 다이얼로그 표시
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    // 사용자가 다이얼로그 외부를 터치하거나 뒤로가기로 다이얼로그를 닫을 경우
+                    showExitDialog = false
+                },
+                title = { Text("종료 확인") },
+                text = { Text("뒤로가기를 진행하시겠습니까?") },
+                confirmButton = {
+                    if (lastGuideState == KNGuideState.KNGuideState_OnRouteGuide) {
+                        Button(
+                            onClick = {
+                                knNaviView?.guideCancel()
+                                showExitDialog = false
+                            }
+                        ) {
+                            Text("안전운전 모드")
+                        }
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            knNaviView?.guidance?.stop()
+                            showExitDialog = false
+                            stopLocationCollection()
+                            navController.popBackStack()
+                        }
+                    ) {
+                        Text("안내 종료하기")
+                    }
+                }
+            )
+        }
+
         AndroidView(
             factory = {
                 KNNaviView(it).apply {
@@ -471,7 +525,7 @@ class KNavi @Inject constructor(
             }
         }
 
-        LaunchedEffect(knNaviView) {
+        LaunchedEffect(Unit) {
             KNSDK.sharedGuidance()?.apply {
                 knNaviView?.initWithGuidance(
                     this,
@@ -480,6 +534,7 @@ class KNavi @Inject constructor(
                     curAvoidOptions
                 )
             }
+            startLocationCollection()
         }
     }
 
@@ -589,11 +644,12 @@ class KNavi @Inject constructor(
     }
 
     override fun naviViewGuideState(state: KNGuideState) {
-        startLocationCollection()
+        //startLocationCollection()
+        lastGuideState = state
         Logger.i { "$state" }
     }
 
-    private fun sendGuide(currentLocation: KNLocation?) {
+    private suspend fun sendGuide(currentLocation: KNLocation?) {
         val distance =
             routeGuide.value?.curDirection?.location?.let { currentLocation?.distToLocation(it) }
                 ?: 0
@@ -608,7 +664,7 @@ class KNavi @Inject constructor(
 
     }
 
-    private fun sendLane() {
+    private suspend fun sendLane() {
         // laneInfos가 존재하고 비어있지 않은지 확인
         val laneInfos = routeGuide.value?.lane?.laneInfos
 
@@ -641,7 +697,7 @@ class KNavi @Inject constructor(
 
 
     //TODO Test
-    private fun sendSafety(currentLocation: KNLocation?) {
+    private suspend fun sendSafety(currentLocation: KNLocation?) {
         if (safetyGuide.value == null || currentLocation == null) {
             sendDefaultSafetyState()
             return
@@ -676,7 +732,7 @@ class KNavi @Inject constructor(
         }
     }
 
-    private fun sendSafetyMessages(currentLocation: KNLocation, safety: KNSafety_Camera) {
+    private suspend fun sendSafetyMessages(currentLocation: KNLocation, safety: KNSafety_Camera) {
         val speedLimit = safety.speedLimit
         val cameraDistance = currentLocation.distToLocation(safety.location)
 
@@ -692,11 +748,12 @@ class KNavi @Inject constructor(
         lastSafetyState = true
     }
 
-    private fun sendDefaultSafetyState() {
+    private suspend fun sendDefaultSafetyState() {
         if (lastSafetyState) {
             Logger.w(shouldUpdate = true) { "기본값을 전송합니다." }
             bleService?.let { service ->
                 service.sendNaviMsg(sendCameraDistance(0, 0, 0))
+                delay(500L)
                 service.sendNaviMsg(sendLimitSpeed(0, 0))
             } ?: run {
                 Logger.e { "BLE 서비스가 초기화되지 않았습니다." }
