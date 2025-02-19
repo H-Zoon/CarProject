@@ -86,7 +86,10 @@ class CarEventModel @Inject constructor(
             0.toByte() -> {
                 if (bArr[2] == 1.toByte()) {
                     //packAndSendMsg(byteArrayOf(2, i.toByte()), 2)
-                    bleService?.sendHandleMsg(Pair(byteArrayOf(2, i.toByte()), 2))
+                    //TODO 개선 필요
+                    CoroutineScope(Dispatchers.Main).launch {
+                        bleService?.sendHandleMsg(Pair(byteArrayOf(2, i.toByte()), 2))
+                    }
                 }
             }
 
@@ -493,7 +496,7 @@ class CarEventModel @Inject constructor(
         }
     }
 
-    fun onClkGearDLock() {
+    /*fun onClkGearDLock() {
         val newGearDLock = if (mGearDLock == 1) 0 else 1
         postViewEvent(CarEvents.updateGearDLock(newGearDLock))
         Logger.d { "gear_d_lock_onoff mGearDLock!" }
@@ -511,7 +514,7 @@ class CarEventModel @Inject constructor(
         val bArr = byteArrayOf(33, (i and 15 or (i2 and 15 shl 4)).toByte())
         //packAndSendMsg(bArr, bArr.size)
         bleService?.sendHandleMsg(Pair(bArr, bArr.size))
-    }
+    }*/
 
     private fun packAndSendMsg(bArr: ByteArray, i: Int) {
         val bArr2 = ByteArray(i + 5)

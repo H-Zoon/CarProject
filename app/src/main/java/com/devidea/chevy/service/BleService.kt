@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -204,28 +205,23 @@ class BleService : Service() {
 
         val header = msgData[0].toInt()
         Log.e("TAG", "Header: $header, Message: ${msgData.joinToString()}")
-
-        when (header) {
-            1, 3 -> handleCarStateEvent(msgData)
-            55 -> sendHandleMsg(Msgs.sendHeartbeat())
-            else -> Logger.d { "Unknown header: $header" }
-        }
-    }
-
-    private fun handleCarStateEvent(msgData: ByteArray) {
         busScope.launch {
-            EventBus.post(Event.carStateEvent(msgData))
+            when (header) {
+                1, 3 -> EventBus.post(Event.carStateEvent(msgData))
+                55 -> sendHandleMsg(Msgs.sendHeartbeat())
+                else -> Logger.d { "Unknown header: $header" }
+            }
         }
     }
 
     private val sendMutex = Mutex()
 
-    fun sendMessage(data: ByteArray) {
-        sendScope.launch {
+    suspend fun sendMessage(data: ByteArray) {
+        withContext(Dispatchers.IO) {
             sendMutex.withLock {
                 if (currentMTU == 0) {
                     Log.e("TAG", "error")
-                    return@launch
+                    return@withContext
                 } else {
                     var length = data.size
                     var offset = 0
@@ -265,7 +261,7 @@ class BleService : Service() {
         bleManager.disconnect()
     }
 
-    fun sendHandleMsg(pair: Pair<ByteArray, Int>) {
+    suspend fun sendHandleMsg(pair: Pair<ByteArray, Int>) {
         val bArr = pair.first
         val i = pair.second
 
@@ -284,41 +280,40 @@ class BleService : Service() {
                 i3++
             } else {
                 bArr2[i4] = (i2 and 255).toByte()
-                sendMessage(bArr2)
-                return
+                break
             }
         }
+        sendMessage(bArr2)
     }
 
     private val sendNaviMsgMutex = Mutex()
 
     suspend fun sendNaviMsg(pair: Pair<ByteArray, Int>) {
         sendNaviMsgMutex.withLock {
-            suspendCoroutine<Unit> { cont ->
-                val bArr = pair.first
-                val i = pair.second
 
-                val bArr2 = ByteArray(i + 5)
-                var i2 = 0
-                bArr2[0] = -1
-                bArr2[1] = 85
-                var i3 = 2
-                bArr2[2] = (i + 1).toByte()
-                bArr2[3] = 1
-                System.arraycopy(bArr, 0, bArr2, 4, i)
-                while (true) {
-                    val i4 = i + 4
-                    if (i3 < i4) {
-                        i2 += bArr2[i3].toInt() and 255
-                        i3++
-                    } else {
-                        bArr2[i4] = (i2 and 255).toByte()
-                        sendMessage(bArr2)
-                        break
-                    }
+            val bArr = pair.first
+            val i = pair.second
+
+            val bArr2 = ByteArray(i + 5)
+            var i2 = 0
+            bArr2[0] = -1
+            bArr2[1] = 85
+            var i3 = 2
+            bArr2[2] = (i + 1).toByte()
+            bArr2[3] = 1
+            System.arraycopy(bArr, 0, bArr2, 4, i)
+            while (true) {
+                val i4 = i + 4
+                if (i3 < i4) {
+                    i2 += bArr2[i3].toInt() and 255
+                    i3++
+                } else {
+                    bArr2[i4] = (i2 and 255).toByte()
+                    break
                 }
-                cont.resume(Unit)
             }
+            //cont.resume(Unit)
+            sendMessage(bArr2)
         }
     }
 }

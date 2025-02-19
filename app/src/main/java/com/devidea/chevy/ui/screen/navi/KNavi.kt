@@ -437,7 +437,8 @@ class KNavi @Inject constructor(
             )
         val zoom = CameraUpdateFactory.zoomTo(
             when (mapList.size) {
-                in 1..300 -> 14
+                in 1..200 -> 14
+                in 201..300 -> 12
                 in 301..500 -> 10
                 else -> 7
             }
@@ -740,7 +741,7 @@ class KNavi @Inject constructor(
 
         bleService?.let { service ->
             service.sendNaviMsg(sendCameraDistance(cameraDistance, 1, 1))
-            service.sendNaviMsg(sendLimitSpeed(cameraDistance, speedLimit))
+            //service.sendNaviMsg(sendLimitSpeed(cameraDistance, speedLimit))
             service.sendNaviMsg(sendNextInfo(icon = 0, distance = cameraDistance))
         } ?: run {
             Logger.e { "BLE 서비스가 초기화되지 않았습니다." }
