@@ -283,6 +283,108 @@ class KNavi @Inject constructor(
         }
     }
 
+    private fun DrawRouteLine(
+        map: KakaoMap,
+        route: KNRoute
+    ) {
+        val mapList: List<Map<String, Number>>? = route.routePolylineWGS84()
+        // 1. RouteLineLayer 가져오기
+        val layer: RouteLineLayer = map.routeLineManager!!.layer
+        layer.removeAll()
+
+        // 2. 교통 흐름에 따라 사용할 스타일을 미리 생성
+        // (여기서는 스타일셋에 4개의 스타일을 등록하지만,
+        //  실제 세그먼트에는 각 세그먼트별 교통 상태에 맞는 색상을 직접 지정함)
+        val styles1 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.BLUE))
+        val styles2 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.CYAN))
+        val styles3 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.YELLOW))
+        val styles4 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.RED))
+        val stylesSet = RouteLineStylesSet.from(styles1, styles2, styles3, styles4)
+
+        // 3. routePolylineWGS84 데이터를 바탕으로 RouteLineSegment 생성하기
+        val segments = mutableListOf<RouteLineSegment>()
+
+        if (mapList.isNullOrEmpty().not()) {
+            // 첫 번째 데이터의 trfSt 값을 초기 교통 상태로 사용
+            var currentStatus = mapList!![0]["trfSt"]?.toInt() ?: 0
+            val currentPoints = mutableListOf<LatLng>()
+
+            for (point in mapList) {
+                val lat = point["y"]?.toDouble() ?: 0.0
+                val lng = point["x"]?.toDouble() ?: 0.0
+                val latLng = LatLng.from(lat, lng)
+                val status = point["trfSt"]?.toInt() ?: currentStatus
+
+                if (status != currentStatus && currentPoints.size >= 2) {
+                    // 기존 세그먼트 생성
+                    segments.add(
+                        RouteLineSegment.from(
+                            currentPoints,
+                            mapStatusToStyle(currentStatus)
+                        )
+                    )
+                    // 마지막 좌표를 새로운 세그먼트의 시작점으로 유지
+                    val lastPoint = currentPoints.last()
+                    currentPoints.clear()
+                    currentPoints.add(lastPoint)
+                    currentStatus = status
+                }
+                currentPoints.add(latLng)
+            }
+            // 마지막 남은 좌표들로 세그먼트 생성 (필요한 경우)
+            if (currentPoints.size >= 2) {
+                segments.add(
+                    RouteLineSegment.from(
+                        currentPoints,
+                        mapStatusToStyle(currentStatus)
+                    )
+                )
+            }
+        }
+
+        // 6. 모든 좌표의 Bounds 계산 후 중심 좌표 및 동적 줌 레벨 적용
+        if (!mapList.isNullOrEmpty()) {
+            var minLat = Double.MAX_VALUE
+            var maxLat = -Double.MAX_VALUE
+            var minLng = Double.MAX_VALUE
+            var maxLng = -Double.MAX_VALUE
+
+            // 좌표 리스트 전체를 순회하며 경계 계산
+            for (point in mapList) {
+                val lat = point["y"]?.toDouble() ?: continue
+                val lng = point["x"]?.toDouble() ?: continue
+                if (lat < minLat) minLat = lat
+                if (lat > maxLat) maxLat = lat
+                if (lng < minLng) minLng = lng
+                if (lng > maxLng) maxLng = lng
+            }
+            // 중심 좌표 계산
+            val centerLat = (minLat + maxLat) / 2.0
+            val centerLng = (minLng + maxLng) / 2.0
+            val centerPoint = LatLng.from(centerLat, centerLng)
+
+            // 경계 크기 계산 (위도/경도 차이)
+            val latDiff = maxLat - minLat
+            val lngDiff = maxLng - minLng
+            val maxDiff = maxOf(latDiff, lngDiff)
+
+            // 동적 줌 레벨 산출 (임계값은 필요에 따라 조정)
+            val dynamicZoom = when {
+                maxDiff < 0.005 -> 16
+                maxDiff < 0.01 -> 15
+                maxDiff < 0.02 -> 14
+                maxDiff < 0.05 -> 13
+                maxDiff < 0.1 -> 12
+                maxDiff < 0.2 -> 11
+                maxDiff < 0.5 -> 10
+                else -> 9
+            }
+            // 계산된 중심과 줌 레벨로 카메라 업데이트
+            map.moveCamera(CameraUpdateFactory.newCenterPosition(centerPoint))
+            map.moveCamera(CameraUpdateFactory.zoomTo(dynamicZoom))
+        }
+    }
+
     @Composable
     fun LoadRequestScreen(data: NavigateData, navController: NavController) {
         val stateList = remember { mutableStateListOf<KNRoute>() }
@@ -308,7 +410,7 @@ class KNavi @Inject constructor(
 
         // 상태에 따라 NaviScreen(또는 상세 화면)을 표시합니다.
         focusedRoute?.let { route ->
-            kakaoMap?.let { DrawRouteLine(it, route.routePolylineWGS84()) }
+            kakaoMap?.let { DrawRouteLine(it, route) }
         }
 
         if (selectedRoute) {
@@ -360,91 +462,6 @@ class KNavi @Inject constructor(
             1, 6 -> RouteLineStyle.from(16f, Color.RED)
             else -> RouteLineStyle.from(16f, Color.BLUE)
         }
-    }
-
-    @Composable
-    private fun DrawRouteLine(
-        map: KakaoMap,
-        mapList: List<Map<String, Number>>?
-    ) {
-
-        // 1. RouteLineLayer 가져오기
-        val layer: RouteLineLayer = map.routeLineManager!!.layer
-        layer.removeAll()
-
-        // 2. 교통 흐름에 따라 사용할 스타일을 미리 생성
-        // (여기서는 스타일셋에 4개의 스타일을 등록하지만,
-        //  실제 세그먼트에는 각 세그먼트별 교통 상태에 맞는 색상을 직접 지정함)
-        val styles1 = RouteLineStyles.from(RouteLineStyle.from(16f, Color.BLUE))
-        val styles2 = RouteLineStyles.from(RouteLineStyle.from(16f, Color.CYAN))
-        val styles3 = RouteLineStyles.from(RouteLineStyle.from(16f, Color.YELLOW))
-        val styles4 = RouteLineStyles.from(RouteLineStyle.from(16f, Color.RED))
-        val stylesSet = RouteLineStylesSet.from(styles1, styles2, styles3, styles4)
-
-        // 3. routePolylineWGS84 데이터를 바탕으로 RouteLineSegment 생성하기
-        val segments = mutableListOf<RouteLineSegment>()
-
-        if (mapList.isNullOrEmpty().not()) {
-            // 첫 번째 데이터의 trfSt 값을 초기 교통 상태로 사용
-            var currentStatus = mapList!![0]["trfSt"]?.toInt() ?: 0
-            val currentPoints = mutableListOf<LatLng>()
-
-            for (point in mapList) {
-                val lat = point["y"]?.toDouble() ?: 0.0
-                val lng = point["x"]?.toDouble() ?: 0.0
-                val latLng = LatLng.from(lat, lng)
-                val status = point["trfSt"]?.toInt() ?: currentStatus
-
-                if (status != currentStatus && currentPoints.size >= 2) {
-                    // 기존 세그먼트 생성
-                    segments.add(
-                        RouteLineSegment.from(
-                            currentPoints,
-                            mapStatusToStyle(currentStatus)
-                        )
-                    )
-                    // 마지막 좌표를 새로운 세그먼트의 시작점으로 유지
-                    val lastPoint = currentPoints.last()
-                    currentPoints.clear()
-                    currentPoints.add(lastPoint)
-                    currentStatus = status
-                }
-                currentPoints.add(latLng)
-            }
-            // 마지막 남은 좌표들로 세그먼트 생성 (필요한 경우)
-            if (currentPoints.size >= 2) {
-                segments.add(
-                    RouteLineSegment.from(
-                        currentPoints,
-                        mapStatusToStyle(currentStatus)
-                    )
-                )
-            }
-        }
-
-        // 4. RouteLineOptions 생성: segments와 스타일셋을 지정
-        val options = RouteLineOptions.from(segments)
-            .setStylesSet(stylesSet)
-
-        // 5. RouteLineLayer에 options를 추가하여 지도에 경로 라인 생성하기
-        val routeLine = layer.addRouteLine(options)
-        val cameraUpdate =
-            CameraUpdateFactory.newCenterPosition(
-                LatLng.from(
-                    (mapList?.get((mapList.size) / 2))?.get("y")!!.toDouble(),
-                    (mapList.get(mapList.size / 2)).get("x")!!.toDouble()
-                )
-            )
-        val zoom = CameraUpdateFactory.zoomTo(
-            when (mapList.size) {
-                in 1..200 -> 14
-                in 201..300 -> 12
-                in 301..500 -> 10
-                else -> 7
-            }
-        )
-        map.moveCamera(cameraUpdate)
-        map.moveCamera(zoom)
     }
 
     @Composable
@@ -742,7 +759,7 @@ class KNavi @Inject constructor(
         bleService?.let { service ->
             service.sendNaviMsg(sendCameraDistance(cameraDistance, 1, 1))
             //service.sendNaviMsg(sendLimitSpeed(cameraDistance, speedLimit))
-            service.sendNaviMsg(sendNextInfo(icon = 0, distance = cameraDistance))
+            //service.sendNaviMsg(sendNextInfo(icon = 0, distance = cameraDistance))
         } ?: run {
             Logger.e { "BLE 서비스가 초기화되지 않았습니다." }
         }
@@ -763,4 +780,6 @@ class KNavi @Inject constructor(
         }
     }
 }
+
+
 

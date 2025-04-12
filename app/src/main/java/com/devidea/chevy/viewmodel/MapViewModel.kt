@@ -41,6 +41,7 @@ class MapViewModel @Inject constructor(
         object Searching : UiState() // 검색 중
         data class SearchResult(val items: List<Document>) : UiState() // 검색 결과 표시 중
         data class ShowDetail(val item: Document) : UiState() // 상세 정보 표시 중
+        data class DrawRoute(val item: Document) : UiState() // 상세 정보 표시 중
     }
 
     // UI 이벤트를 관리하는 sealed class

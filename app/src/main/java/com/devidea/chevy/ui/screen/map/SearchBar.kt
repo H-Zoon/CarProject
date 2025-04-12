@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,13 +42,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devidea.chevy.eventbus.GuidanceStartEvent
-import com.devidea.chevy.eventbus.KNAVStartEventBus
-import com.kakaomobility.knsdk.KNRouteAvoidOption
-import com.kakaomobility.knsdk.KNRoutePriority
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 @Composable
 fun SearchBar(
@@ -58,7 +52,7 @@ fun SearchBar(
     onFocusChanged: (Boolean) -> Unit,
     onSearch: () -> Unit,
     onSafety: () -> Unit,
-    isSearchResult: Boolean
+    needBackground: Boolean
 ) {
     var isFocused by remember { mutableStateOf(false) }
     Box(
@@ -66,7 +60,7 @@ fun SearchBar(
             .fillMaxWidth()
             .background(
                 when {
-                    isSearchResult -> Color.White
+                    needBackground -> Color.White
                     isFocused -> Color.White
                     else -> Color.Transparent
                 }

@@ -63,6 +63,14 @@ fun LocationDetailBottomSheet(viewModel: MapViewModel, document: Document, navHo
                     Text(text = "길안내")
                 }
             }
+        },
+        content = { innerPadding ->
+            // 메인 컨텐츠 영역 (여기서는 빈 박스로 처리)
+            /*Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )*/
         }
-    ) {}
+    )
 }

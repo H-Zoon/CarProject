@@ -2,22 +2,12 @@ package com.devidea.chevy.ui.screen.map
 
 import android.content.Context
 import android.view.View
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -35,6 +25,11 @@ import com.kakao.vectormap.label.Label
 import com.kakao.vectormap.label.LabelOptions
 import com.kakao.vectormap.label.LabelStyle
 import com.kakao.vectormap.label.TrackingManager
+import com.kakao.vectormap.route.RouteLineLayer
+import com.kakao.vectormap.route.RouteLineSegment
+import com.kakao.vectormap.route.RouteLineStyle
+import com.kakao.vectormap.route.RouteLineStyles
+import com.kakao.vectormap.route.RouteLineStylesSet
 import com.kakao.vectormap.shape.DotPoints
 import com.kakao.vectormap.shape.Polygon
 import com.kakao.vectormap.shape.PolygonOptions
@@ -43,6 +38,7 @@ import com.kakao.vectormap.shape.PolygonStylesSet
 import com.kakao.vectormap.shape.ShapeAnimator
 import com.kakao.vectormap.shape.animation.CircleWave
 import com.kakao.vectormap.shape.animation.CircleWaves
+import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 
 @Composable
 fun MapScreen(viewModel: MapViewModel) {
@@ -88,38 +84,22 @@ fun MapScreen(viewModel: MapViewModel) {
                 goalLabel(map, (viewState as MapViewModel.UiState.ShowDetail).item) {
                     label2 = it
                 }
+            } else if(viewState is MapViewModel.UiState.DrawRoute){
+                map.labelManager?.layer?.remove(label2)
             } else {
                 map.labelManager?.layer?.remove(label2)
             }
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        FloatingActionButton(
-            onClick = { viewModel.setCameraTracking(!cameraState) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            shape = CircleShape,
-            containerColor = if (cameraState) Color(0xFFff722b) else Color.Gray
-        ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = "내 위치",
-                tint = Color.White
-            )
-        }
-    }
+    AndroidView(
+        factory = { mapView },
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable
 fun rememberMapViewWithLifecycle(
-    //viewModel: MapViewModel,
     context: Context,
     onMapReady: (KakaoMap) -> Unit // 콜백 매개변수 추가
 ): View {
@@ -157,7 +137,6 @@ fun rememberMapViewWithLifecycle(
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
-                //mapView.destroy()
             }
         }
 
@@ -245,3 +224,4 @@ fun goalLabel(kakaoMap: KakaoMap, document: Document, label: (Label) -> Unit) {
         label(detailLabel)
     }
 }
+
