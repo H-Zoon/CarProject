@@ -1,22 +1,26 @@
-package com.devidea.chevy.viewmodel
+package com.devidea.chevy.ui.main
 
+import android.provider.Settings
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.App
+import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.eventbus.GuidanceStartEvent
-import com.devidea.chevy.eventbus.KNAVStartEventBus
 import com.devidea.chevy.repository.device.DataStoreRepository
 import com.devidea.chevy.service.BleService
 import com.devidea.chevy.service.BleServiceManager
+import com.kakaomobility.knsdk.KNLanguageType
+import com.kakaomobility.knsdk.KNSDK
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
+import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -50,6 +54,18 @@ class MainViewModel @Inject constructor(
 
     private val _isFirstLunch = MutableStateFlow(false)
     val isFirstLunch: StateFlow<Boolean> get() = _isFirstLunch
+
+    // 인증 성공 여부를 관리하는 Flow
+    private val _authenticationSuccess = MutableStateFlow(false)
+    val authenticationSuccess: StateFlow<Boolean> = _authenticationSuccess.asStateFlow()
+
+    // 인증 중 상태를 관리하는 Flow
+    private val _isAuthenticating = MutableStateFlow(false)
+    val isAuthenticating: StateFlow<Boolean> = _isAuthenticating.asStateFlow()
+
+    // 에러 메시지 상태를 관리하는 Flow
+    private val _authErrorMessage = MutableStateFlow<String?>(null)
+    val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -143,4 +159,48 @@ class MainViewModel @Inject constructor(
     fun disconnect() {
         if(isServiceInitialized.value) serviceManager.getService()?.requestDisconnect()
     }
+
+    // 인증 시작
+    fun authenticateUser() {
+        CoroutineScope(Dispatchers.IO).launch {
+            _isAuthenticating.value = true
+            KNSDK.apply {
+                initializeWithAppKey(
+                    aAppKey = "e31e85ed66b03658041340618628e93f",
+                    aClientVersion = "1.0.0",
+                    aAppUserId = Settings.Secure.getString(instance.contentResolver, Settings.Secure.ANDROID_ID),
+                    aLangType = KNLanguageType.KNLanguageType_KOREAN,
+                    aCompletion = { result ->
+                        result?.let {
+                            _isAuthenticating.value = false
+                            when (it.code) {
+                                KNError_Code_C103 -> {
+                                    // 인증 실패 처리
+                                    _authErrorMessage.value = "인증 실패: 코드 C103"
+                                }
+
+                                KNError_Code_C302 -> {
+                                    // 권한 오류 처리
+                                    _authErrorMessage.value = "권한 오류: 코드 C302"
+                                }
+
+                                else -> {
+                                    // 기타 오류 처리
+                                    _authErrorMessage.value = "초기화 실패: 알 수 없는 오류"
+                                }
+                            }
+                        } ?: run {
+                            _authenticationSuccess.value = true
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    // 에러 메시지 초기화
+    fun clearError() {
+        _authErrorMessage.value = null
+    }
+
 }

@@ -11,7 +11,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devidea.chevy.App.Companion.CHANNEL_ID
 import com.devidea.chevy.Logger
-import com.devidea.chevy.ui.activity.MainActivity
+import com.devidea.chevy.ui.main.MainActivity
 import com.devidea.chevy.R
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.bluetooth.BleCallback
@@ -25,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,8 +32,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 
 class BleService : Service() {

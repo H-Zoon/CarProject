@@ -37,11 +37,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
@@ -69,12 +69,19 @@ dependencies {
     implementation (libs.okhttp)   // OkHttp 의존성 추가
     implementation (libs.converter.gson)
 
+    implementation("io.morfly.compose:advanced-bottomsheet-material3:0.1.0")
+
     //implementation (libs.androidx.hilt.lifecycle.viewmodel)
     implementation (libs.androidx.hilt.navigation.compose)
     implementation (libs.androidx.datastore.preferences)
     //implementation ("org.jetbrains.skija:skija-shared:0.93.4")
     implementation(libs.hilt.android)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
+    implementation(libs.material)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

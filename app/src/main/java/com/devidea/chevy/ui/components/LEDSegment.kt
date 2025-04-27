@@ -40,7 +40,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.chevy.viewmodel.CarViewModel
+import com.devidea.chevy.ui.screen.dashboard.CarViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.min
 

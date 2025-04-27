@@ -2,7 +2,7 @@ package com.devidea.chevy.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import com.devidea.chevy.viewmodel.CarViewModel
+import com.devidea.chevy.ui.screen.dashboard.CarViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState

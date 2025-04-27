@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.screen.navi
+package com.devidea.chevy.ui.navi
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize

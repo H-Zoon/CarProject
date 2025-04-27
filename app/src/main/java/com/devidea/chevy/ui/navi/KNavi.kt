@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.screen.navi
+package com.devidea.chevy.ui.navi
 
 import android.graphics.Color
 import androidx.activity.compose.BackHandler
@@ -26,10 +26,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.devidea.chevy.Logger
 import com.devidea.chevy.datas.navi.NavigationIconType
@@ -40,23 +36,13 @@ import com.devidea.chevy.datas.obd.protocol.codec.Msgs.sendLaneInfo
 import com.devidea.chevy.datas.obd.protocol.codec.Msgs.sendLimitSpeed
 import com.devidea.chevy.datas.obd.protocol.codec.Msgs.sendNextInfo
 import com.devidea.chevy.service.BleServiceManager
-import com.devidea.chevy.ui.screen.map.rememberMapViewWithLifecycle
 import com.kakao.vectormap.KakaoMap
-import com.kakao.vectormap.LatLng
-import com.kakao.vectormap.camera.CameraUpdateFactory
-import com.kakao.vectormap.route.RouteLineLayer
-import com.kakao.vectormap.route.RouteLineOptions
-import com.kakao.vectormap.route.RouteLineSegment
 import com.kakao.vectormap.route.RouteLineStyle
-import com.kakao.vectormap.route.RouteLineStyles
-import com.kakao.vectormap.route.RouteLineStylesSet
 import com.kakaomobility.knsdk.KNCarFuel
 import com.kakaomobility.knsdk.KNCarType
-import com.kakaomobility.knsdk.KNRouteAvoidOption
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError
-import com.kakaomobility.knsdk.common.objects.KNPOI
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_CitsGuideDelegate
 import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance_GuideStateDelegate
@@ -95,7 +81,7 @@ import javax.inject.Inject
 
 
 @OptIn(FlowPreview::class)
-class KNavi @Inject constructor(
+class  KNavi @Inject constructor(
     private val serviceManager: BleServiceManager
 ) : KNGuidance_GuideStateDelegate,
     KNGuidance_SafetyGuideDelegate,
@@ -145,324 +131,6 @@ class KNavi @Inject constructor(
 
     private val _naviGuideState = MutableStateFlow<KNGuideState?>(null)
     val naviGuideState: StateFlow<KNGuideState?> = _naviGuideState.asStateFlow()
-
-    private fun makeTrip(
-        data: NavigateData,
-        success: ((KNTrip) -> Unit),
-        failure: (() -> Unit)
-    ) {
-
-        val addressName = data.addressName
-        val goalX = data.goalX
-        val goalY = data.goalY
-        val startX = data.startX
-        val startY = data.startY
-
-        val startKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = startX, aWgs84Lat = startY)
-        val goalKATEC = KNSDK.convertWGS84ToKATEC(aWgs84Lon = goalX, aWgs84Lat = goalY)
-
-        val startKNPOI = KNPOI("", startKATEC.x.toInt(), startKATEC.y.toInt(), aAddress = null)
-        val goalKNPOI = KNPOI("", goalKATEC.x.toInt(), goalKATEC.y.toInt(), addressName)
-
-        KNSDK.makeTripWithStart(
-            aStart = startKNPOI,
-            aGoal = goalKNPOI,
-            aVias = null
-        ) { knError, knTrip ->
-            if (knError != null) {
-                Logger.e { "경로 생성 에러(KNError: $knError" }
-            } else {
-                if (knTrip != null) {
-                    success(knTrip)
-                }
-            }
-        }
-    }
-
-    private fun makeRoute(
-        knTrip: KNTrip,
-        priority: KNRoutePriority,
-        success: ((MutableList<KNRoute>) -> Unit),
-        failure: (() -> Unit)
-    ) {
-        val curRoutePriority = KNRoutePriority.KNRoutePriority_Recommand
-        val curAvoidOptions =
-            KNRouteAvoidOption.KNRouteAvoidOption_RoadEvent.value
-
-        knTrip.routeWithPriority(priority, curAvoidOptions) { error, route ->
-            if (error != null) {
-                failure()
-            } else {
-                if (route != null) {
-                    success(route)
-                }
-            }
-        }
-    }
-
-    // enum 값을 사람이 읽기 좋은 문자열로 변환하는 헬퍼 함수
-    fun getRoutePriorityName(priority: KNRoutePriority?): String {
-        return when (priority) {
-            KNRoutePriority.KNRoutePriority_Recommand -> "추천 경로"
-            KNRoutePriority.KNRoutePriority_Time -> "시간 우선"
-            KNRoutePriority.KNRoutePriority_Distance -> "거리 우선"
-            KNRoutePriority.KNRoutePriority_HighWay -> "고속도로 우선"
-            KNRoutePriority.KNRoutePriority_WideWay -> "큰 길 우선"
-            else -> "알 수 없음"
-        }
-    }
-
-    @Composable
-    fun RouteList(
-        routes: List<KNRoute>,
-        // 포커싱된 카드가 재터치되었을 때 데이터를 전달할 콜백
-        onRouteFocused: (KNRoute) -> Unit,
-        onRouteSelected: (KNRoute) -> Unit
-    ) {
-        // routes가 비어있지 않다면 첫 번째 항목을 초기값으로 사용
-        var focusedRoute by remember { mutableStateOf(routes.firstOrNull()) }
-
-        LazyRow {
-            items(routes) { route ->
-                RouteCard(
-                    route = route,
-                    // 현재 포커싱된 카드와 일치하면 true
-                    isFocused = if (focusedRoute != null) {
-                        (focusedRoute == route)
-                    } else {
-                        focusedRoute = route
-                        onRouteFocused(route)
-                        true
-                    },
-                    // 카드 클릭 시 처리
-                    onCardClick = { clickedRoute ->
-                        if (focusedRoute == clickedRoute) {
-                            // 이미 포커싱된 카드를 다시 터치하면 데이터를 전달
-                            onRouteSelected(clickedRoute)
-                        } else {
-                            // 다른 카드를 터치하면 해당 카드로 포커싱
-                            focusedRoute = clickedRoute
-                            onRouteFocused(clickedRoute)
-                        }
-                    }
-                )
-            }
-        }
-    }
-
-    @Composable
-    fun RouteCard(
-        route: KNRoute,
-        isFocused: Boolean,
-        // 카드 클릭 이벤트 콜백
-        onCardClick: (KNRoute) -> Unit,
-        modifier: Modifier = Modifier
-    ) {
-        Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .then(
-                    if (isFocused) Modifier.border(BorderStroke(2.dp, MaterialTheme.colorScheme.primary))
-                    else Modifier
-                )
-                // 클릭 이벤트 처리
-                .clickable { onCardClick(route) }
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "경로 우선순위: ${getRoutePriorityName(route.priority)}",
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "경로 거리: ${route.totalDist} m")
-                Text(text = "경로 시간: ${route.totalTime} 초")
-                Text(text = "경로 요금: ${route.totalCost} 원")
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-
-    private fun DrawRouteLine(
-        map: KakaoMap,
-        route: KNRoute
-    ) {
-        val mapList: List<Map<String, Number>>? = route.routePolylineWGS84()
-        // 1. RouteLineLayer 가져오기
-        val layer: RouteLineLayer = map.routeLineManager!!.layer
-        layer.removeAll()
-
-        // 2. 교통 흐름에 따라 사용할 스타일을 미리 생성
-        // (여기서는 스타일셋에 4개의 스타일을 등록하지만,
-        //  실제 세그먼트에는 각 세그먼트별 교통 상태에 맞는 색상을 직접 지정함)
-        val styles1 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.BLUE))
-        val styles2 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.CYAN))
-        val styles3 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.YELLOW))
-        val styles4 = RouteLineStyles.from(RouteLineStyle.from(16f, android.graphics.Color.RED))
-        val stylesSet = RouteLineStylesSet.from(styles1, styles2, styles3, styles4)
-
-        // 3. routePolylineWGS84 데이터를 바탕으로 RouteLineSegment 생성하기
-        val segments = mutableListOf<RouteLineSegment>()
-
-        if (mapList.isNullOrEmpty().not()) {
-            // 첫 번째 데이터의 trfSt 값을 초기 교통 상태로 사용
-            var currentStatus = mapList!![0]["trfSt"]?.toInt() ?: 0
-            val currentPoints = mutableListOf<LatLng>()
-
-            for (point in mapList) {
-                val lat = point["y"]?.toDouble() ?: 0.0
-                val lng = point["x"]?.toDouble() ?: 0.0
-                val latLng = LatLng.from(lat, lng)
-                val status = point["trfSt"]?.toInt() ?: currentStatus
-
-                if (status != currentStatus && currentPoints.size >= 2) {
-                    // 기존 세그먼트 생성
-                    segments.add(
-                        RouteLineSegment.from(
-                            currentPoints,
-                            mapStatusToStyle(currentStatus)
-                        )
-                    )
-                    // 마지막 좌표를 새로운 세그먼트의 시작점으로 유지
-                    val lastPoint = currentPoints.last()
-                    currentPoints.clear()
-                    currentPoints.add(lastPoint)
-                    currentStatus = status
-                }
-                currentPoints.add(latLng)
-            }
-            // 마지막 남은 좌표들로 세그먼트 생성 (필요한 경우)
-            if (currentPoints.size >= 2) {
-                segments.add(
-                    RouteLineSegment.from(
-                        currentPoints,
-                        mapStatusToStyle(currentStatus)
-                    )
-                )
-            }
-        }
-
-        // 6. 모든 좌표의 Bounds 계산 후 중심 좌표 및 동적 줌 레벨 적용
-        if (!mapList.isNullOrEmpty()) {
-            var minLat = Double.MAX_VALUE
-            var maxLat = -Double.MAX_VALUE
-            var minLng = Double.MAX_VALUE
-            var maxLng = -Double.MAX_VALUE
-
-            // 좌표 리스트 전체를 순회하며 경계 계산
-            for (point in mapList) {
-                val lat = point["y"]?.toDouble() ?: continue
-                val lng = point["x"]?.toDouble() ?: continue
-                if (lat < minLat) minLat = lat
-                if (lat > maxLat) maxLat = lat
-                if (lng < minLng) minLng = lng
-                if (lng > maxLng) maxLng = lng
-            }
-            // 중심 좌표 계산
-            val centerLat = (minLat + maxLat) / 2.0
-            val centerLng = (minLng + maxLng) / 2.0
-            val centerPoint = LatLng.from(centerLat, centerLng)
-
-            // 경계 크기 계산 (위도/경도 차이)
-            val latDiff = maxLat - minLat
-            val lngDiff = maxLng - minLng
-            val maxDiff = maxOf(latDiff, lngDiff)
-
-            // 동적 줌 레벨 산출 (임계값은 필요에 따라 조정)
-            val dynamicZoom = when {
-                maxDiff < 0.005 -> 16
-                maxDiff < 0.01 -> 15
-                maxDiff < 0.02 -> 14
-                maxDiff < 0.05 -> 13
-                maxDiff < 0.1 -> 12
-                maxDiff < 0.2 -> 11
-                maxDiff < 0.5 -> 10
-                else -> 9
-            }
-            // 계산된 중심과 줌 레벨로 카메라 업데이트
-            map.moveCamera(CameraUpdateFactory.newCenterPosition(centerPoint))
-            map.moveCamera(CameraUpdateFactory.zoomTo(dynamicZoom))
-        }
-    }
-
-    @Composable
-    fun LoadRequestScreen(data: NavigateData, navController: NavController) {
-        val stateList = remember { mutableStateListOf<KNRoute>() }
-        var focusedRoute by remember { mutableStateOf<KNRoute?>(null) }
-        var selectedRoute by remember { mutableStateOf(false) }
-        var knTrip by remember { mutableStateOf<KNTrip?>(null) }
-
-        val context = LocalContext.current
-        var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
-
-        // Compose의 Lifecycle에 맞게 MapView 생성
-        val mapView = rememberMapViewWithLifecycle(context) { map ->
-            kakaoMap = map
-        }
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize()
-            )
-            RouteList(stateList, onRouteFocused = { focusedRoute = it }, onRouteSelected = { selectedRoute = true })
-        }
-
-        // 상태에 따라 NaviScreen(또는 상세 화면)을 표시합니다.
-        focusedRoute?.let { route ->
-            kakaoMap?.let { DrawRouteLine(it, route) }
-        }
-
-        if (selectedRoute) {
-            focusedRoute?.let {
-                Navigation(knTrip, it.priority!!, it.avoidOptions, navController)
-            } ?: {
-                selectedRoute = false
-                Logger.e { "error" }
-            }
-        }
-
-
-        LaunchedEffect(data) {
-            makeTrip(
-                data,
-                success = { result ->
-                    knTrip = result
-                    val routePriorities = listOf(
-                        KNRoutePriority.KNRoutePriority_Recommand,
-                        KNRoutePriority.KNRoutePriority_Time,
-                        KNRoutePriority.KNRoutePriority_Distance,
-                        KNRoutePriority.KNRoutePriority_HighWay,
-                        KNRoutePriority.KNRoutePriority_WideWay
-                    )
-
-                    for (priority in routePriorities) {
-                        makeRoute(
-                            result,
-                            priority,
-                            success = { routes -> stateList.addAll(routes) },
-                            failure = {}
-                        )
-                    }
-                },
-                failure = {}
-            )
-        }
-    }
-
-    fun mapStatusToStyle(status: Int): RouteLineStyle {
-        return when (status) {
-            // 교통 상태 정보 없음(0) 또는 원활(4) -> 파란색
-            0, 4 -> RouteLineStyle.from(16f, Color.BLUE)
-            // 교통 서행(3) -> 청색 (Cyan)
-            3 -> RouteLineStyle.from(16f, Color.CYAN)
-            // 교통 지체(2) -> 노란색
-            2 -> RouteLineStyle.from(16f, Color.YELLOW)
-            // 교통 정체(1) 또는 교통사고(6) -> 빨간색
-            1, 6 -> RouteLineStyle.from(16f, Color.RED)
-            else -> RouteLineStyle.from(16f, Color.BLUE)
-        }
-    }
 
     @Composable
     fun Navigation(
@@ -515,32 +183,6 @@ class KNavi @Inject constructor(
                     }
                 }
             )
-        }
-
-        AndroidView(
-            factory = {
-                KNNaviView(it).apply {
-                    sndVolume = 1f
-                    useDarkMode = true
-                    fuelType = KNCarFuel.KNCarFuel_Gasoline
-                    carType = KNCarType.KNCarType_1
-                    guideStateDelegate = this@KNavi
-                }.also { view ->
-                    knNaviView = view
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        LaunchedEffect(Unit) {
-            KNSDK.sharedGuidance()?.apply {
-                guideStateDelegate = this@KNavi
-                locationGuideDelegate = this@KNavi
-                routeGuideDelegate = this@KNavi
-                safetyGuideDelegate = this@KNavi
-                voiceGuideDelegate = this@KNavi
-                citsGuideDelegate = this@KNavi
-            }
         }
 
         LaunchedEffect(Unit) {

@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.screen.map
+package com.devidea.chevy.ui.map.compose
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -30,6 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,30 +40,46 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devidea.chevy.ui.map.MapViewModel
 
 @Composable
 fun SearchBar(
-    modifier: Modifier = Modifier,
-    buttonVisible: Boolean,
-    searchText: TextFieldValue,
-    onSearchTextChange: (TextFieldValue) -> Unit,
-    onFocusChanged: (Boolean) -> Unit,
-    onSearch: () -> Unit,
+    modifier: Modifier,
+    viewModel: MapViewModel,
+    onSearch: (String) -> Unit,
     onSafety: () -> Unit,
-    needBackground: Boolean
+    drawBackground: Boolean
 ) {
-    var isFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    var isTextFieldFocused by remember { mutableStateOf(false) }
+    var inputText by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(uiState){
+        when(uiState){
+            MapViewModel.UiState.IsSearching -> {
+                isTextFieldFocused = (true)
+            }
+            else -> {
+                focusManager.clearFocus()
+                isTextFieldFocused = (false)
+            }
+        }
+    }
+
+
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .height(100.dp)
             .background(
                 when {
-                    needBackground -> Color.White
-                    isFocused -> Color.White
+                    drawBackground -> Color.White
+                    //isTextFieldFocused -> Color.White
                     else -> Color.Transparent
                 }
             )
@@ -69,20 +87,20 @@ fun SearchBar(
         Row(
             verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(10.dp)
         ) {
-            TextField(value = searchText, onValueChange = onSearchTextChange, label = { Text("목적지") }, modifier = Modifier
+            TextField(value = inputText,
+                onValueChange = { inputText = it },
+                label = { Text("목적지") }, modifier = Modifier
                 .weight(1f)
                 .padding(10.dp)
-                .onFocusChanged { state ->
-                    onFocusChanged(state.isFocused)
-                    isFocused = state.isFocused
-                }, singleLine = true, colors = TextFieldDefaults.colors().copy(
-                focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent
-            ), keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Search
-            ), shape = RoundedCornerShape(8.dp), keyboardActions = KeyboardActions(onSearch = { onSearch() }))
+                .onFocusChanged { state -> if(state.isFocused) viewModel.setState(MapViewModel.UiState.IsSearching) },
+                singleLine = true,
+                colors = TextFieldDefaults.colors().copy(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                shape = RoundedCornerShape(8.dp),
+                keyboardActions = KeyboardActions(onSearch = { onSearch(inputText) }))
 
             AnimatedVisibility(
-                visible = buttonVisible, enter = fadeIn(animationSpec = tween(durationMillis = 100)) + slideInHorizontally(
+                visible = !isTextFieldFocused, enter = fadeIn(animationSpec = tween(durationMillis = 100)) + slideInHorizontally(
                     initialOffsetX = { it / 2 }, animationSpec = tween(durationMillis = 100)
                 ), exit = fadeOut(animationSpec = tween(durationMillis = 100)) + slideOutHorizontally(
                     targetOffsetX = { it / 2 }, animationSpec = tween(durationMillis = 100)

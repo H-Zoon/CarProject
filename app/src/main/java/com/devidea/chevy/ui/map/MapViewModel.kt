@@ -1,55 +1,122 @@
-package com.devidea.chevy.viewmodel
+package com.devidea.chevy.ui.map
 
-import android.provider.Settings
-import android.util.Log
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.repository.remote.AddressRepository
 import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.Logger
+import com.devidea.chevy.Trip
 import com.devidea.chevy.repository.device.DataStoreRepository
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.repository.remote.KakaoAddressResponse
+import com.devidea.chevy.ui.navi.NavigateData
+import com.kakao.vectormap.KakaoMap
+import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
-import com.kakaomobility.knsdk.KNLanguageType
-import com.kakaomobility.knsdk.KNSDK
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
-import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
+import com.kakao.vectormap.MapLifeCycleCallback
+import com.kakao.vectormap.MapView
+import com.kakaomobility.knsdk.KNRoutePriority
+import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val addressRepository: AddressRepository,
     private val dataStoreRepository: DataStoreRepository,
-    private val locationProvider: LocationProvider
-) : ViewModel() {
+    private val locationProvider: LocationProvider,
+    context: Context
+) :  AndroidViewModel(context as Application), DefaultLifecycleObserver {
+
+    val mapView: MapView by lazy {
+        MapView(getApplication<Application>().applicationContext)
+    }
+
+    // 2) KakaoMap 참조 저장
+    private val _kakaoMap = MutableStateFlow<KakaoMap?>(null)
+    val kakaoMap: StateFlow<KakaoMap?> = _kakaoMap
+
+    // 3) LifecycleObserver 구현으로 resume/pause 자동 호출
+    override fun onResume(owner: LifecycleOwner) = mapView.resume()
+    override fun onPause(owner: LifecycleOwner) = mapView.pause()
+    //override fun onDestroy(owner: LifecycleOwner) = mapView.onDestroy()
+
+    // 4) start() 한 번만 실행하도록 플래그
+    private var started = false
+    fun startMap(onReady: (KakaoMap) -> Unit) {
+        if (started) return
+        started = true
+        mapView.start(
+            object : MapLifeCycleCallback() { /* ... */
+                override fun onMapDestroy() {
+                    TODO("Not yet implemented")
+                }
+
+                override fun onMapError(p0: java.lang.Exception?) {
+                    TODO("Not yet implemented")
+                }
+            },
+            object : KakaoMapReadyCallback() {
+                override fun getPosition() = LatLng.from(37.5665, 126.9780)
+                override fun onMapReady(map: KakaoMap) {
+                    _kakaoMap.value = map
+                    onReady(map)
+                }
+            }
+        )
+    }
+
+    //경로 그리기를 위한 우선순위
+    private val priorities = listOf(
+        KNRoutePriority.KNRoutePriority_Recommand,
+        KNRoutePriority.KNRoutePriority_Time,
+        KNRoutePriority.KNRoutePriority_Distance,
+        KNRoutePriority.KNRoutePriority_HighWay,
+        KNRoutePriority.KNRoutePriority_WideWay
+    )
+
+    /** 모든 우선순위 경로를 병렬로 가져와 합쳐서 리턴 */
+    suspend fun fetchAllRoutes(data: NavigateData): List<KNRoute> = withContext(Dispatchers.IO) {
+        val trip = Trip.makeTripAsync(data)
+        coroutineScope {
+            priorities
+                .map { priority ->
+                    async { Trip.makeRouteAsync(trip, priority) }
+                }
+                .awaitAll()
+                .flatten()
+        }
+    }
 
     // UI 상태를 관리하는 sealed class
     sealed class UiState {
-        object Idle : UiState() // 초기 상태
-        object Searching : UiState() // 검색 중
+        data object Idle : UiState() // 초기 상태
+        data object IsSearching : UiState() // 초기 상태
         data class SearchResult(val items: List<Document>) : UiState() // 검색 결과 표시 중
         data class ShowDetail(val item: Document) : UiState() // 상세 정보 표시 중
-        data class DrawRoute(val item: Document) : UiState() // 상세 정보 표시 중
+        data class DrawRoute(val item: Document?) : UiState() // 상세 정보 표시 중
     }
 
     // UI 이벤트를 관리하는 sealed class
     sealed class UiEvent {
-        data class Search(val query: String) : UiEvent()
-        data class SelectResult(val document: Document) : UiEvent()
-        object ClearResult : UiEvent()
-        object ClearDetail : UiEvent()  // 상세 다이얼로그 닫기 이벤트
+        data class RequestSearch(val query: String) : UiEvent()
+        data class SelectItem(val document: Document) : UiEvent()
     }
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
@@ -61,17 +128,6 @@ class MapViewModel @Inject constructor(
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
-    // 인증 성공 여부를 관리하는 Flow
-    private val _authenticationSuccess = MutableStateFlow(false)
-    val authenticationSuccess: StateFlow<Boolean> = _authenticationSuccess.asStateFlow()
-
-    // 인증 중 상태를 관리하는 Flow
-    private val _isAuthenticating = MutableStateFlow(false)
-    val isAuthenticating: StateFlow<Boolean> = _isAuthenticating.asStateFlow()
-
-    // 에러 메시지 상태를 관리하는 Flow
-    private val _authErrorMessage = MutableStateFlow<String?>(null)
-    val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
 
     // 카메라 추적 상태를 관리하는 Flow
     private val _cameraIsTracking = MutableStateFlow(true)
@@ -120,6 +176,7 @@ class MapViewModel @Inject constructor(
             dataStoreRepository.removeSearchQuery(value)
         }
     }
+
     // 카메라 추적 상태 설정
     fun setCameraTracking(value: Boolean) {
         _cameraIsTracking.value = value
@@ -128,6 +185,10 @@ class MapViewModel @Inject constructor(
         } else {
             stopTracking()
         }
+    }
+
+    fun setLoadingState(value: Boolean) {
+        _isLoading.value = value
     }
 
     // 위치 업데이트 시작
@@ -156,99 +217,46 @@ class MapViewModel @Inject constructor(
         trackingJob?.cancel()
     }
 
-    // 인증 시작
-    fun authenticateUser() {
-        CoroutineScope(Dispatchers.IO).launch {
-            _isAuthenticating.value = true
-            KNSDK.apply {
-                initializeWithAppKey(
-                    aAppKey = "e31e85ed66b03658041340618628e93f",
-                    aClientVersion = "1.0.0",
-                    aAppUserId = Settings.Secure.getString(instance.contentResolver, Settings.Secure.ANDROID_ID),
-                    aLangType = KNLanguageType.KNLanguageType_KOREAN,
-                    aCompletion = { result ->
-                        result?.let {
-                            _isAuthenticating.value = false
-                            when (it.code) {
-                                KNError_Code_C103 -> {
-                                    // 인증 실패 처리
-                                    _authErrorMessage.value = "인증 실패: 코드 C103"
-                                }
 
-                                KNError_Code_C302 -> {
-                                    // 권한 오류 처리
-                                    _authErrorMessage.value = "권한 오류: 코드 C302"
-                                }
-
-                                else -> {
-                                    // 기타 오류 처리
-                                    _authErrorMessage.value = "초기화 실패: 알 수 없는 오류"
-                                }
-                            }
-                        } ?: run {
-                            _authenticationSuccess.value = true
-                        }
-                    }
-                )
-            }
-        }
-    }
-
-    // 에러 메시지 초기화
-    fun clearError() {
-        _authErrorMessage.value = null
-    }
-
-    // 검색 결과 초기화
-    fun clearResult() {
-        _uiState.value = UiState.Idle
+    fun setState(state : UiState){
+        _uiState.value = state
     }
 
     fun onEvent(event: UiEvent) {
         when (event) {
-            is UiEvent.Search -> {
+            is UiEvent.RequestSearch -> {
                 searchAddress(event.query)
             }
 
-            is UiEvent.SelectResult -> {
-                _uiState.value = UiState.ShowDetail(event.document)
-            }
-
-            UiEvent.ClearResult -> {
-                clearResult()
-            }
-
-            UiEvent.ClearDetail -> {
-                // 상세 보기 닫으면 다시 검색 결과로 이동
-                if (_uiState.value is UiState.ShowDetail) {
-                    _uiState.value = UiState.SearchResult(lastSearchResult ?: emptyList())
-                }
+            is UiEvent.SelectItem -> {
+                setState(UiState.ShowDetail(event.document))
             }
         }
     }
 
-    private var lastSearchResult: List<Document>? = null
+    var lastSearchResult: List<Document>? = null
 
     // 주소 검색 함수
     private fun searchAddress(query: String?) {
         _isLoading.value = true
         _errorMessage.value = null
-        _uiState.value = UiState.Searching
+        setLoadingState(true)
         viewModelScope.launch {
             try {
                 val apiResult: KakaoAddressResponse? = addressRepository.searchAddress(query, 1, 10)
                 apiResult?.let {
                     lastSearchResult = it.documents // 검색 결과를 캐싱
-                    _uiState.value = it.documents?.let { it1 -> UiState.SearchResult(it1) }!!
+                    it.documents?.let {res ->  setState(UiState.SearchResult(res)) }
                 } ?: run {
                     _errorMessage.value = "결과가 없습니다."
-                    _uiState.value = UiState.Idle
+                    setState(UiState.Idle)
                 }
+                setLoadingState(false)
             } catch (e: Exception) {
                 // 에러 처리
-                Logger.e{"Error: ${e.message}"}
+                Logger.e { "Error: ${e.message}" }
                 _errorMessage.value = e.message
-                _uiState.value = UiState.Idle
+                setState(UiState.Idle)
             } finally {
                 _isLoading.value = false
             }

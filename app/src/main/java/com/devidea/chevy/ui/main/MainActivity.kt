@@ -1,10 +1,9 @@
-package com.devidea.chevy.ui.activity
+package com.devidea.chevy.ui.main
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
@@ -53,14 +52,13 @@ import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.service.BleServiceManager
 import com.devidea.chevy.ui.components.CardItem
 import com.devidea.chevy.ui.screen.dashboard.Dashboard
-import com.devidea.chevy.ui.screen.map.MapEnterScreen
+import com.devidea.chevy.ui.main.compose.MAuthenticationScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.components.PermissionRequestScreen
-import com.devidea.chevy.ui.screen.navi.NavigateData
-import com.devidea.chevy.ui.screen.navi.KNavi
+import com.devidea.chevy.ui.navi.NavigateData
+import com.devidea.chevy.ui.navi.KNavi
 import com.devidea.chevy.ui.theme.CarProjectTheme
-import com.devidea.chevy.viewmodel.MainViewModel
 import com.kakaomobility.knsdk.KNRouteAvoidOption
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
@@ -128,7 +126,7 @@ class MainActivity : AppCompatActivity() {
                 Dashboard()
             }
             composable("map") {
-                MapEnterScreen(navHostController = navController)
+                MAuthenticationScreen(viewModel = viewModel)
             }
             composable("navi") { backStackEntry ->
                 // SavedStateHandle에서 데이터를 가져옴
@@ -145,7 +143,7 @@ class MainActivity : AppCompatActivity() {
             composable("findLoad") { backStackEntry ->
                 val aaaInstance = navController.previousBackStackEntry?.savedStateHandle?.get<NavigateData>("aaaKey")
                 if (aaaInstance != null) {
-                    kNavi.LoadRequestScreen(aaaInstance, navController)
+                    //kNavi.LoadRequestScreen(aaaInstance, navController)
                 }
             }
         }

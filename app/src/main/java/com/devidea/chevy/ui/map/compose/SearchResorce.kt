@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.screen.map
+package com.devidea.chevy.ui.map.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.devidea.chevy.repository.remote.Document
-import com.devidea.chevy.viewmodel.MapViewModel
+import com.devidea.chevy.ui.map.MapViewModel
 
 @Composable
 fun SearchHistoryList(
@@ -27,7 +27,6 @@ fun SearchHistoryList(
     onHistoryItemClick: (String) -> Unit
 ) {
     val searchHistory by viewModel.searchHistory.collectAsState()
-
     // 상태 변수: 전체 삭제 다이얼로그 표시 여부
     var showClearAllDialog by remember { mutableStateOf(false) }
 

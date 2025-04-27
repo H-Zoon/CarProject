@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.ui.components.CarStatus
 import com.devidea.chevy.ui.theme.SpeedMeterFontFamily
-import com.devidea.chevy.viewmodel.CarViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin

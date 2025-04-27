@@ -1,24 +1,9 @@
 package com.devidea.chevy.eventbus
 
-import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
-import com.devidea.chevy.viewmodel.MainViewModel.NavRoutes
 import com.kakaomobility.knsdk.KNRoutePriority
-import com.kakaomobility.knsdk.common.objects.KNError
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuidance
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuideRouteChangeReason
-import com.kakaomobility.knsdk.guidance.knguidance.KNGuideState
-import com.kakaomobility.knsdk.guidance.knguidance.citsguide.KNGuide_Cits
-import com.kakaomobility.knsdk.guidance.knguidance.common.KNLocation
-import com.kakaomobility.knsdk.guidance.knguidance.locationguide.KNGuide_Location
-import com.kakaomobility.knsdk.guidance.knguidance.routeguide.KNGuide_Route
-import com.kakaomobility.knsdk.guidance.knguidance.routeguide.objects.KNMultiRouteInfo
-import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.KNGuide_Safety
-import com.kakaomobility.knsdk.guidance.knguidance.safetyguide.objects.KNSafety
-import com.kakaomobility.knsdk.guidance.knguidance.voiceguide.KNGuide_Voice
 import com.kakaomobility.knsdk.trip.kntrip.KNTrip
-import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 

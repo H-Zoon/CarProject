@@ -1,4 +1,4 @@
-package com.devidea.chevy.viewmodel
+package com.devidea.chevy.ui.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,7 +6,6 @@ import com.devidea.chevy.datas.obd.model.CarEventModel
 import com.devidea.chevy.datas.obd.protocol.pid.PIDListData
 import com.devidea.chevy.eventbus.CarEvents
 import com.devidea.chevy.eventbus.CarEventBus
-import com.devidea.chevy.repository.device.DataStoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
