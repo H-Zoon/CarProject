@@ -20,7 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import com.devidea.chevy.ui.activity.ui.theme.CarProjectTheme
 import com.devidea.chevy.ui.map.MapViewModel.UiState
-import com.devidea.chevy.ui.map.compose.CustomBottomSheetDemo
+import com.devidea.chevy.ui.map.compose.CustomFinalizedDemoScreen
 import com.devidea.chevy.ui.map.compose.LoadRequestScreen
 import com.devidea.chevy.ui.map.compose.MapScreen
 import com.devidea.chevy.ui.map.compose.SearchBar
@@ -58,7 +58,7 @@ class MapActivity : ComponentActivity() {
 
                     when (uiState) {
                         is UiState.DrawRoute -> {
-                            MapScreen(viewModel)
+                            MapScreen(viewModel, 0f)
                             val data = (uiState as UiState.DrawRoute).item?.let {
                                 NavigateData(
                                     addressName = it.address_name,
@@ -75,7 +75,7 @@ class MapActivity : ComponentActivity() {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 //MainMapBottomSheet(viewModel, background = { })
                                 //a().CustomBottomSheetDemo()
-                                CustomBottomSheetDemo()
+                                CustomFinalizedDemoScreen(viewModel)
                             }
                         }
                     }

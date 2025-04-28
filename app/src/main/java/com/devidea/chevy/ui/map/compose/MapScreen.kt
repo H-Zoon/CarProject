@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devidea.chevy.R
@@ -49,22 +50,28 @@ import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 
 @Composable
-fun MapScreen(viewModel: MapViewModel) {
+fun MapScreen(viewModel: MapViewModel, bottomPaddingDp: Float) {
     val cameraState by viewModel.cameraIsTracking.collectAsState()
     val userLocation by viewModel.userLocation.collectAsState()
     val viewState by viewModel.uiState.collectAsState()
     var userPositionMark by remember { mutableStateOf<Label?>(null) }
     var placeMark by remember { mutableStateOf<Label?>(null) }
+    val density = LocalDensity.current
+    val bottomPaddingPx = with(density) { bottomPaddingDp.dp.roundToPx()}
 
     LaunchedEffect(Unit) {
         viewModel.startMap { /* 필요 시 추가 callback */ }
     }
 
-    // 2) AndroidView로 mapView 붙이기
     AndroidView(
-        factory = { viewModel.mapView },
-        modifier = Modifier.fillMaxSize()
+        factory = { viewModel.mapView }
     )
+
+    LaunchedEffect(bottomPaddingPx) {
+        viewModel.kakaoMap.value?.setPadding(   // (L, T, R, B)
+            0, 0, 0, bottomPaddingPx
+        )
+    }
 
     // userLocation이나 kakaoMap이 변경될 때마다 moveCameraTo 호출
     LaunchedEffect(userLocation) {

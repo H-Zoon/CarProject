@@ -1,206 +1,192 @@
 package com.devidea.chevy.ui.map.compose
 
+import android.content.Intent
+import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.*
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import kotlinx.coroutines.launch
-import io.morfly.compose.bottomsheet.material3.*
-import kotlinx.coroutines.CoroutineScope
+import com.devidea.chevy.ui.map.MapViewModel
+import com.devidea.chevy.ui.navi.KNaviActivity
+import io.morfly.compose.bottomsheet.material3.BottomSheetScaffold
+import io.morfly.compose.bottomsheet.material3.rememberBottomSheetScaffoldState
+import io.morfly.compose.bottomsheet.material3.rememberBottomSheetState
 
-class BottomSheetNestedScrollConnection<T : Any> @OptIn(ExperimentalFoundationApi::class) constructor(
-    private val scope: CoroutineScope,
-    private val state: BottomSheetState<T>,
-    private val orientation: Orientation,
-    private val onFling: (velocity: Float) -> Unit
-) : NestedScrollConnection {
 
-    @OptIn(ExperimentalFoundationApi::class)
-    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-        // Only handle scroll in the sheet’s primary orientation
-        val delta = if (orientation == Orientation.Vertical) available.y else available.x
-        if (delta < 0f) {
-            // User is scrolling “up” inside the sheet content → expand sheet
-            scope.launch { state.draggableState.dispatchRawDelta(-delta) }
-            // consume the portion that we applied to the sheet
-            return if (orientation == Orientation.Vertical) Offset(0f, delta) else Offset(delta, 0f)
-        }
-        return Offset.Zero
-    }
-
-    override suspend fun onPostFling(
-        consumed: androidx.compose.ui.unit.Velocity,
-        available: androidx.compose.ui.unit.Velocity
-    ): androidx.compose.ui.unit.Velocity {
-        // Hand off any remaining fling velocity to the sheet’s settle logic
-        onFling(if (orientation == Orientation.Vertical) available.y else available.x)
-        return androidx.compose.ui.unit.Velocity.Zero
-    }
-}
-
-// 1) 먼저 state 정의
-enum class CustomSheetValue { Collapsed, HalfExpanded, Expanded }
-
-// 2) SubcomposeLayout 기반 Scaffold
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun BlogStyleBottomSheetScaffold(
-    sheetState: BottomSheetState<CustomSheetValue>,
-    modifier: Modifier = Modifier,
-    sheetContent: @Composable ColumnScope.() -> Unit,
-    content: @Composable BoxScope.() -> Unit
-) {
-    val scope = rememberCoroutineScope()
-    val collapsedYState = remember { mutableStateOf(0f) }
-    // Nested scroll connection (optional, for 내부 스크롤이 시트에 전달될 때)
-    val nested = remember(sheetState) {
-        BottomSheetNestedScrollConnection(
-            scope = scope,
-            state = sheetState,
-            orientation = Orientation.Vertical,
-            onFling = { v -> scope.launch { sheetState.draggableState.settle(v) } }
+fun CustomFinalizedDemoScreen(viewModel: MapViewModel) {
+    val context = LocalContext.current
+    val cameraState by viewModel.cameraIsTracking.collectAsState()
+    val viewState by viewModel.uiState.collectAsState()
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    var searchBarHeightPx by remember { mutableStateOf(0) }
+    val searchBarHeightDp = with(LocalDensity.current) { searchBarHeightPx.toDp() }
+    // 바텀시트를 고정시켜야 하는 상태인지 여부
+    val sheetFixed by remember(viewState) {
+        mutableStateOf(
+            viewState is MapViewModel.UiState.IsSearching ||
+                    viewState is MapViewModel.UiState.SearchResult
         )
     }
 
-    SubcomposeLayout(modifier.fillMaxSize()) { constraints ->
-        val layoutWidth  = constraints.maxWidth
-        val layoutHeight = constraints.maxHeight
 
-        // 1) BODY 측정 — sheetOffset - collapsedYState.value 로 실시간 위치 조정
-        val bodyPlaceable = subcompose("body") {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .offset {
-                        val sheetOffset = sheetState.draggableState.requireOffset().toInt()
-                        IntOffset(0, sheetOffset - collapsedYState.value.toInt())
-                    }
-                    .nestedScroll(nested)
-            ) {
-                content()
+    // ▼ 0) 투명도 변화가 시작·끝나는 위치(dp)
+    val fadeStartPx = 1200f      // 시트 상단이 120dp 지점부터
+    val fadeEndPx = 600f       // 60dp 지점에 도달하면 α = 0
+
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.PartiallyExpanded,
+        defineValues = {
+            if (!sheetFixed) {
+                SheetValue.Collapsed at height(100.dp)
+                SheetValue.PartiallyExpanded at offset(percent = 60)
             }
-        }[0].measure(constraints)
-
-        // 2) SHEET 측정 — 피크 높이(peekPx)를 이용해 collapsedY 계산
-        val sheetPlaceable = subcompose("sheet") {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .onSizeChanged { sheetSize ->
-                        // (a) 사용 중인 peek 높이(dp)를 px로 변환
-                        val peekPx = 100.dp.roundToPx()
-
-                        // (b) collapsed 상태의 Y 위치
-                        //    → 화면 아래에서 peek만큼 올라온 지점
-                        val collapsedY = (layoutHeight - peekPx).toFloat()
-                        collapsedYState.value = collapsedY
-
-                        // (c) 다른 앵커들도 재설정
-                        val halfY     = (layoutHeight * 0.5f)
-                        val expandedY = maxOf(layoutHeight - sheetSize.height, 0).toFloat()
-                        sheetState.draggableState.updateAnchors(
-                            DraggableAnchors<CustomSheetValue> {
-                                CustomSheetValue.Collapsed    at collapsedY
-                                CustomSheetValue.HalfExpanded at halfY
-                                CustomSheetValue.Expanded     at expandedY
-                            },
-                            sheetState.currentValue
-                        )
-                    }
-                    .offset { IntOffset(0, sheetState.draggableState.requireOffset().toInt()) }
-                    .anchoredDraggable(
-                        state       = sheetState.draggableState,
-                        orientation = Orientation.Vertical
-                    )
-            ) {
-                sheetContent()
-            }
-        }[0].measure(constraints)
-
-        // (C) 두 개를 합쳐서 배치
-        layout(layoutWidth, layoutHeight) {
-            // 바텀 시트
-            sheetPlaceable.placeRelative(0, 0)
-            // 외부 콘텐츠
-            bodyPlaceable.placeRelative(0, 0)
+            SheetValue.Expanded at contentHeight
+        },
+        // ⚠ 여기서는 “고정 중엔 Expanded 아닌 값으로 못 가게”만 막는다
+        confirmValueChange = { new ->
+            !(sheetFixed && new != SheetValue.Expanded)
         }
-    }
-}
-
-// 3) 사용 예시
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@Composable
-fun CustomBottomSheetDemo() {
-    val sheetState = rememberBottomSheetState<CustomSheetValue>(
-        initialValue = CustomSheetValue.Collapsed,
-        defineValues = { /* 더 이상 필요 없음, onSizeChanged 에서 처리 */ }
     )
-    val scope = rememberCoroutineScope()
 
-    BlogStyleBottomSheetScaffold(
-        sheetState = sheetState,
+    val scaffoldState = rememberBottomSheetScaffoldState(sheetState)
+
+    // 2) sheetFixed 가 바뀔 때 한 번만 앵커 갱신
+    LaunchedEffect(sheetFixed) {
+        if (sheetFixed) {
+            sheetState.animateTo(SheetValue.Expanded) // ① 먼저 이동
+        }
+        // ② 이동이 끝난 뒤 새 집합으로 교체
+        sheetState.refreshValues()
+    }
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetSwipeEnabled = !sheetFixed,
         sheetContent = {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
+            Box(modifier = Modifier.fillMaxSize()
             ) {
-                Button(onClick = {
-                    scope.launch {
-                        // 중간 단계로
-                        sheetState.draggableState.animateTo(CustomSheetValue.HalfExpanded)
+                when (viewState) {
+                    is MapViewModel.UiState.Idle -> {
+                        MainSheet()
                     }
-                }) {
-                    Text("🚀 중간 단계로")
-                }
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    scope.launch {
-                        // 최대한 확장
-                        sheetState.draggableState.animateTo(CustomSheetValue.Expanded)
+
+                    is MapViewModel.UiState.IsSearching -> {
+                        HistorySheet(viewModel = viewModel)
                     }
-                }) {
-                    Text("⬆️ 최대한 확장")
-                }
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    scope.launch {
-                        // 접기
-                        sheetState.draggableState.animateTo(CustomSheetValue.Collapsed)
+
+                    is MapViewModel.UiState.SearchResult -> {
+                        val searchResult = (viewState as MapViewModel.UiState.SearchResult).items
+                        ResultSheet(searchResult) {
+                            viewModel.onEvent(
+                                MapViewModel.UiEvent.SelectItem(it)
+                            )
+                        }
                     }
-                }) {
-                    Text("🔽 접기")
+
+                    is MapViewModel.UiState.ShowDetail -> {
+                        val selectedDocument = (viewState as MapViewModel.UiState.ShowDetail).item
+                        DetailSheet(viewModel = viewModel, document = selectedDocument)
+                    }
+
+                    is MapViewModel.UiState.DrawRoute -> {}
                 }
             }
         },
         content = {
-            // (6) 메인 콘텐츠
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding()
-                    .zIndex(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("👋 Main Content", style = MaterialTheme.typography.bodyLarge)
+            val bottomPadding by remember {
+                derivedStateOf { sheetState.requireSheetVisibleHeight() }
             }
-        }
+            val isBottomSheetMoving by remember {
+                derivedStateOf { sheetState.currentValue != sheetState.targetValue }
+            }
+            val sheetTopPx by remember {
+                derivedStateOf { sheetState.requireOffset() }
+            }
+            LaunchedEffect(sheetTopPx) { Log.d("?", sheetTopPx.toString()) }
+            val rawProgress = (fadeStartPx - sheetTopPx) / (fadeStartPx - fadeEndPx)
+            val clamped = rawProgress.coerceIn(0f, 1f)
+            val targetAlpha = 1f - clamped          // 시트가 올라올수록 0으로
+
+            val animatedAlpha by animateFloatAsState(
+                targetValue = targetAlpha,
+                label = "FabAlpha"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+
+            ) {
+                MapScreen(viewModel, bottomPadding)
+
+                FloatingActionButton(
+                    onClick = { viewModel.setCameraTracking(!cameraState) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset {
+                            IntOffset(
+                                x = 0,
+                                y = (sheetTopPx - 75.dp.roundToPx()).toInt()   // FAB 높이 56dp 가정
+                            )
+                        }
+                        .graphicsLayer { alpha = animatedAlpha },
+                    shape = CircleShape,
+                    containerColor = if (cameraState) Color(0xFFff722b) else Color.Gray
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "내 위치",
+                        tint = Color.White
+                    )
+                }
+                SearchBar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .onGloballyPositioned { coords ->
+                            searchBarHeightPx = coords.size.height
+                        },
+                    onSearch = {
+                        viewModel.addSearchQuery(it)
+                        viewModel.onEvent(MapViewModel.UiEvent.RequestSearch(it))
+                    },
+                    onSafety = {
+                        val intent =
+                            Intent(context, KNaviActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    scaffoldState = sheetState,
+                    viewModel = viewModel
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
     )
 }

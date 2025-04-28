@@ -1,11 +1,13 @@
 package com.devidea.chevy.ui.map.compose
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,14 +48,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devidea.chevy.ui.map.MapViewModel
+import io.morfly.compose.bottomsheet.material3.BottomSheetState
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchBar(
     modifier: Modifier,
     viewModel: MapViewModel,
     onSearch: (String) -> Unit,
     onSafety: () -> Unit,
-    drawBackground: Boolean
+    scaffoldState: BottomSheetState<*>,
 ) {
     val focusManager = LocalFocusManager.current
     var isTextFieldFocused by remember { mutableStateOf(false) }
@@ -71,18 +76,24 @@ fun SearchBar(
         }
     }
 
+    val fadeStart = 1200f
+    val fadeEnd   = 600f
+
+    val sheetTopDp by remember {
+        derivedStateOf { scaffoldState.requireOffset() }
+    }
+
+    val progress = ((fadeStart - sheetTopDp) / (fadeStart - fadeEnd))
+        .coerceIn(0f, 1f)
+    val animatedAlpha by animateFloatAsState(progress, label = "BgAlpha")
+
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(100.dp)
-            .background(
-                when {
-                    drawBackground -> Color.White
-                    //isTextFieldFocused -> Color.White
-                    else -> Color.Transparent
-                }
-            )
+            .background(Color.White.copy(alpha = animatedAlpha))
+
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(10.dp)

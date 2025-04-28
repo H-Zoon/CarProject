@@ -135,7 +135,7 @@ fun MainMapBottomSheet(viewModel: MapViewModel, background: (Boolean) -> Unit) {
             Box(modifier = Modifier.height(sheetMaxHeight)) {
                 when (viewState) {
                     is MapViewModel.UiState.Idle -> {
-                        MainSheet(coroutineScope, scaffoldState)
+                        MainSheet()
                     }
 
                     is MapViewModel.UiState.IsSearching -> {
@@ -168,7 +168,7 @@ fun MainMapBottomSheet(viewModel: MapViewModel, background: (Boolean) -> Unit) {
                     modifier = Modifier
                         .offset { IntOffset(0, bottomMarginFraction) }
                 ) {
-                    MapScreen(viewModel)
+                    MapScreen(viewModel, 0f)
 
                     FloatingActionButton(
                         onClick = { viewModel.setCameraTracking(!cameraState) },
@@ -199,7 +199,7 @@ fun MainMapBottomSheet(viewModel: MapViewModel, background: (Boolean) -> Unit) {
                         }
                     }
                 }
-                SearchBar(
+                /*SearchBar(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .onGloballyPositioned { coords ->
@@ -214,9 +214,9 @@ fun MainMapBottomSheet(viewModel: MapViewModel, background: (Boolean) -> Unit) {
                             Intent(context, KNaviActivity::class.java)
                         context.startActivity(intent)
                     },
-                    drawBackground = sheetFixed,
+                    sheetState = sheetFixed,
                     viewModel = viewModel
-                )
+                )*/
             }
         }
     )
@@ -247,7 +247,8 @@ fun ResultSheet(list: List<Document>, itemClick: (Document) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainSheet(coroutineScope: CoroutineScope, scaffoldState: BottomSheetScaffoldState) {
+fun MainSheet() {
+    val coroutineScope = rememberCoroutineScope()
     val dynamicButtonData = listOf("버튼1", "버튼2", "버튼3", "버튼4", "버튼5", "버튼6", "버튼7")
     Column(
         modifier = Modifier
@@ -261,7 +262,7 @@ fun MainSheet(coroutineScope: CoroutineScope, scaffoldState: BottomSheetScaffold
             Button(
                 onClick = {
                     coroutineScope.launch {
-                        scaffoldState.bottomSheetState.expand()
+                        //scaffoldState.bottomSheetState.expand()
                     }
                 }
             ) {
@@ -270,7 +271,7 @@ fun MainSheet(coroutineScope: CoroutineScope, scaffoldState: BottomSheetScaffold
             Button(
                 onClick = {
                     coroutineScope.launch {
-                        scaffoldState.bottomSheetState.partialExpand()
+                        //scaffoldState.bottomSheetState.partialExpand()
                     }
                 }
             ) {

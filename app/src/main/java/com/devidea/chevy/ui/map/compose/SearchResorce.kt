@@ -16,7 +16,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.devidea.chevy.repository.remote.Document
 import com.devidea.chevy.ui.map.MapViewModel
@@ -26,6 +31,32 @@ fun SearchHistoryList(
     viewModel: MapViewModel,
     onHistoryItemClick: (String) -> Unit
 ) {
+
+    val lockConnection = remember {
+        object : NestedScrollConnection {
+
+            /* ─ 1. Pre 단계 : 모든 Δ 소모 ─ */
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource
+            ) = available                      // 100 % 소비
+
+            //override fun onPreFling(available: Velocity) = available
+            override suspend fun onPreFling(available: Velocity) = available
+
+            /* ─ 2. Post 단계 : 남은 Δ/V 소모 ─ */
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ) = available                      // 남은 것도 100 % 소비
+
+            //override fun onPostFling(consumed: Velocity, available: Velocity) = available
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+        }
+    }
+
+
     val searchHistory by viewModel.searchHistory.collectAsState()
     // 상태 변수: 전체 삭제 다이얼로그 표시 여부
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -89,6 +120,7 @@ fun SearchHistoryList(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
+            .nestedScroll(lockConnection)
     ) {
         // 헤더 추가: 검색 기록 레이블 및 전체 삭제 버튼
         item {
@@ -149,10 +181,32 @@ fun AddressList(
     items: List<Document>,
     onAddressItemClick: (Document) -> Unit
 ) {
+
+    val lockConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource
+            ) = available                      // 100 % 소비
+
+            override suspend fun onPreFling(available: Velocity) = available
+
+            /* ─ 2. Post 단계 : 남은 Δ/V 소모 ─ */
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ) = available                      // 남은 것도 100 % 소비
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
+            //.nestedScroll(lockConnection)
     ) {
         items(items.size) { index ->
             val item = items[index]
