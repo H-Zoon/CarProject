@@ -2,6 +2,7 @@ package com.devidea.chevy.ui.map.compose
 
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,7 @@ import io.morfly.compose.bottomsheet.material3.requireSheetVisibleHeightDp
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 import com.devidea.chevy.storage.DocumentTag
+import kotlin.String
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -155,7 +157,7 @@ fun CustomFinalizedDemoScreen(viewModel: MapViewModel = hiltViewModel()) {
             ) {
                 when (viewState) {
                     is MapViewModel.UiState.Idle -> {
-                        MainSheet()
+                        MainSheet(viewModel = viewModel)
                     }
 
                     is MapViewModel.UiState.IsSearching -> {
@@ -163,12 +165,10 @@ fun CustomFinalizedDemoScreen(viewModel: MapViewModel = hiltViewModel()) {
                     }
 
                     is MapViewModel.UiState.SearchResult -> {
-                        val searchResult = (viewState as MapViewModel.UiState.SearchResult).items
-                        ResultSheet(searchResult) {
-                            viewModel.onEvent(
-                                MapViewModel.UiEvent.SelectItem(it)
-                            )
-                        }
+                        ResultSheet(
+                            viewModel = viewModel,
+                            list = (viewState as MapViewModel.UiState.SearchResult).items
+                        )
                     }
 
                     is MapViewModel.UiState.ShowDetail -> {
@@ -236,20 +236,26 @@ fun CustomFinalizedDemoScreen(viewModel: MapViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun ResultSheet(list: List<Document>, itemClick: (Document) -> Unit) {
+fun ResultSheet(viewModel: MapViewModel, list: List<Document>) {
     AddressList(
         items = list,
         onAddressItemClick = { selectedDocument ->
-            itemClick(selectedDocument)
+            viewModel.onEvent(
+                MapViewModel.UiEvent.SelectItem(selectedDocument)
+            )
         }
     )
 }
 
 @Composable
-fun MainSheet() {
+fun MainSheet(viewModel: MapViewModel) {
     val coroutineScope = rememberCoroutineScope()
-    // 하단에 표시할 임의 요소 7개
-    val bottomItems = (1..7).map { "항목 $it" }
+    // 다이얼로그 타입을 저장하는 상태: "home" 또는 "office"
+    var dialogType by remember { mutableStateOf<String?>(null) }
+
+    val bottomItems by viewModel.favoriteDocuments.collectAsState(initial = emptyList())
+    val home by viewModel.getDocumentByTag(DocumentTag.HOME).collectAsState(initial = null)
+    val office by viewModel.getDocumentByTag(DocumentTag.OFFICE).collectAsState(initial = null)
 
     Column(
         modifier = Modifier
@@ -260,43 +266,75 @@ fun MainSheet() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // 상단 버튼 1: 집 아이콘, 라운드 16
             Button(
                 onClick = {
-                    coroutineScope.launch {
-                        // TODO: 집 버튼 동작 처리
-                    }
+                    home?.let { item ->
+                        viewModel.setState(
+                            MapViewModel.UiState.DrawRoute(
+                                Document(
+                                    id = item.id,
+                                    place_name = item.place_name,
+                                    category_name = item.category_name,
+                                    category_group_code = item.category_group_code,
+                                    category_group_name = item.category_group_name,
+                                    phone = item.phone,
+                                    address_name = item.address_name,
+                                    road_address_name = item.road_address_name,
+                                    x = item.x,
+                                    y = item.y,
+                                    place_url = item.place_url,
+                                    distance = item.distance
+                                )
+                            )
+                        )
+                    } ?: run { dialogType = "home" }
                 },
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "집"
-                )
+                Icon(imageVector = Icons.Default.Home, contentDescription = "집")
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "집")
+                Text("집")
             }
-            // 상단 버튼 2: 회사 아이콘, 라운드 16
+
             Button(
                 onClick = {
-                    coroutineScope.launch {
-                        // TODO: 회사 버튼 동작 처리
-                    }
+                    office?.let { item ->
+                        viewModel.setState(
+                            MapViewModel.UiState.DrawRoute(
+                                Document(
+                                    id = item.id,
+                                    place_name = item.place_name,
+                                    category_name = item.category_name,
+                                    category_group_code = item.category_group_code,
+                                    category_group_name = item.category_group_name,
+                                    phone = item.phone,
+                                    address_name = item.address_name,
+                                    road_address_name = item.road_address_name,
+                                    x = item.x,
+                                    y = item.y,
+                                    place_url = item.place_url,
+                                    distance = item.distance
+                                )
+                            )
+                        )
+                    } ?: run { dialogType = "office" }
                 },
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = "회사"
-                )
+                Icon(imageVector = Icons.Default.Business, contentDescription = "회사")
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "회사")
+                Text("회사")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        // 즐겨찾기 제목 추가
+        Text(
+            text = "즐겨찾기",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
 
-        // 하단 버튼 7개를 레이지 그리드로 표시
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -311,16 +349,55 @@ fun MainSheet() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(80.dp)
-                        .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-                        .clickable { /* TODO: 클릭 처리 for $item */ },
+                        .background(Color.White, RoundedCornerShape(4.dp))
+                        .clickable {
+                            viewModel.setState(
+                                MapViewModel.UiState.DrawRoute(
+                                    Document(
+                                        id = item.id,
+                                        place_name = item.place_name,
+                                        category_name = item.category_name,
+                                        category_group_code = item.category_group_code,
+                                        category_group_name = item.category_group_name,
+                                        phone = item.phone,
+                                        address_name = item.address_name,
+                                        road_address_name = item.road_address_name,
+                                        x = item.x,
+                                        y = item.y,
+                                        place_url = item.place_url,
+                                        distance = item.distance
+                                    )
+                                )
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = item)
+                    Text(item.place_name)
                 }
             }
         }
     }
+
+    // 공통 다이얼로그
+    dialogType?.let { type ->
+        val title = "알림"
+        val message = when (type) {
+            "home" -> "집 정보가 아직 등록되지 않았습니다."
+            else -> "회사 정보가 아직 등록되지 않았습니다."
+        }
+        AlertDialog(
+            onDismissRequest = { dialogType = null },
+            title = { Text(title) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { dialogType = null }) {
+                    Text("확인")
+                }
+            }
+        )
+    }
 }
+
 
 @Composable
 fun DetailSheet(
@@ -429,7 +506,8 @@ fun DetailSheet(
                         RadioButton(
                             selected = selectedType == DocumentTag.HOME,
                             onClick = {
-                                if(selectedType == DocumentTag.HOME) selectedType = null else selectedType = DocumentTag.HOME
+                                if (selectedType == DocumentTag.HOME) selectedType =
+                                    null else selectedType = DocumentTag.HOME
                             }
                         )
                         Text("집", modifier = Modifier.clickable { selectedType = DocumentTag.HOME })
@@ -437,10 +515,13 @@ fun DetailSheet(
                         RadioButton(
                             selected = selectedType == DocumentTag.OFFICE,
                             onClick = {
-                                if(selectedType == DocumentTag.OFFICE) selectedType = null else selectedType = DocumentTag.OFFICE
+                                if (selectedType == DocumentTag.OFFICE) selectedType =
+                                    null else selectedType = DocumentTag.OFFICE
                             }
                         )
-                        Text("회사", modifier = Modifier.clickable { selectedType = DocumentTag.OFFICE })
+                        Text(
+                            "회사",
+                            modifier = Modifier.clickable { selectedType = DocumentTag.OFFICE })
                     }
                     Spacer(Modifier.height(12.dp))
                     // 추가 옵션 체크박스
@@ -461,8 +542,11 @@ fun DetailSheet(
                         if (selectedType != tag) {
                             viewModel.updateTagFromNetwork(document = document, tag = selectedType)
                         }
-                        if(isCustomFavorite != isFav) {
-                            viewModel.updateFavoriteFromNetwork(document = document, isFav = isCustomFavorite)
+                        if (isCustomFavorite != isFav) {
+                            viewModel.updateFavoriteFromNetwork(
+                                document = document,
+                                isFav = isCustomFavorite
+                            )
                         }
 
                         isDialogOpen = false

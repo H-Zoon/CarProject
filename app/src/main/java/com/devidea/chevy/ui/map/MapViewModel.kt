@@ -62,6 +62,10 @@ class MapViewModel @Inject constructor(
     fun isFavorite(id: String): Flow<Boolean> = repository.isFavorite(id)
     fun getTag(id: String): Flow<DocumentTag?> = repository.getTag(id)
 
+    /** 특정 태그 문서 조회 */
+    fun getDocumentByTag(tag: DocumentTag): Flow<DocumentEntity?> =
+        repository.getDocumentByTag(tag)
+
     // 네트워크 응답 Document 객체로 즐겨찾기/태그 업데이트
     fun updateFavoriteFromNetwork(document: Document, isFav: Boolean) = viewModelScope.launch {
         repository.updateFavoriteFromNetwork(document, isFav)

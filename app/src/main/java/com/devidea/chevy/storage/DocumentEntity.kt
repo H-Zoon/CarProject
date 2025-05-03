@@ -5,7 +5,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "documents",
+    tableName = "document_entity",
     indices = [Index(value = ["tag"], unique = true)] // 하나의 Home, Office 태그만 허용
 )
 data class DocumentEntity(

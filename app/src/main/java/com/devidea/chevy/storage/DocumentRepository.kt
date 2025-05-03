@@ -23,6 +23,10 @@ class DocumentRepository @Inject constructor(
         )
     }
 
+    /** 특정 태그의 문서를 Flow로 가져오기 */
+    fun getDocumentByTag(tag: DocumentTag): Flow<DocumentEntity?> =
+        dao.getDocumentByTag(tag)
+
     // 즐겨찾기 조회: 네트워크 Document id 기반
     fun isFavorite(id: String): Flow<Boolean> = dao.isFavoriteCount(id).map { it > 0 }
 
