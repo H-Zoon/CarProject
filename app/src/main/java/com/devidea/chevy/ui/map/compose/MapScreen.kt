@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devidea.chevy.R
-import com.devidea.chevy.repository.remote.Document
+import com.devidea.chevy.network.reomote.Document
 import com.devidea.chevy.ui.map.MapViewModel
 import com.devidea.chevy.ui.navi.NavigateData
 import com.kakao.vectormap.KakaoMap

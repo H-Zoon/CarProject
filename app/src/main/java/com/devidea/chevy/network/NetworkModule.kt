@@ -1,4 +1,4 @@
-package com.devidea.chevy.repository.remote
+package com.devidea.chevy.network
 
 import dagger.Module
 import dagger.Provides

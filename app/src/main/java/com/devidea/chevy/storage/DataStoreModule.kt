@@ -1,4 +1,4 @@
-package com.devidea.chevy.repository.device
+package com.devidea.chevy.storage
 
 import android.content.Context
 import androidx.datastore.core.DataStore

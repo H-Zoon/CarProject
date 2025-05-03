@@ -40,7 +40,7 @@ fun MapScreenHost(
                 // 경로 그리기
                 MapScreen(viewModel = viewModel)
 
-                val item = (uiState as MapViewModel.UiState.DrawRoute).item!!
+                val item = (uiState as MapViewModel.UiState.DrawRoute).item
                 val data = NavigateData(
                     addressName = item.address_name,
                     goalX = item.x,

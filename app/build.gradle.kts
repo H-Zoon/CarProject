@@ -96,6 +96,10 @@ dependencies {
     implementation (libs.androidx.material3.window.size.class1)
     implementation (libs.androidx.material3.adaptive.navigation.suite)
 
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.rxjava2)
+
 
 
     /*

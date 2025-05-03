@@ -1,9 +1,7 @@
 package com.devidea.chevy.ui.map.compose
 
 import android.content.Intent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,11 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -30,11 +26,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -42,6 +41,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,21 +52,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.chevy.repository.remote.Document
-import com.devidea.chevy.ui.main.MainViewModel
+import com.devidea.chevy.network.reomote.Document
 import com.devidea.chevy.ui.map.MapViewModel
 import com.devidea.chevy.ui.navi.KNaviActivity
 import io.morfly.compose.bottomsheet.material3.BottomSheetScaffold
@@ -74,11 +71,12 @@ import io.morfly.compose.bottomsheet.material3.rememberBottomSheetScaffoldState
 import io.morfly.compose.bottomsheet.material3.rememberBottomSheetState
 import io.morfly.compose.bottomsheet.material3.requireSheetVisibleHeightDp
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
+import com.devidea.chevy.storage.DocumentTag
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CustomFinalizedDemoScreen(viewModel: MapViewModel = hiltViewModel()) {
-    // 1) CompositionLocal 은 컴포저블 본문에서만 읽기
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val cameraState by viewModel.cameraIsTracking.collectAsState()
@@ -325,28 +323,166 @@ fun MainSheet() {
 }
 
 @Composable
-fun DetailSheet(viewModel: MapViewModel, document: Document) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        document.place_name?.let {
+fun DetailSheet(
+    modifier: Modifier = Modifier,
+    viewModel: MapViewModel,
+    document: Document
+) {
+    val context = LocalContext.current
+
+    val isFav by viewModel.isFavorite(document.id).collectAsState(initial = false)
+    val tag by viewModel.getTag(document.id).collectAsState(initial = null)
+
+    var isDialogOpen by remember { mutableStateOf(false) }
+    var selectedType by remember(tag) { mutableStateOf(tag) }
+    var isCustomFavorite by remember(isFav) { mutableStateOf(isFav) }
+
+    Column(modifier = modifier.padding(16.dp)) {
+        // 제목과 즐겨찾기 아이콘을 한 줄에 배치
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
-                text = it,
-                style = MaterialTheme.typography.bodyLarge
+                text = document.place_name,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = { isDialogOpen = true }
+            ) {
+                if (isFav || tag != null) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = "즐겨찾기 해제",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.FavoriteBorder,
+                        contentDescription = "즐겨찾기"
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "${document.category_group_name} • ${document.category_name}",
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = document.road_address_name.ifBlank { document.address_name },
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        if (document.phone.isNotBlank()) {
+            Text(
+                text = "☎ ${document.phone}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        document.distance?.let {
+            Text(
+                text = "거리: ${it}m",
+                style = MaterialTheme.typography.bodySmall
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
+
+        document.place_url?.let {
+            Text(
+                modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_VIEW, document.place_url.toUri())
+                    context.startActivity(intent)
+                },
+                text = "홈페이지: ${it}",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = {
-                viewModel.setState(MapViewModel.UiState.DrawRoute(document))
-            },
+            onClick = { viewModel.setState(MapViewModel.UiState.DrawRoute(document)) },
+            modifier = Modifier.align(Alignment.End)
         ) {
-            Text(text = "길안내")
+            Text("길찾기")
         }
+    }
+
+    // 즐겨찾기 옵션 다이얼로그
+    if (isDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { isDialogOpen = false },
+            title = { Text("즐겨찾기 설정") },
+            text = {
+                Column {
+                    Text("분류를 선택하세요 (하나만):")
+                    Spacer(Modifier.height(8.dp))
+                    // 집 / 회사 라디오 그룹
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = selectedType == DocumentTag.HOME,
+                            onClick = {
+                                if(selectedType == DocumentTag.HOME) selectedType = null else selectedType = DocumentTag.HOME
+                            }
+                        )
+                        Text("집", modifier = Modifier.clickable { selectedType = DocumentTag.HOME })
+                        Spacer(Modifier.width(16.dp))
+                        RadioButton(
+                            selected = selectedType == DocumentTag.OFFICE,
+                            onClick = {
+                                if(selectedType == DocumentTag.OFFICE) selectedType = null else selectedType = DocumentTag.OFFICE
+                            }
+                        )
+                        Text("회사", modifier = Modifier.clickable { selectedType = DocumentTag.OFFICE })
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    // 추가 옵션 체크박스
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = isCustomFavorite,
+                            onCheckedChange = {
+                                isCustomFavorite = it
+                            }
+                        )
+                        Text("즐겨찾기 지역")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedType != tag) {
+                            viewModel.updateTagFromNetwork(document = document, tag = selectedType)
+                        }
+                        if(isCustomFavorite != isFav) {
+                            viewModel.updateFavoriteFromNetwork(document = document, isFav = isCustomFavorite)
+                        }
+
+                        isDialogOpen = false
+                        selectedType = null
+                        isCustomFavorite = false
+                    }
+                ) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    isDialogOpen = false
+                    selectedType = null
+                    isCustomFavorite = false
+                }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 }
 

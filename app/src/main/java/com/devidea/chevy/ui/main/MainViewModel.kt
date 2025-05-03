@@ -1,18 +1,12 @@
 package com.devidea.chevy.ui.main
 
 import android.provider.Settings
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
 import com.devidea.chevy.bluetooth.BTState
 import com.devidea.chevy.eventbus.GuidanceStartEvent
-import com.devidea.chevy.repository.device.DataStoreRepository
+import com.devidea.chevy.storage.DataStoreRepository
 import com.devidea.chevy.service.BleService
 import com.devidea.chevy.service.BleServiceManager
 import com.kakaomobility.knsdk.KNLanguageType
@@ -22,10 +16,8 @@ import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject

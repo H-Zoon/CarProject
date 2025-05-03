@@ -8,13 +8,18 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.devidea.chevy.repository.remote.AddressRepository
+import com.devidea.chevy.network.AddressRepository
 import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.Logger
 import com.devidea.chevy.Trip
-import com.devidea.chevy.repository.device.DataStoreRepository
-import com.devidea.chevy.repository.remote.Document
-import com.devidea.chevy.repository.remote.KakaoAddressResponse
+import com.devidea.chevy.storage.DataStoreRepository
+import com.devidea.chevy.network.reomote.Document
+import com.devidea.chevy.network.reomote.KakaoAddressResponse
+import com.devidea.chevy.storage.AppDatabase
+import com.devidea.chevy.storage.DocumentDao
+import com.devidea.chevy.storage.DocumentEntity
+import com.devidea.chevy.storage.DocumentRepository
+import com.devidea.chevy.storage.DocumentTag
 import com.devidea.chevy.ui.navi.NavigateData
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
@@ -29,6 +34,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +47,28 @@ class MapViewModel @Inject constructor(
     private val addressRepository: AddressRepository,
     private val dataStoreRepository: DataStoreRepository,
     private val locationProvider: LocationProvider,
+    private val repository: DocumentRepository,
     context: Context
 ) :  AndroidViewModel(context as Application), DefaultLifecycleObserver {
+
+    val allDocuments: Flow<List<DocumentEntity>> = repository.allDocuments
+    val favoriteDocuments: Flow<List<DocumentEntity>> = repository.favoriteDocuments
+
+    fun insert(document: DocumentEntity) = viewModelScope.launch { repository.insert(document) }
+    fun deleteById(id: String) = viewModelScope.launch { repository.deleteById(id) }
+    fun setTag(id: String, tag: DocumentTag?) = viewModelScope.launch { repository.setTag(id, tag) }
+    fun toggleFavorite(id: String, isFav: Boolean) = viewModelScope.launch { repository.toggleFavorite(id, isFav) }
+
+    fun isFavorite(id: String): Flow<Boolean> = repository.isFavorite(id)
+    fun getTag(id: String): Flow<DocumentTag?> = repository.getTag(id)
+
+    // 네트워크 응답 Document 객체로 즐겨찾기/태그 업데이트
+    fun updateFavoriteFromNetwork(document: Document, isFav: Boolean) = viewModelScope.launch {
+        repository.updateFavoriteFromNetwork(document, isFav)
+    }
+    fun updateTagFromNetwork(document: Document, tag: DocumentTag?) = viewModelScope.launch {
+        repository.updateTagFromNetwork(document, tag)
+    }
 
     val mapView: MapView by lazy {
         MapView(getApplication<Application>().applicationContext)
@@ -110,7 +136,7 @@ class MapViewModel @Inject constructor(
         data object IsSearching : UiState() // 초기 상태
         data class SearchResult(val items: List<Document>) : UiState() // 검색 결과 표시 중
         data class ShowDetail(val item: Document) : UiState() // 상세 정보 표시 중
-        data class DrawRoute(val item: Document?) : UiState() // 상세 정보 표시 중
+        data class DrawRoute(val item: Document) : UiState() // 상세 정보 표시 중
     }
 
     // UI 이벤트를 관리하는 sealed class
@@ -237,7 +263,7 @@ class MapViewModel @Inject constructor(
     var lastSearchResult: List<Document>? = null
 
     // 주소 검색 함수
-    private fun searchAddress(query: String?) {
+    private fun searchAddress(query: String) {
         _isLoading.value = true
         _errorMessage.value = null
         setLoadingState(true)
