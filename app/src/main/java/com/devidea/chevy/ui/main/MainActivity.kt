@@ -56,6 +56,7 @@ import com.devidea.chevy.ui.main.compose.MAuthenticationScreen
 import com.devidea.chevy.ui.components.NeumorphicBox
 import com.devidea.chevy.ui.components.NeumorphicCard
 import com.devidea.chevy.ui.components.PermissionRequestScreen
+import com.devidea.chevy.ui.main.compose.CarManagementMainScreen
 import com.devidea.chevy.ui.navi.NavigateData
 import com.devidea.chevy.ui.navi.KNavi
 import com.devidea.chevy.ui.theme.CarProjectTheme
@@ -105,7 +106,8 @@ class MainActivity : AppCompatActivity() {
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-                        MainNavHost(navController = navController, mainViewModel = viewModel)
+                        CarManagementMainScreen()
+                        //MainNavHost(navController = navController, mainViewModel = viewModel)
                     }
                 })
             }

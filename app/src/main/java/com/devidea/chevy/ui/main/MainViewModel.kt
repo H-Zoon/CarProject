@@ -1,6 +1,12 @@
 package com.devidea.chevy.ui.main
 
 import android.provider.Settings
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
@@ -30,21 +36,23 @@ class MainViewModel @Inject constructor(
     private val serviceManager: BleServiceManager
 ) : ViewModel() {
 
-    // NavRoutes를 sealed class로 변경
-    sealed class NavRoutes(val route: String) {
-        object A : NavRoutes("a")
-        object Home : NavRoutes("home")
-        object Details : NavRoutes("details")
-        object Map : NavRoutes("map")
-        //object Nav : NavRoutes("nav")
-        object PERMISSION : NavRoutes("permission")
-    }
+    /*    // NavRoutes를 sealed class로 변경
+        sealed class NavRoutes(val route: String) {
+            object A : NavRoutes("a")
+            object Home : NavRoutes("home")
+            object Details : NavRoutes("details")
+            object Map : NavRoutes("map")
+            //object Nav : NavRoutes("nav")
+            object PERMISSION : NavRoutes("permission")
+        }*/
 
     private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
     val bluetoothStatus: StateFlow<BTState> get() = _bluetoothStatus
 
+/*
     private val _navigationEvent = MutableSharedFlow<NavRoutes>(replay = 0)
     val navigationEvent = _navigationEvent.asSharedFlow()
+*/
 
     private val _requestNavGuidance = MutableStateFlow<GuidanceStartEvent.RequestNavGuidance?>(null)
     val requestNavGuidance: StateFlow<GuidanceStartEvent.RequestNavGuidance?> get() = _requestNavGuidance
@@ -136,9 +144,9 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-    suspend fun requestNavHost(value: NavRoutes) {
+   /* suspend fun requestNavHost(value: NavRoutes) {
         _navigationEvent.emit(value)
-    }
+    }*/
 
     private fun observeBtState(service: BleService) {
         viewModelScope.launch {

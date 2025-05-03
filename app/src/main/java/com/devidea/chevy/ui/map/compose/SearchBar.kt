@@ -1,13 +1,12 @@
 package com.devidea.chevy.ui.map.compose
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,7 +31,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,88 +44,90 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devidea.chevy.ui.map.MapViewModel
-import io.morfly.compose.bottomsheet.material3.BottomSheetState
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchBar(
     modifier: Modifier,
     viewModel: MapViewModel,
     onSearch: (String) -> Unit,
     onSafety: () -> Unit,
-    scaffoldState: BottomSheetState<*>,
+    isSheetExpanded: Boolean
 ) {
+
+    val bgColor by animateColorAsState(
+        targetValue = if (isSheetExpanded) Color.White else Color.Transparent,
+        animationSpec = tween(durationMillis = 300)
+    )
+
     val focusManager = LocalFocusManager.current
     var isTextFieldFocused by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState){
-        when(uiState){
+    LaunchedEffect(uiState) {
+        when (uiState) {
             MapViewModel.UiState.IsSearching -> {
-                isTextFieldFocused = (true)
+                isTextFieldFocused = true
             }
+
             else -> {
                 focusManager.clearFocus()
-                isTextFieldFocused = (false)
+                isTextFieldFocused = false
             }
         }
     }
 
-    val fadeStart = 1200f
-    val fadeEnd   = 600f
-
-    val sheetTopDp by remember {
-        derivedStateOf { scaffoldState.requireOffset() }
-    }
-
-    val progress = ((fadeStart - sheetTopDp) / (fadeStart - fadeEnd))
-        .coerceIn(0f, 1f)
-    val animatedAlpha by animateFloatAsState(progress, label = "BgAlpha")
-
-
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .height(100.dp)
-            .background(Color.White.copy(alpha = animatedAlpha))
-
-    ) {
+            .background(bgColor)
+    ){
         Row(
-            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(10.dp)
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            TextField(value = inputText,
+            TextField(
+                value = inputText,
                 onValueChange = { inputText = it },
-                label = { Text("목적지") }, modifier = Modifier
-                .weight(1f)
-                .padding(10.dp)
-                .onFocusChanged { state -> if(state.isFocused) viewModel.setState(MapViewModel.UiState.IsSearching) },
+                label = { Text("목적지") },
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { state -> if (state.isFocused) viewModel.setState(MapViewModel.UiState.IsSearching) },
                 singleLine = true,
-                colors = TextFieldDefaults.colors().copy(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                colors = TextFieldDefaults.colors().copy(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
                 shape = RoundedCornerShape(8.dp),
-                keyboardActions = KeyboardActions(onSearch = { onSearch(inputText) }))
+                keyboardActions = KeyboardActions(onSearch = { onSearch(inputText) })
+            )
 
             AnimatedVisibility(
-                visible = !isTextFieldFocused, enter = fadeIn(animationSpec = tween(durationMillis = 100)) + slideInHorizontally(
+                visible = !isTextFieldFocused,
+                enter = fadeIn(animationSpec = tween(durationMillis = 100)) + slideInHorizontally(
                     initialOffsetX = { it / 2 }, animationSpec = tween(durationMillis = 100)
-                ), exit = fadeOut(animationSpec = tween(durationMillis = 100)) + slideOutHorizontally(
+                ),
+                exit = fadeOut(animationSpec = tween(durationMillis = 100)) + slideOutHorizontally(
                     targetOffsetX = { it / 2 }, animationSpec = tween(durationMillis = 100)
                 )
             ) {
                 Spacer(modifier = Modifier.width(10.dp))
 
                 // 커스텀 버튼 사용
-                CustomSearchButton {
+                SafetyButton {
                     onSafety()
                 }
+
             }
         }
     }
 }
 
 @Composable
-fun CustomSearchButton(onClick: () -> Unit) {
+fun SafetyButton(onClick: () -> Unit) {
     Button(
         onClick = onClick, colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFFFF722B), contentColor = Color.White
@@ -137,7 +135,8 @@ fun CustomSearchButton(onClick: () -> Unit) {
         modifier = Modifier.size(58.dp) // 필요에 따라 크기 조정
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Directions, // 원하는 아이콘으로 변경

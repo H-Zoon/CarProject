@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devidea.chevy.R
@@ -50,14 +50,15 @@ import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 
 @Composable
-fun MapScreen(viewModel: MapViewModel, bottomPaddingDp: Float) {
+fun MapScreen(viewModel: MapViewModel, bottomPadding: Dp = 0.dp) {
     val cameraState by viewModel.cameraIsTracking.collectAsState()
     val userLocation by viewModel.userLocation.collectAsState()
     val viewState by viewModel.uiState.collectAsState()
+    val kakaoMapState by viewModel.kakaoMap.collectAsState()
     var userPositionMark by remember { mutableStateOf<Label?>(null) }
     var placeMark by remember { mutableStateOf<Label?>(null) }
     val density = LocalDensity.current
-    val bottomPaddingPx = with(density) { bottomPaddingDp.dp.roundToPx()}
+    val bottomPaddingValue = with(density) { bottomPadding.roundToPx() }
 
     LaunchedEffect(Unit) {
         viewModel.startMap { /* 필요 시 추가 callback */ }
@@ -67,9 +68,9 @@ fun MapScreen(viewModel: MapViewModel, bottomPaddingDp: Float) {
         factory = { viewModel.mapView }
     )
 
-    LaunchedEffect(bottomPaddingPx) {
+    LaunchedEffect(bottomPadding, kakaoMapState) {
         viewModel.kakaoMap.value?.setPadding(   // (L, T, R, B)
-            0, 0, 0, bottomPaddingPx
+            0, 0, 0, bottomPaddingValue
         )
     }
 
@@ -111,6 +112,14 @@ fun MapScreen(viewModel: MapViewModel, bottomPaddingDp: Float) {
 
                 is MapViewModel.UiState.DrawRoute -> {
                     map.labelManager?.layer?.remove(placeMark)
+                }
+
+                is MapViewModel.UiState.Idle -> {
+                    map.trackingManager?.startTracking(userPositionMark)
+                    map.trackingManager?.setTrackingRotation(false)
+                    map.labelManager?.layer?.remove(placeMark)
+                    map.routeLineManager?.layer?.removeAll()
+                    map.moveCamera(CameraUpdateFactory.zoomTo(15))
                 }
 
                 else -> {
@@ -176,23 +185,16 @@ fun makeLabel(
 
 //사용자 검색결과 표시 마크
 fun goalLabel(kakaoMap: KakaoMap, document: Document, label: (Label) -> Unit) {
+    kakaoMap.setPadding(   // (L, T, R, B)
+        0, 0, 0, 0
+    )
     val cameraUpdate =
-        CameraUpdateFactory.newCenterPosition(
-            LatLng.from(
-                document.y,
-                document.x
-            )
-        )
+        CameraUpdateFactory.newCenterPosition(LatLng.from(document.y, document.x))
     kakaoMap.moveCamera(cameraUpdate)
 
     val detailLabel = kakaoMap.labelManager?.layer?.addLabel(
-        LabelOptions.from(
-            "dotLabel2", LatLng.from(
-                document.y,
-                document.x
-            )
-        )
-            .setStyles(
+        LabelOptions.from("dotLabel2", LatLng.from(document.y, document.x)
+        ).setStyles(
                 LabelStyle.from(R.drawable.icon_pin_orange).setAnchorPoint(0.5f, 1f)
             )
             .setRank(1)

@@ -93,9 +93,9 @@ class DataStoreRepository @Inject constructor(
             // 최신 검색어 추가
             currentHistory.add(0, query)
             // 최대 히스토리 수 유지
-            if (currentHistory.size > MAX_HISTORY_SIZE) {
+            /*if (currentHistory.size > MAX_HISTORY_SIZE) {
                 currentHistory.removeAt(currentHistory.size - 1)
-            }
+            }*/
             // 쉼표로 구분된 문자열로 저장
             preferences[SEARCH_HISTORY_KEY] = currentHistory.joinToString(",")
         }

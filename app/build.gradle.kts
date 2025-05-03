@@ -58,46 +58,52 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.core.splashscreen)
-    implementation(libs.accompanist.permissions)
-    implementation (libs.knsdk.ui)
-    implementation (libs.hilt.android.v244)
-    implementation(libs.androidx.material.icons.extended)
-    implementation(libs.androidx.runtime.livedata)
-    implementation (libs.android)
-
-    implementation (libs.okhttp)   // OkHttp 의존성 추가
-    implementation (libs.converter.gson)
-
-    implementation("io.morfly.compose:advanced-bottomsheet-material3:0.1.0")
-
-    //implementation (libs.androidx.hilt.lifecycle.viewmodel)
-    implementation (libs.androidx.hilt.navigation.compose)
-    implementation (libs.androidx.datastore.preferences)
-    //implementation ("org.jetbrains.skija:skija-shared:0.93.4")
-    implementation(libs.hilt.android)
-    implementation(libs.androidx.lifecycle.runtime.compose.android)
-    implementation(libs.material)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
-    ksp(libs.hilt.compiler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
+
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.bluetooth)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.advanced.bottomsheet.material3)
+
+    implementation (libs.kakao.map)
+    implementation (libs.kakao.navi)
+
+    implementation (libs.okhttp)
+    implementation (libs.converter.gson)
+
+    //hilt
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.android)
+    implementation (libs.androidx.hilt.navigation.compose)
+    implementation (libs.androidx.datastore.preferences)
+
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
+
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.appcompat)
-    //implementation(libs.material)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.bluetooth)
-   /* testImplementation(libs.junit)
+
+    implementation (libs.androidx.material3)
+    implementation (libs.androidx.material3.window.size.class1)
+    implementation (libs.androidx.material3.adaptive.navigation.suite)
+
+
+
+    /*
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -40,6 +41,39 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+val LightAccentScheme = lightColorScheme(
+    // — 포인트 (primary) —
+    primary               = AccentOrange,
+    onPrimary             = Color.White,
+    primaryContainer      = AccentOrangeContainer,
+    onPrimaryContainer    = Color.Black,
+    inversePrimary        = AccentOrangeContainer,
+
+    // — 보조 강조는 그레이로 유지 —
+    secondary             = Grey500,
+    onSecondary           = Color.Black,
+    secondaryContainer    = Grey100,
+    onSecondaryContainer  = Color.Black,
+
+    // — 배경 / 표면 —
+    background            = Color.White,
+    onBackground          = Color.Black,
+    surface               = Color.White,
+    onSurface             = Color.Black,
+    surfaceVariant        = Grey100,
+    onSurfaceVariant      = Color.Black,
+
+    // — 테두리·아웃라인 등 —
+    outline               = Grey400,
+    inverseSurface        = Grey900,
+    inverseOnSurface      = Color.White,
+
+    // — 에러 색상 (기존 그레이톤 유지) —
+    error                 = Grey600,
+    onError               = Color.White,
+    errorContainer        = Grey200,
+    onErrorContainer      = Color.Black
+)
 @Composable
 fun CarProjectTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -54,7 +88,7 @@ fun CarProjectTheme(
         }
 
         darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else -> LightAccentScheme
     }
 
     MaterialTheme(
