@@ -4,7 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import com.devidea.chevy.service.BleServiceManager
+import com.devidea.chevy.k10s.BleServiceManager
 import com.kakao.vectormap.KakaoMapSdk
 import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.KNSDK

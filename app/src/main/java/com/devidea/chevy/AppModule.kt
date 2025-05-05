@@ -2,14 +2,17 @@ package com.devidea.chevy
 
 import android.content.Context
 import androidx.room.Room.databaseBuilder
-import com.devidea.chevy.datas.obd.model.CarEventModel
-import com.devidea.chevy.datas.obd.model.ControlModule
-import com.devidea.chevy.datas.obd.model.TPMSModule
-import com.devidea.chevy.service.BleServiceManager
+import com.devidea.chevy.k10s.obd.model.CarEventModel
+import com.devidea.chevy.k10s.obd.model.ControlModule
+import com.devidea.chevy.k10s.obd.model.TPMSModule
+import com.devidea.chevy.k10s.BleServiceManager
+import com.devidea.chevy.service.SppClient
+import com.devidea.chevy.service.SppClientImpl
 import com.devidea.chevy.storage.AppDatabase
 import com.devidea.chevy.storage.DocumentDao
 import com.devidea.chevy.storage.DocumentRepository
 import com.devidea.chevy.ui.navi.KNavi
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,6 +41,22 @@ object AppModule {
     @Singleton
     fun provideBleServiceManager(@ApplicationContext context: Context): BleServiceManager {
         return BleServiceManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSppServiceManager(@ApplicationContext context: Context): SppClientImpl {
+        return SppClientImpl(context)
+    }
+
+    @Module
+    @InstallIn(SingletonComponent::class)
+    abstract class SppModule {
+        @Binds
+        @Singleton
+        abstract fun bindSppClient(
+            impl: SppClientImpl
+        ): SppClient
     }
 
     @Provides

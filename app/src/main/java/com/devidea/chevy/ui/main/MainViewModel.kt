@@ -1,14 +1,19 @@
 package com.devidea.chevy.ui.main
 
 import android.provider.Settings
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
-import com.devidea.chevy.bluetooth.BTState
-import com.devidea.chevy.eventbus.GuidanceStartEvent
+import com.devidea.chevy.bluetooth.GaugeManager
+import com.devidea.chevy.bluetooth.GaugeSnapshot
+import com.devidea.chevy.bluetooth.GmExtManagerPlus
+import com.devidea.chevy.bluetooth.GmSnapshotPlus
 import com.devidea.chevy.storage.DataStoreRepository
-import com.devidea.chevy.service.BleService
-import com.devidea.chevy.service.BleServiceManager
+import com.devidea.chevy.service.ConnectionEvent
+import com.devidea.chevy.service.ScannedDevice
+import com.devidea.chevy.service.SppClient
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -16,41 +21,36 @@ import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
-    private val serviceManager: BleServiceManager
+    private val sppClient: SppClient,
+    private val gaugeManager: GaugeManager,
+    private val gmExtManagerPlus: GmExtManagerPlus
 ) : ViewModel() {
 
-    /*    // NavRoutes를 sealed class로 변경
-        sealed class NavRoutes(val route: String) {
-            object A : NavRoutes("a")
-            object Home : NavRoutes("home")
-            object Details : NavRoutes("details")
-            object Map : NavRoutes("map")
-            //object Nav : NavRoutes("nav")
-            object PERMISSION : NavRoutes("permission")
-        }*/
+    private val _devices = MutableLiveData<List<ScannedDevice>>()
+    val devices: LiveData<List<ScannedDevice>> = _devices
 
-    private val _bluetoothStatus = MutableStateFlow(BTState.DISCONNECTED)
-    val bluetoothStatus: StateFlow<BTState> get() = _bluetoothStatus
+    private val _events = MutableSharedFlow<ConnectionEvent>()
+    val events: SharedFlow<ConnectionEvent> = _events.asSharedFlow()
 
-/*
-    private val _navigationEvent = MutableSharedFlow<NavRoutes>(replay = 0)
-    val navigationEvent = _navigationEvent.asSharedFlow()
-*/
+    private val _dtcCodes = MutableStateFlow<List<String>>(emptyList())
+    val dtcCodes: StateFlow<List<String>> = _dtcCodes.asStateFlow()
 
-    private val _requestNavGuidance = MutableStateFlow<GuidanceStartEvent.RequestNavGuidance?>(null)
-    val requestNavGuidance: StateFlow<GuidanceStartEvent.RequestNavGuidance?> get() = _requestNavGuidance
-
-    private val _isServiceInitialized = MutableStateFlow(false)
-    val isServiceInitialized: StateFlow<Boolean> get() = _isServiceInitialized
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _isFirstLunch = MutableStateFlow(false)
     val isFirstLunch: StateFlow<Boolean> get() = _isFirstLunch
@@ -70,13 +70,14 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             launch {
-                serviceManager.serviceState.collect { service ->
-                    if (service != null) {
-                        observeBtState(service)
-                        _isServiceInitialized.value = true
-                    } else {
-                        _isServiceInitialized.value = true
-                    }
+                sppClient.deviceList.collect { list ->
+                    _devices.postValue(list)
+                }
+            }
+
+            launch {
+                sppClient.connectionEvents.collect { evt ->
+                    _events.emit(evt)
                 }
             }
 
@@ -109,16 +110,6 @@ class MainViewModel @Inject constructor(
                 }
             }
 
-            /*launch {
-                KNAVStartEventBus.events.collect {
-                    when (it) {
-                        is GuidanceStartEvent.RequestNavGuidance -> {
-                            _requestNavGuidance.value = it
-                            _navigationEvent.emit(NavRoutes.Nav)
-                        }
-                    }
-                }
-            }*/
             launch {
                 repository.getFirstLunch().collect { difference ->
                     _isFirstLunch.value = difference
@@ -136,28 +127,53 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-   /* suspend fun requestNavHost(value: NavRoutes) {
-        _navigationEvent.emit(value)
-    }*/
 
-    private fun observeBtState(service: BleService) {
-        viewModelScope.launch {
-            service.btState.collect { state ->
-                _bluetoothStatus.value = state
-            }
-        }
+    val snapshot: StateFlow<GaugeSnapshot> = gaugeManager
+        .snapshot
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = GaugeSnapshot()
+        )
+
+    val snapshot2: StateFlow<GmSnapshotPlus> = gmExtManagerPlus
+        .snapshot
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = GmSnapshotPlus()
+        )
+
+   fun startInfo(){
+       gaugeManager.start()
+    }
+
+    fun stopInfo(){
+        gaugeManager.stop()
+    }
+
+    fun startGM(){
+        gmExtManagerPlus.start()
+    }
+
+    fun stopGM(){
+        gmExtManagerPlus.stop()
     }
 
     suspend fun saveFirstLunch() {
         repository.saveFirstLunch(false)
     }
 
-    fun connect() {
-        if(isServiceInitialized.value) serviceManager.getService()?.requestScan()
+    fun startScan() {
+        sppClient.requestScan()
+    }
+
+    fun connectTo(scannedDevice: ScannedDevice) {
+        sppClient.requestConnect(scannedDevice)
     }
 
     fun disconnect() {
-        if(isServiceInitialized.value) serviceManager.getService()?.requestDisconnect()
+        sppClient.requestDisconnect()
     }
 
     // 인증 시작
@@ -168,7 +184,10 @@ class MainViewModel @Inject constructor(
                 initializeWithAppKey(
                     aAppKey = "e31e85ed66b03658041340618628e93f",
                     aClientVersion = "1.0.0",
-                    aAppUserId = Settings.Secure.getString(instance.contentResolver, Settings.Secure.ANDROID_ID),
+                    aAppUserId = Settings.Secure.getString(
+                        instance.contentResolver,
+                        Settings.Secure.ANDROID_ID
+                    ),
                     aLangType = KNLanguageType.KNLanguageType_KOREAN,
                     aCompletion = { result ->
                         result?.let {
@@ -202,5 +221,4 @@ class MainViewModel @Inject constructor(
     fun clearError() {
         _authErrorMessage.value = null
     }
-
 }

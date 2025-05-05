@@ -4,6 +4,7 @@
     <string name="bt_connected">연결되었습니다.</string>
     <string name="bt_disconnected">연결되지 않았습니다.</string>
     <string name="bt_connecting">연결중입니다.</string>
+    <string name="bt_scanned">기기를 선택해주세요.</string>
     <string name="bt_scanning">기기를 찾고있습니다.</string>
     <string name="bt_not_found">기기를 찾지 못했습니다.</string>
 
