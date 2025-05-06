@@ -1,10 +1,12 @@
 package com.devidea.chevy.ui.main.compose.gauge
 
+import androidx.compose.ui.geometry.Rect
 import android.util.Log
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeviceThermostat
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalGasStation
@@ -56,9 +60,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import sh.calvin.reorderable.ReorderableItem
@@ -283,82 +291,120 @@ val gaugeItems: List<GaugeItem> = listOf(
 fun GaugesGrid2(
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    // 1) state: 현재 화면에 띄울 게이지 목록
     val gauges by viewModel.gauges.collectAsState()
     var list by remember(gauges) { mutableStateOf(gauges) }
-
-    // 2) 드래그 순서 변경을 위한 상태
-    val gridState = rememberLazyGridState()
-    val reorderState = rememberReorderableLazyGridState(
-        lazyGridState = gridState
-    ) { from, to ->
-        list = list.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
-        viewModel.swap(from = from.index, to = to.index)
-    }
-
-    // 3) AddDialog 표시 여부
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // 4) Scaffold 로 Fab 추가
+    // 윈도우 좌표 기준 마지막 포인터 위치
+    var lastPointer by remember { mutableStateOf(Offset.Zero) }
+    // 윈도우 좌표 기준 삭제 영역 Rect
+    val deleteZoneRect = remember { mutableStateOf<Rect?>(null) }
+
+    val gridState = rememberLazyGridState()
+    val reorderState = rememberReorderableLazyGridState(
+        lazyGridState = gridState,
+        onMove = { from, to ->
+            list = list.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            viewModel.swap(from = from.index, to = to.index)
+        }
+    )
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Gauge"
-                )
+                Icon(Icons.Default.Add, contentDescription = "Add Gauge")
             }
         }
-    ) { paddingValues ->
-        // 5) 실제 그리드
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            state = gridState,
+    ) { padding ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding)
+                // 전역 포인터 감시: 항상 마지막 위치를 기록
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            lastPointer = event.changes.first().position
+                        }
+                    }
+                }
         ) {
-            items(list.size, key = { list[it].id }) { idx ->
-                ReorderableItem(
-                    state = reorderState,
-                    key = list[idx].id
-                ) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
-                    Surface(shadowElevation = elevation) {
-                        Box(
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = { /* optional */ },
-                                    onDragStopped = { /* optional */ }
-                                )
-                                .background(Color.White)
-                                .fillMaxSize()
-                        ) {
-                            list[idx].content()
+            // 그리드…
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                itemsIndexed(list, key = { _, it -> it.id }) { idx, gauge ->
+                    ReorderableItem(state = reorderState, key = gauge.id) { isDragging ->
+                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
+                        Surface(shadowElevation = elevation) {
+                            Box(
+                                modifier = Modifier
+                                    .longPressDraggableHandle(
+                                        onDragStarted = { /*…*/ },
+                                        onDragStopped = {
+                                            deleteZoneRect.value
+                                                ?.takeIf { it.contains(lastPointer) }
+                                                ?.let { viewModel.onGaugeToggle(gauge.id) }
+                                        }
+                                    )
+                                    .background(Color.White)
+                                    .fillMaxSize()
+                            ) {
+                                gauge.content()
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // 6) 다이얼로그 호출
-        if (showAddDialog) {
-            AddGaugeDialog(
-                allItems = gaugeItems,
-                selectedIds = list.map { it.id }.toSet(),
-                onAdd = { gauge ->
-                    viewModel.onGaugeToggle(gauge.id)
-                    showAddDialog = false
-                },
-                onDismiss = {
-                    showAddDialog = false
+            // “삭제 중”일 때만 보이는 삭제 영역
+            if (reorderState.isAnyItemDragging) {
+                // 포인터가 영역 안에 있는지 체크
+                val inZone = deleteZoneRect.value?.contains(lastPointer) == true
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            // 안에 들어가면 불투명도 높이고, 아니면 낮게
+                            Color.Red.copy(alpha = if (inZone) 0.8f else 0.4f)
+                        )
+                        .onGloballyPositioned { coords ->
+                            deleteZoneRect.value = coords.boundsInWindow()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Drag here to delete",
+                        modifier = Modifier.size(36.dp),
+                        tint = Color.White
+                    )
                 }
-            )
+            }
+
+            // AddGaugeDialog…
+            if (showAddDialog) {
+                AddGaugeDialog(
+                    allItems = gaugeItems,
+                    selectedIds = list.map { it.id }.toSet(),
+                    onAdd = { gauge ->
+                        viewModel.onGaugeToggle(gauge.id)
+                        showAddDialog = false
+                    },
+                    onDismiss = { showAddDialog = false }
+                )
+            }
         }
     }
 }
