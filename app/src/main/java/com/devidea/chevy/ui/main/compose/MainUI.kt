@@ -42,11 +42,12 @@ import com.devidea.chevy.R
 import com.devidea.chevy.service.ConnectionEvent
 import com.devidea.chevy.service.ScannedDevice
 import com.devidea.chevy.ui.main.MainViewModel
+import com.devidea.chevy.ui.main.compose.gauge.GaugesGrid2
 
 // 탭 종류 정의
 sealed class NavItem(val label: String, val icon: ImageVector) {
     object Home : NavItem("Home", Icons.Filled.Home)
-    object Location : NavItem("Location", Icons.Filled.Place)
+    //object Location : NavItem("Location", Icons.Filled.Place)
     object Car : NavItem("Car", Icons.Filled.DirectionsCar)
     object Settings : NavItem("Settings", Icons.Filled.Settings)
 }
@@ -56,10 +57,10 @@ fun CarManagementMainScreen(viewModel: MainViewModel) {
     var selectedTab by remember { mutableStateOf<NavItem>(NavItem.Home) }
 
     Scaffold(
-        topBar = { if (selectedTab == NavItem.Home) BluetoothActionComponent(viewModel = viewModel) },
+        topBar = { BluetoothActionComponent(viewModel = viewModel) },
         bottomBar = {
             CarBottomNavBar(
-                items = listOf(NavItem.Home, NavItem.Location, NavItem.Car, NavItem.Settings),
+                items = listOf(NavItem.Home, /*NavItem.Location,*/ NavItem.Car, NavItem.Settings),
                 selected = selectedTab,
                 onItemSelected = { selectedTab = it }
             )
@@ -73,8 +74,8 @@ fun CarManagementMainScreen(viewModel: MainViewModel) {
         ) {
             when (selectedTab) {
                 is NavItem.Home -> HomeScreen()
-                is NavItem.Location -> MAuthenticationScreen()//LocationScreen()
-                is NavItem.Car -> DiagnosticScreen()//CarContent()
+                //is NavItem.Location -> MAuthenticationScreen()//LocationScreen()
+                is NavItem.Car -> GaugesGrid2()
                 is NavItem.Settings -> {}//SettingsScreen()
             }
         }
@@ -321,22 +322,8 @@ fun FuelGauge(currentPercent: Float) {
 
 @Composable
 fun ActionButtons(viewModel: MainViewModel) {
-    val carState by viewModel.snapshot.collectAsState()
     val gmState by viewModel.snapshot2.collectAsState()
-
     Column {
-        Text(text = "rpm: ${carState.rpm}")
-        Text(text = "speed: ${carState.speed}")
-        Text(text = "ect: ${carState.ect}")
-        Text(text = "throttle: ${carState.throttle}")
-        Text(text = "load: ${carState.load}")
-        Text(text = "iat: ${carState.iat}")
-        Text(text = "maf: ${carState.maf}")
-        Text(text = "batt: ${carState.batt}")
-        Text(text = "fuelRate: ${carState.fuelRate}")
-    }
-
-    /*Column {
         Text(text = "oilLife: ${gmState.oilLife}")
         Text(text = "transTemp: ${gmState.transTemp}")
         Text(text = "oilTemp: ${gmState.oilTemp}")
@@ -346,14 +333,14 @@ fun ActionButtons(viewModel: MainViewModel) {
         Text(text = "gearPos: ${gmState.gearPos}")
         Text(text = "outsideTemp: ${gmState.outsideTemp}")
         Text(text = "transPressure: ${gmState.transPressure}")
-    }*/
+    }
 
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
         modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedButton(
-            onClick = { viewModel.startInfo() },
+            onClick = { viewModel.startGM() },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.weight(1f)
         ) {
@@ -363,7 +350,7 @@ fun ActionButtons(viewModel: MainViewModel) {
         }
         Spacer(modifier = Modifier.width(16.dp))
         OutlinedButton(
-            onClick = { viewModel.stopInfo() },
+            onClick = { viewModel.startGM() },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.weight(1f)
         ) {

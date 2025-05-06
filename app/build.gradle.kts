@@ -63,7 +63,6 @@ dependencies {
 
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.accompanist.permissions)
-    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
@@ -99,7 +98,8 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.rxjava2)
-
+    implementation (libs.material.icons.extended)
+    implementation(libs.reorderable)
 
 
     /*

@@ -36,9 +36,6 @@ import androidx.compose.runtime.getValue
 fun DiagnosticScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val dtcCodes by viewModel.dtcCodes.collectAsState(initial = emptyList())
-    val isLoading by viewModel.isLoading.collectAsState(initial = false)
-
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("엔진 고장 코드 조회") })
@@ -56,7 +53,7 @@ fun DiagnosticScreen(
             contentAlignment = Alignment.TopCenter
         ) {
             when {
-                isLoading -> {
+                /*isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp))
                 }
                 dtcCodes.isEmpty() -> {
@@ -85,7 +82,7 @@ fun DiagnosticScreen(
                             }
                         }
                     }
-                }
+                }*/
             }
         }
     }

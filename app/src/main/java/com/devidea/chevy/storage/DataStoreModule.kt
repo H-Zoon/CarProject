@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.devidea.chevy.AppModule.ApplicationScope
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
@@ -25,7 +27,11 @@ object DataStoreModule {
 
     @Provides
     @Singleton
-    fun provideDataStoreRepository(dataStore: DataStore<Preferences>): DataStoreRepository {
-        return DataStoreRepository(dataStore)
+    fun provideDataStoreRepository(
+        @ApplicationContext context: Context,
+        dataStore: DataStore<Preferences>,
+        @ApplicationScope appScope: CoroutineScope    // ← 이 줄을 추가!
+    ): DataStoreRepository {
+        return DataStoreRepository(context, dataStore, appScope)
     }
 }

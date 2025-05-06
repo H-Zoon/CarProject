@@ -1,5 +1,7 @@
 package com.devidea.chevy.storage
 
+import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -8,23 +10,126 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.devidea.chevy.AppModule.ApplicationScope
+import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import java.util.Collections
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class DataStoreRepository @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    @ApplicationContext private val context: Context,
+    private val dataStore: DataStore<Preferences>,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
+    init {
+        appScope.launch(Dispatchers.IO) {
+            dataStore.edit { prefs ->
+                if (!prefs.contains(GAUGE_ORDER_KEY)) {
+                    prefs[GAUGE_ORDER_KEY] = gaugeIdPool.joinToString(",")
+                }
+            }
+        }
+    }
 
+    private val TAG = "GaugeRepository"
     private val CONNECT_DATE_KEY = longPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
     private val RECENT_FUEL_EFFICIENCY_KEY = floatPreferencesKey("recent_fuel")
     private val FIRST_LUNCH_KEY = booleanPreferencesKey("first_lunch")
     private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
+    private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
     private val MAX_HISTORY_SIZE = 10 // 최대 히스토리 수
 
+    /* ---------- Gauge 선택 저장 / 조회 ---------- */
+    /*    private val MIN_GAUGES = 1          // 최소 1개 이상
+        private val MAX_GAUGES = 8          // 최대 8개까지*/
+    private val gaugeIdPool = gaugeItems.map { it.id }.toSet()  // 허용 ID
+
+    private val mutex = Mutex()               // ⚠️ 동시 접근 보호
+
+    /** 선택된 Gauge ID 목록을 Flow 로 노출 (기본값은 [defaultGaugeIds]) */
+    val selectedGaugeIds: Flow<List<String>> = dataStore.data
+        .map { prefs ->
+            prefs[GAUGE_ORDER_KEY]
+                ?.split(",")
+                ?.filter { it in gaugeIdPool }
+                ?: emptyList()
+        }
+
+    suspend fun toggleGauge(id: String) {
+        if (id !in gaugeIdPool) {
+            Log.d(TAG, "toggleGauge: invalid id='$id', not in gaugeIdPool")
+            return
+        }
+        Log.d(TAG, "toggleGauge: START id='$id'")
+
+        mutex.withLock {
+            dataStore.edit { prefs ->
+                val raw = prefs[GAUGE_ORDER_KEY]
+                Log.d(TAG, "toggleGauge: prefs before edit raw='$raw'")
+
+                val cur = raw
+                    ?.split(",")
+                    ?.filter { it in gaugeIdPool }
+                    ?.toMutableList()
+                    ?: mutableListOf()
+                Log.d(TAG, "toggleGauge: current list before change=$cur")
+
+                if (id in cur) {
+                    cur.remove(id)
+                    Log.d(TAG, "toggleGauge: removed '$id', new list=$cur")
+
+                } else {
+                    cur.add(id)
+                    Log.d(TAG, "toggleGauge: added '$id', new list=$cur")
+                }
+                val joined = cur.joinToString(",")
+                prefs[GAUGE_ORDER_KEY] = joined
+                Log.d(TAG, "toggleGauge: prefs after edit joined='$joined'")
+            }
+        }
+
+        Log.d(TAG, "toggleGauge: END id='$id'")
+    }
+
+    /* ---------- index 기반 스왑 ---------- */
+    suspend fun swapGauge(from: Int, to: Int) {
+        if (from == to) return
+        mutex.withLock {
+            dataStore.edit { prefs ->
+                val cur = prefs[GAUGE_ORDER_KEY]
+                    ?.split(",")
+                    ?.filter { it in gaugeIdPool }
+                    ?.toMutableList()
+                    ?: return@edit
+
+                if (from !in cur.indices || to !in cur.indices) return@edit
+                cur.apply { Collections.swap(this, from, to) }
+                prefs[GAUGE_ORDER_KEY] = cur.joinToString(",")
+            }
+        }
+    }
+
+    /* ---------- 초기화(전체 선택) ---------- */
+    suspend fun resetAllGauges() = mutex.withLock {
+        dataStore.edit { prefs ->
+            prefs[GAUGE_ORDER_KEY] = gaugeIdPool.joinToString(",")
+        }
+    }
+
+    /* ---------- Connect Date ---------- */
     suspend fun saveConnectData() {
         dataStore.edit { preferences ->
             preferences[CONNECT_DATE_KEY] = LocalDate.now().toEpochDay()
@@ -41,6 +146,7 @@ class DataStoreRepository @Inject constructor(
             }
     }
 
+    /* ---------- Mileage ---------- */
     suspend fun saveMileageData(value: Int) {
         dataStore.edit { preferences ->
             preferences[RECENT_MILEAGE_KEY] = value
@@ -54,6 +160,7 @@ class DataStoreRepository @Inject constructor(
             }
     }
 
+    /* ---------- Fuel Efficiency ---------- */
     suspend fun saveFuelData(value: Float) {
         dataStore.edit { preferences ->
             preferences[RECENT_FUEL_EFFICIENCY_KEY] = value
@@ -87,7 +194,8 @@ class DataStoreRepository @Inject constructor(
      */
     suspend fun addSearchQuery(query: String) {
         dataStore.edit { preferences ->
-            val currentHistory = preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
+            val currentHistory =
+                preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
             // 중복 제거
             currentHistory.remove(query)
             // 최신 검색어 추가
@@ -128,7 +236,8 @@ class DataStoreRepository @Inject constructor(
      */
     suspend fun removeSearchQuery(query: String) {
         dataStore.edit { preferences ->
-            val currentHistory = preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
+            val currentHistory =
+                preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
             currentHistory.remove(query)
             preferences[SEARCH_HISTORY_KEY] = currentHistory.joinToString(",")
         }

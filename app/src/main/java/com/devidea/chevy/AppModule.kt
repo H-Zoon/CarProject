@@ -18,7 +18,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
+import javax.inject.Qualifier
 
 
 @Module
@@ -42,6 +46,16 @@ object AppModule {
     fun provideBleServiceManager(@ApplicationContext context: Context): BleServiceManager {
         return BleServiceManager(context)
     }
+
+    @Qualifier
+    @Retention(AnnotationRetention.RUNTIME)
+    annotation class ApplicationScope
+
+    @Provides
+    @Singleton           // 앱 생명주기 = 프로세스 생명주기
+    @ApplicationScope    // ← 방금 만든 Qualifier
+    fun provideAppScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Provides
     @Singleton

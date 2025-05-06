@@ -6,14 +6,16 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
+import com.devidea.chevy.bluetooth.DefaultPid
 import com.devidea.chevy.bluetooth.GaugeManager
-import com.devidea.chevy.bluetooth.GaugeSnapshot
 import com.devidea.chevy.bluetooth.GmExtManagerPlus
 import com.devidea.chevy.bluetooth.GmSnapshotPlus
 import com.devidea.chevy.storage.DataStoreRepository
 import com.devidea.chevy.service.ConnectionEvent
 import com.devidea.chevy.service.ScannedDevice
 import com.devidea.chevy.service.SppClient
+import com.devidea.chevy.ui.main.compose.gauge.GaugeItem
+import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -21,6 +23,7 @@ import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,33 +43,62 @@ class MainViewModel @Inject constructor(
     private val gaugeManager: GaugeManager,
     private val gmExtManagerPlus: GmExtManagerPlus
 ) : ViewModel() {
+    val gauges = repository.selectedGaugeIds
+        .map { ids ->
+            ids.mapNotNull { id ->
+                // id 순서대로 GaugeItem 꺼내기
+                gaugeItems.firstOrNull { it.id == id }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    fun onGaugeToggle(id: String) = viewModelScope.launch {
+        repository.toggleGauge(id)
+    }
+
+    suspend fun swap(from: Int, to: Int){
+        repository.swapGauge(from = from, to = to)
+    }
+
+    fun onReset() = viewModelScope.launch {
+        repository.resetAllGauges()
+    }
+
+    //검색된 블루투스 디바이스 목록
     private val _devices = MutableLiveData<List<ScannedDevice>>()
     val devices: LiveData<List<ScannedDevice>> = _devices
 
+    //블루투스 이벤트 (연결, 해제, 오류 등)
     private val _events = MutableSharedFlow<ConnectionEvent>()
     val events: SharedFlow<ConnectionEvent> = _events.asSharedFlow()
-
-    private val _dtcCodes = MutableStateFlow<List<String>>(emptyList())
-    val dtcCodes: StateFlow<List<String>> = _dtcCodes.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _isFirstLunch = MutableStateFlow(false)
     val isFirstLunch: StateFlow<Boolean> get() = _isFirstLunch
 
-    // 인증 성공 여부를 관리하는 Flow
+    //카카오 내비 인증 성공 여부를 관리하는 Flow
     private val _authenticationSuccess = MutableStateFlow(false)
     val authenticationSuccess: StateFlow<Boolean> = _authenticationSuccess.asStateFlow()
 
-    // 인증 중 상태를 관리하는 Flow
+    //카카오 내비 인증 중 상태를 관리하는 Flow
     private val _isAuthenticating = MutableStateFlow(false)
     val isAuthenticating: StateFlow<Boolean> = _isAuthenticating.asStateFlow()
 
-    // 에러 메시지 상태를 관리하는 Flow
+    //카카오 내비 인증 에러 메시지 상태를 관리하는 Flow
     private val _authErrorMessage = MutableStateFlow<String?>(null)
     val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
+
+    val rpm       : StateFlow<Int>   = gaugeManager.rpm
+    val speed     : StateFlow<Int>   = gaugeManager.speed
+    val ect       : StateFlow<Int>   = gaugeManager.ect
+    val throttle  : StateFlow<Int>   = gaugeManager.throttle
+    val load      : StateFlow<Int>   = gaugeManager.load
+    val iat       : StateFlow<Int>   = gaugeManager.iat
+    val maf       : StateFlow<Float> = gaugeManager.maf
+    val batt      : StateFlow<Float> = gaugeManager.batt
+    val fuelRate  : StateFlow<Float> = gaugeManager.fuelRate
+
+    fun startObserving(pid: DefaultPid) = gaugeManager.registerPid(pid)
+    fun stopObserving(pid: DefaultPid) = gaugeManager.unregisterPid(pid)
 
     init {
         viewModelScope.launch {
@@ -127,15 +160,6 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-
-    val snapshot: StateFlow<GaugeSnapshot> = gaugeManager
-        .snapshot
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GaugeSnapshot()
-        )
-
     val snapshot2: StateFlow<GmSnapshotPlus> = gmExtManagerPlus
         .snapshot
         .stateIn(
@@ -144,19 +168,19 @@ class MainViewModel @Inject constructor(
             initialValue = GmSnapshotPlus()
         )
 
-   fun startInfo(){
-       gaugeManager.start()
+    fun startInfo() {
+        gaugeManager.start()
     }
 
-    fun stopInfo(){
+    fun stopInfo() {
         gaugeManager.stop()
     }
 
-    fun startGM(){
+    fun startGM() {
         gmExtManagerPlus.start()
     }
 
-    fun stopGM(){
+    fun stopGM() {
         gmExtManagerPlus.stop()
     }
 

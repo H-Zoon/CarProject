@@ -14,12 +14,26 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.util.Log
+import java.util.Collections
 import kotlin.math.roundToInt
 
+enum class GmPidPlus(val code: String) {
+    OIL_LIFE("221030"),       // A/2.55 → %
+    TRANS_TEMP("22F40C"),     // (AB)-40°C
+    OIL_TEMP("22F415"),       // B-40°C
+    BATT_VOLTAGE("22F42A"),   // AB/1000 V
+    FUEL_USED("22F483"),      // AB mL
+    CHARGE_CURRENT("22F44F"), // signed AB/10 A
+    GEAR_POS("22F40F"),       // B
+    OUTSIDE_TEMP("22F45A"),   // B-40°C
+    TRANS_PRESSURE("22F40E"); // AB kPa
 
-/**
- * GmSnapshotPlus – 추가 GM 전용 항목 포함.
- */
+    companion object {
+        private val map = GmPidPlus.entries.associateBy(GmPidPlus::code)
+        fun fromRequest(req: String): GmPidPlus? = map[req]
+    }
+}
+
 data class GmSnapshotPlus(
     val oilLife: Int = 0,
     val transTemp: Int = 0,
@@ -32,10 +46,6 @@ data class GmSnapshotPlus(
     val transPressure: Int = 0
 )
 
-/**
- * GmExtManagerPlus – GM Mode 22 확장 PID 다수 수집.
- * 헤더 7E0 고정, PID 순차 쿼리.
- */
 class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
 
     companion object {
@@ -48,58 +58,75 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
 
     private var pollJob: Job? = null
 
-    // 요청 → 디코더 매핑
-    private val decoders: Map<String, (String) -> Unit> = mapOf(
-        "22F459" to ::decodeOilLife,
-        /*"22F40C" to ::decodeTransTemp,
-        "22F415" to ::decodeOilTemp,
-        "22F42A" to ::decodeBattVoltage,
-        "22F483" to ::decodeFuelUsed,
-        "22F44F" to ::decodeChargeCurrent,
-        "22F40F" to ::decodeGearPos,
-        "22F45A" to ::decodeOutsideTemp,
-        "22F40E" to ::decodeTransPressure*/
+    // 기본 활성화된 PID 세트
+    private val activePids: MutableSet<GmPidPlus> = Collections.synchronizedSet(
+        mutableSetOf<GmPidPlus>().apply { addAll(GmPidPlus.entries.toTypedArray()) }
     )
 
+    // PID별 디코더 매핑
+    private val decoders: Map<GmPidPlus, (String) -> Unit> = mapOf(
+        GmPidPlus.OIL_LIFE to ::decodeOilLife,
+        GmPidPlus.TRANS_TEMP to ::decodeTransTemp,
+        GmPidPlus.OIL_TEMP to ::decodeOilTemp,
+        GmPidPlus.BATT_VOLTAGE to ::decodeBattVoltage,
+        GmPidPlus.FUEL_USED to ::decodeFuelUsed,
+        GmPidPlus.CHARGE_CURRENT to ::decodeChargeCurrent,
+        GmPidPlus.GEAR_POS to ::decodeGearPos,
+        GmPidPlus.OUTSIDE_TEMP to ::decodeOutsideTemp,
+        GmPidPlus.TRANS_PRESSURE to ::decodeTransPressure
+    )
+
+    /** 활성 PID 추가 */
+    fun enablePid(pid: GmPidPlus) {
+        if (activePids.add(pid)) Log.d(TAG, "[enablePid] enabled=${pid.code}")
+        else Log.d(TAG, "[enablePid] already active=${pid.code}")
+    }
+
+    /** 활성 PID 제거 */
+    fun disablePid(pid: GmPidPlus) {
+        if (activePids.remove(pid)) Log.d(TAG, "[disablePid] disabled=${pid.code}")
+        else Log.d(TAG, "[disablePid] not active=${pid.code}")
+    }
+
+    /** 폴링 시작 */
     fun start(periodMs: Long = 3000L) {
-        Log.d(TAG, "[start] called with periodMs=$periodMs")
+        Log.d(TAG, "[start] periodMs=$periodMs")
         if (pollJob?.isActive == true) {
             Log.d(TAG, "[start] already active, skipping")
             return
         }
+
         pollJob = scope.launch {
-            Log.d(TAG, "[poll] polling loop started")
             while (isActive) {
-                for ((pid, decoder) in decoders) {
-                    Log.d(TAG, "[poll] querying PID=$pid")
+                activePids.forEach { pid ->
+                    Log.d(TAG, "[poll] querying pid=${pid.code}")
                     try {
-                        val resp = sppClient.query(pid, header = null, timeoutMs = 1500)
-                        Log.d(TAG, "[poll] received response for $pid: $resp")
-                        decoder(resp)
+                        //TODO 1회성 되도록 설계 수정
+                        val resp = sppClient.query(pid.code, header = "7E0", timeoutMs = 1500)
+                        Log.d(TAG, "[poll] resp=${resp}")
+                        decoders[pid]?.invoke(resp)
                     } catch (e: Exception) {
-                        Log.d(TAG, "[poll] NO DATA for PID=$pid: ${e.localizedMessage}")
+                        Log.w(TAG, "[poll] NO DATA pid=${pid.code}: ${e.localizedMessage}")
                     }
                 }
-                delay(periodMs)
             }
+            delay(periodMs)
         }
     }
 
     fun stop() {
-        Log.d(TAG, "[stop] called - cancelling polling")
+        Log.d(TAG, "[stop] cancelling")
         pollJob?.cancel()
         pollJob = null
     }
 
-    // ——— Decoders ———
     private fun decodeOilLife(f: String) {
         Log.d(TAG, "[decodeOilLife] raw=$f")
-        // 62 11 9F A  ⇒ A는 0..255, 실제 값 = A/2.55 => 0..100%
-        if (f.startsWith("62119F") && f.length >= 8) {
+        if (f.startsWith("62F459") && f.length >= 8) {
             val raw = f.substring(6, 8).toInt(16)
-            val oilPct = (raw / 2.55f).roundToInt()
-            Log.d(TAG, "[decodeOilLife] rawByte=$raw, oilLife=$oilPct%")
-            _snapshot.update { it.copy(oilLife = oilPct) }
+            val pct = (raw / 2.55f).roundToInt()
+            Log.d(TAG, "[decodeOilLife] oilLife=${pct}%")
+            _snapshot.update { it.copy(oilLife = pct) }
         }
     }
 
@@ -109,7 +136,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
             val a = f.substring(6, 8).toInt(16)
             val b = f.substring(8, 10).toInt(16)
             val temp = (a shl 8 or b) - 40
-            Log.d(TAG, "[decodeTransTemp] transTemp=$temp°C")
+            Log.d(TAG, "[decodeTransTemp] transTemp=${temp}°C")
             _snapshot.update { it.copy(transTemp = temp) }
         }
     }
@@ -118,7 +145,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
         Log.d(TAG, "[decodeOilTemp] raw=$f")
         if (f.startsWith("62F415") && f.length >= 10) {
             val value = f.substring(8, 10).toInt(16) - 40
-            Log.d(TAG, "[decodeOilTemp] oilTemp=$value°C")
+            Log.d(TAG, "[decodeOilTemp] oilTemp=${value}°C")
             _snapshot.update { it.copy(oilTemp = value) }
         }
     }
@@ -129,7 +156,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
             val a = f.substring(6, 8).toInt(16)
             val b = f.substring(8, 10).toInt(16)
             val volts = (a shl 8 or b) / 1000f
-            Log.d(TAG, "[decodeBattVoltage] batt12v=$volts V")
+            Log.d(TAG, "[decodeBattVoltage] batt12v=${volts}V")
             _snapshot.update { it.copy(batt12v = volts) }
         }
     }
@@ -138,7 +165,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
         Log.d(TAG, "[decodeFuelUsed] raw=$f")
         if (f.startsWith("62F483") && f.length >= 10) {
             val ml = (f.substring(6, 8).toInt(16) shl 8) + f.substring(8, 10).toInt(16)
-            Log.d(TAG, "[decodeFuelUsed] fuelUsedMl=$ml mL")
+            Log.d(TAG, "[decodeFuelUsed] fuelUsedMl=${ml}mL")
             _snapshot.update { it.copy(fuelUsedMl = ml) }
         }
     }
@@ -149,7 +176,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
             val a = f.substring(6, 8).toInt(16)
             val b = f.substring(8, 10).toInt(16)
             val amps = (a shl 8 or b).toShort() / 10f
-            Log.d(TAG, "[decodeChargeCurrent] chargeCurrent=$amps A")
+            Log.d(TAG, "[decodeChargeCurrent] chargeCurrent=${amps}A")
             _snapshot.update { it.copy(chargeCurrent = amps) }
         }
     }
@@ -158,7 +185,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
         Log.d(TAG, "[decodeGearPos] raw=$f")
         if (f.startsWith("62F40F") && f.length >= 8) {
             val pos = f.substring(6, 8).toInt(16)
-            Log.d(TAG, "[decodeGearPos] gearPos=$pos")
+            Log.d(TAG, "[decodeGearPos] gearPos=${pos}")
             _snapshot.update { it.copy(gearPos = pos) }
         }
     }
@@ -167,7 +194,7 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
         Log.d(TAG, "[decodeOutsideTemp] raw=$f")
         if (f.startsWith("62F45A") && f.length >= 8) {
             val value = f.substring(6, 8).toInt(16) - 40
-            Log.d(TAG, "[decodeOutsideTemp] outsideTemp=$value°C")
+            Log.d(TAG, "[decodeOutsideTemp] outsideTemp=${value}°C")
             _snapshot.update { it.copy(outsideTemp = value) }
         }
     }
@@ -178,8 +205,9 @@ class GmExtManagerPlus @Inject constructor(private val sppClient: SppClient) {
             val a = f.substring(6, 8).toInt(16)
             val b = f.substring(8, 10).toInt(16)
             val pressure = a shl 8 or b
-            Log.d(TAG, "[decodeTransPressure] transPressure=$pressure kPa")
+            Log.d(TAG, "[decodeTransPressure] transPressure=${pressure}kPa")
             _snapshot.update { it.copy(transPressure = pressure) }
         }
     }
 }
+
