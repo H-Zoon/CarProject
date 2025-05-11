@@ -1,6 +1,5 @@
-package com.devidea.chevy.ui.main.compose
+package com.devidea.chevy.ui.main.components
 
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

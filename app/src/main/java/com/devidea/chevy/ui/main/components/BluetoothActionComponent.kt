@@ -1,23 +1,36 @@
-package com.devidea.chevy.ui.main.compose
+package com.devidea.chevy.ui.main.components
 
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,90 +41,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.R
 import com.devidea.chevy.service.ConnectionEvent
 import com.devidea.chevy.service.ScannedDevice
 import com.devidea.chevy.ui.main.MainViewModel
-import com.devidea.chevy.ui.main.compose.gauge.GaugesGrid2
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import android.content.Intent
-import androidx.compose.material.icons.filled.Place
-import androidx.navigation.compose.rememberNavController
-
-const val TAG = "MainViewComponent"
-// 탭 종류 정의
-sealed class NavItem(val label: String, val icon: ImageVector) {
-    object Home : NavItem("Home", Icons.Filled.Home)
-    object History : NavItem("Location", Icons.Filled.Place)
-    object Car : NavItem("Car", Icons.Filled.DirectionsCar)
-    object Settings : NavItem("Settings", Icons.Filled.Settings)
-}
-
-@Composable
-fun CarManagementMainScreen(viewModel: MainViewModel) {
-    var selectedTab by remember { mutableStateOf<NavItem>(NavItem.Home) }
-    val historyNavController = rememberNavController()
-    Scaffold(
-        topBar = { BluetoothActionComponent(viewModel = viewModel) },
-        bottomBar = {
-            CarBottomNavBar(
-                items = listOf(NavItem.Home, NavItem.History, NavItem.Car, NavItem.Settings),
-                selected = selectedTab,
-                onItemSelected = { selectedTab = it }
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (selectedTab) {
-                is NavItem.Home -> HomeScreen()
-                is NavItem.History -> HistoryNavGraph(
-                    navController = historyNavController,
-                    onBackToList = { /* 필요 시 루트로 popBackStack */ }
-                )
-                is NavItem.Car -> GaugesGrid2()
-                is NavItem.Settings -> {}//SettingsScreen()
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppTopBar() {
-    CenterAlignedTopAppBar(
-        title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
-        actions = {
-            IconButton(onClick = { /* 알림 클릭 */ }) {
-                Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
-            }
-        },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    )
-}
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun BluetoothActionComponent(viewModel: MainViewModel) {
+fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val bluetoothState by viewModel.bluetoothEvent.collectAsState(ConnectionEvent.Disconnected)
     var statusText by remember { mutableStateOf("준비됨") }
@@ -329,206 +275,5 @@ fun BleDeviceListModal(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        FuelGauge(currentPercent = 0.76f)
-        Spacer(modifier = Modifier.height(24.dp))
-        ActionButtons(viewModel)
-        Spacer(modifier = Modifier.height(24.dp))
-        MaintenanceSection(
-            items = listOf(
-                MaintenanceItem("Oil Change", "Due in 500 km"),
-                MaintenanceItem("Tire Rotation", "Apr 25")
-            )
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        TripHistorySection(
-            trips = listOf(
-                TripItem("Apr 20", "58.3 km", "Seoul"),
-                TripItem("Apr 15", "231.6 km", "Incheon")
-            )
-        )
-    }
-}
-
-@Composable
-fun FuelGauge(currentPercent: Float) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        CircularProgressIndicator(
-            progress = currentPercent,
-            modifier = Modifier
-                .size(180.dp)
-                .clip(CircleShape),
-            strokeWidth = 12.dp,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "${(currentPercent * 100).toInt()}%",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Fuel",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
-
-@Composable
-fun ActionButtons(viewModel: MainViewModel) {
-    Row(
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedButton(
-            onClick = {  },
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(Icons.Filled.Lock, contentDescription = "Lock")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Lock")
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        OutlinedButton(
-            onClick = {  },
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(Icons.Filled.LockOpen, contentDescription = "Unlock")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Unlock")
-        }
-    }
-}
-
-data class MaintenanceItem(val title: String, val subtitle: String)
-
-@Composable
-fun MaintenanceSection(items: List<MaintenanceItem>) {
-    Text(
-        text = "Maintenance",
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Column {
-        items.forEach { item ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = item.subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-data class TripItem(val date: String, val distance: String, val location: String)
-
-@Composable
-fun TripHistorySection(trips: List<TripItem>) {
-    Text(
-        text = "Trip History",
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Column {
-        trips.forEach { trip ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = trip.date,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = trip.distance,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = trip.location,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CarBottomNavBar(
-    items: List<NavItem>,
-    selected: NavItem,
-    onItemSelected: (NavItem) -> Unit
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp
-    ) {
-        items.forEach { item ->
-            NavigationBarItem(
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = { Text(item.label) },
-                selected = item == selected,
-                onClick = { onItemSelected(item) }
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewCarManagementMainScreen() {
-    MaterialTheme {
-        //CarManagementMainScreen()
     }
 }

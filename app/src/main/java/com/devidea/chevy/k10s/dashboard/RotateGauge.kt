@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.k10s.components.CarStatus
-import com.devidea.chevy.ui.theme.SpeedMeterFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -56,7 +55,6 @@ fun SpeedIndicator(carViewModel: CarViewModel = hiltViewModel()) {
                 text = "$mSpeed",
                 modifier = Modifier.alignByBaseline(),
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 50.sp,
                     color = Color.Black,
                 )
@@ -65,7 +63,6 @@ fun SpeedIndicator(carViewModel: CarViewModel = hiltViewModel()) {
                 text = " Km/h",
                 modifier = Modifier.alignByBaseline(),
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 20.sp,
                     color = Color.Black,
                 )
@@ -76,7 +73,6 @@ fun SpeedIndicator(carViewModel: CarViewModel = hiltViewModel()) {
             text = mGear + mGearNum,
             modifier = Modifier,
             style = TextStyle(
-                fontFamily = SpeedMeterFontFamily,
                 fontSize = 30.sp,
                 color = Color.Black,
                 textAlign = TextAlign.Center
@@ -213,7 +209,6 @@ fun RevolutionIndicator(carViewModel: CarViewModel) {
                 text = "$i",
                 topLeft = textOffset,
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 23.sp,
                     color = Color.Black,
                     textAlign = TextAlign.Center
@@ -298,7 +293,6 @@ fun TempIndicator(carViewModel: CarViewModel) {
                 text = "$i",
                 topLeft = textOffset,
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 15.sp,
                     color = Color.Black,
                     textAlign = TextAlign.Center

@@ -75,6 +75,11 @@ dependencies {
 
     implementation (libs.okhttp)
     implementation (libs.converter.gson)
+    implementation(libs.material)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 
     //hilt
     ksp(libs.hilt.compiler)

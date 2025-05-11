@@ -1,4 +1,4 @@
-package com.devidea.chevy.ui.main.compose
+package com.devidea.chevy.ui.main.components
 
 
 import androidx.compose.foundation.Canvas
@@ -34,6 +34,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import android.graphics.Paint
+import androidx.compose.ui.Alignment
 
 @Composable
 fun HistoryNavGraph(
@@ -41,8 +42,8 @@ fun HistoryNavGraph(
     onBackToList: () -> Unit
 ) {
     NavHost(
-        navController       = navController,
-        startDestination    = "sessionList"
+        navController = navController,
+        startDestination = "sessionList"
     ) {
         // 1) 리스트 화면
         composable("sessionList") {
@@ -115,7 +116,8 @@ fun SessionDetailScreen(
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             while (viewModel.isPlaying.value) {
-                val next = (viewModel.sliderPosition.value + 1).coerceAtMost((dataPoints.lastIndex).toFloat())
+                val next =
+                    (viewModel.sliderPosition.value + 1).coerceAtMost((dataPoints.lastIndex).toFloat())
                 viewModel.updateSlider(next)
                 if (viewModel.sliderPosition.value >= dataPoints.lastIndex) {
                     viewModel.togglePlay()
@@ -127,17 +129,8 @@ fun SessionDetailScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("세션 상세") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                }
-            }
-        )
         Box(modifier = Modifier.height(300.dp)) { /* 지도 영역 */ }
 
-        // Scrollable chart area
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -174,15 +167,24 @@ fun SessionDetailScreen(
             }
         }
 
-        Slider(
-            value = sliderPosition,
-            onValueChange = { viewModel.updateSlider(it) },
-            valueRange = 0f..(dataPoints.lastIndex.coerceAtLeast(0)).toFloat(),
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-        )
-        PlayControlRow(isPlaying = isPlaying, onPlayPause = viewModel::togglePlay)
+                .padding(end = 4.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Slider(
+                value = sliderPosition,
+                onValueChange = { viewModel.updateSlider(it) },
+                valueRange = 0f..(dataPoints.lastIndex.coerceAtLeast(0)).toFloat(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(16.dp)
+            )
+            PlayControlRow(isPlaying = isPlaying, onPlayPause = viewModel::togglePlay)
+        }
     }
 }
 
@@ -190,6 +192,7 @@ fun SessionDetailScreen(
 private fun LineChart(
     data: List<Int>,
     lineColor: Color,
+    title: String,
     unit: String,
     markerPosition: Int? = null,
     modifier: Modifier = Modifier,
@@ -214,8 +217,15 @@ private fun LineChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(end = 4.dp, top = 4.dp),
-            horizontalArrangement = Arrangement.End
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Black
+            )
+
             Text(
                 text = unit,
                 style = MaterialTheme.typography.bodySmall,
@@ -305,6 +315,7 @@ private fun LineChart(
 @Composable
 fun SpeedLineChart(
     data: List<Int>,
+    title: String = "속도",
     unit: String = "km/h",
     markerPosition: Int? = null,
     modifier: Modifier = Modifier
@@ -312,6 +323,7 @@ fun SpeedLineChart(
     LineChart(
         data = data,
         lineColor = MaterialTheme.colorScheme.primary,
+        title = title,
         unit = unit,
         markerPosition = markerPosition,
         modifier = modifier
@@ -321,13 +333,15 @@ fun SpeedLineChart(
 @Composable
 fun RpmLineChart(
     data: List<Int>,
-    unit: String = "rpm",
+    title: String = "rpm",
+    unit: String = "r/min",
     markerPosition: Int? = null,
     modifier: Modifier = Modifier
 ) {
     LineChart(
         data = data,
         lineColor = MaterialTheme.colorScheme.secondary,
+        title = title,
         unit = unit,
         markerPosition = markerPosition,
         modifier = modifier
@@ -337,6 +351,7 @@ fun RpmLineChart(
 @Composable
 fun TempLineChart(
     data: List<Int>,
+    title: String = "온도",
     unit: String = "°C",
     markerPosition: Int? = null,
     modifier: Modifier = Modifier
@@ -344,6 +359,7 @@ fun TempLineChart(
     LineChart(
         data = data,
         lineColor = MaterialTheme.colorScheme.tertiary,
+        title = title,
         unit = unit,
         markerPosition = markerPosition,
         modifier = modifier

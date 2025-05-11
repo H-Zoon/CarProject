@@ -21,7 +21,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devidea.chevy.k10s.obd.model.CarEventModel
 import com.devidea.chevy.k10s.obd.protocol.pid.PIDListData
-import com.devidea.chevy.ui.theme.SpeedMeterFontFamily
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -149,7 +148,6 @@ fun CarInfoCard(label: String, value: String, modifier: Modifier = Modifier) {
             Text(
                 text = label,
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 20.sp,
                     color = Color.Black,
                 ),
@@ -161,7 +159,6 @@ fun CarInfoCard(label: String, value: String, modifier: Modifier = Modifier) {
                 modifier = Modifier.align(Alignment.End),
                 text = value,
                 style = TextStyle(
-                    fontFamily = SpeedMeterFontFamily,
                     fontSize = 20.sp,
                     color = Color.Black,
                 ),

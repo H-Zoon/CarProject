@@ -10,7 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.devidea.chevy.module.AppModule
-import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
+import com.devidea.chevy.ui.main.components.gaugeItems
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

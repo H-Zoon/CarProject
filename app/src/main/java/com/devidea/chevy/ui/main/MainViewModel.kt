@@ -17,7 +17,7 @@ import com.devidea.chevy.service.SppClient
 import com.devidea.chevy.storage.room.drive.DrivingDataPoint
 import com.devidea.chevy.storage.room.drive.DrivingRepository
 import com.devidea.chevy.storage.room.drive.DrivingSession
-import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
+import com.devidea.chevy.ui.main.components.gaugeItems
 import com.kakao.vectormap.LatLng
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
