@@ -1,10 +1,11 @@
-package com.devidea.chevy.storage
+package com.devidea.chevy.storage.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
-import com.devidea.chevy.AppModule.ApplicationScope
+import com.devidea.chevy.module.AppModule
+import com.devidea.chevy.storage.datastore.DataStoreRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,7 +31,7 @@ object DataStoreModule {
     fun provideDataStoreRepository(
         @ApplicationContext context: Context,
         dataStore: DataStore<Preferences>,
-        @ApplicationScope appScope: CoroutineScope    // ← 이 줄을 추가!
+        @AppModule.ApplicationScope appScope: CoroutineScope    // ← 이 줄을 추가!
     ): DataStoreRepository {
         return DataStoreRepository(context, dataStore, appScope)
     }

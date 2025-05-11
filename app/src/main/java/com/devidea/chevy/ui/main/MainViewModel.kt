@@ -6,16 +6,19 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
-import com.devidea.chevy.bluetooth.DefaultPid
-import com.devidea.chevy.bluetooth.GaugeManager
-import com.devidea.chevy.bluetooth.GmExtManagerPlus
-import com.devidea.chevy.bluetooth.GmSnapshotPlus
-import com.devidea.chevy.storage.DataStoreRepository
+import com.devidea.chevy.LocationProvider
+import com.devidea.chevy.drive.PIDManager
+import com.devidea.chevy.drive.PIDs
+import com.devidea.chevy.drive.RecordDrivingUseCase
+import com.devidea.chevy.storage.datastore.DataStoreRepository
 import com.devidea.chevy.service.ConnectionEvent
 import com.devidea.chevy.service.ScannedDevice
 import com.devidea.chevy.service.SppClient
-import com.devidea.chevy.ui.main.compose.gauge.GaugeItem
+import com.devidea.chevy.storage.room.drive.DrivingDataPoint
+import com.devidea.chevy.storage.room.drive.DrivingRepository
+import com.devidea.chevy.storage.room.drive.DrivingSession
 import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
+import com.kakao.vectormap.LatLng
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -34,19 +37,71 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
-    private val gaugeManager: GaugeManager,
-    private val gmExtManagerPlus: GmExtManagerPlus
+    private val drivingRepository: DrivingRepository,
+    private val locationProvider: LocationProvider,
+    private val pidManager: PIDManager,
+    private val startUseCase: RecordDrivingUseCase,
 ) : ViewModel() {
+
+    val mockDataPoints = listOf(
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:00Z"),
+            latitude = 37.5665,
+            longitude = 126.9780,
+            rpm = 1500,
+            speed = 40,
+            engineTemp = 85
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:10Z"),
+            latitude = 37.5670,
+            longitude = 126.9790,
+            rpm = 1600,
+            speed = 45,
+            engineTemp = 86
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:20Z"),
+            latitude = 37.5675,
+            longitude = 126.9800,
+            rpm = 1700,
+            speed = 50,
+            engineTemp = 88
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:30Z"),
+            latitude = 37.5680,
+            longitude = 126.9810,
+            rpm = 1800,
+            speed = 55,
+            engineTemp = 90
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:40Z"),
+            latitude = 37.5685,
+            longitude = 126.9820,
+            rpm = 1900,
+            speed = 60,
+            engineTemp = 92
+        )
+    )
+
+
     val gauges = repository.selectedGaugeIds
         .map { ids ->
             ids.mapNotNull { id ->
-                // id 순서대로 GaugeItem 꺼내기
                 gaugeItems.firstOrNull { it.id == id }
             }
         }
@@ -56,7 +111,7 @@ class MainViewModel @Inject constructor(
         repository.toggleGauge(id)
     }
 
-    suspend fun swap(from: Int, to: Int){
+    suspend fun swap(from: Int, to: Int) {
         repository.swapGauge(from = from, to = to)
     }
 
@@ -69,11 +124,8 @@ class MainViewModel @Inject constructor(
     val devices: LiveData<List<ScannedDevice>> = _devices
 
     //블루투스 이벤트 (연결, 해제, 오류 등)
-    private val _events = MutableSharedFlow<ConnectionEvent>()
-    val events: SharedFlow<ConnectionEvent> = _events.asSharedFlow()
-
-    private val _isFirstLunch = MutableStateFlow(false)
-    val isFirstLunch: StateFlow<Boolean> get() = _isFirstLunch
+    private val _bluetoothEvent = MutableSharedFlow<ConnectionEvent>()
+    val bluetoothEvent: SharedFlow<ConnectionEvent> = _bluetoothEvent.asSharedFlow()
 
     //카카오 내비 인증 성공 여부를 관리하는 Flow
     private val _authenticationSuccess = MutableStateFlow(false)
@@ -87,18 +139,26 @@ class MainViewModel @Inject constructor(
     private val _authErrorMessage = MutableStateFlow<String?>(null)
     val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
 
-    val rpm       : StateFlow<Int>   = gaugeManager.rpm
-    val speed     : StateFlow<Int>   = gaugeManager.speed
-    val ect       : StateFlow<Int>   = gaugeManager.ect
-    val throttle  : StateFlow<Int>   = gaugeManager.throttle
-    val load      : StateFlow<Int>   = gaugeManager.load
-    val iat       : StateFlow<Int>   = gaugeManager.iat
-    val maf       : StateFlow<Float> = gaugeManager.maf
-    val batt      : StateFlow<Float> = gaugeManager.batt
-    val fuelRate  : StateFlow<Float> = gaugeManager.fuelRate
+    // 사용자 위치를 관리하는 Flow
+    private val _userLocation = MutableStateFlow<LatLng?>(null)
+    val userLocation: StateFlow<LatLng?> = _userLocation.asStateFlow()
 
-    fun startObserving(pid: DefaultPid) = gaugeManager.registerPid(pid)
-    fun stopObserving(pid: DefaultPid) = gaugeManager.unregisterPid(pid)
+    val rpm: StateFlow<Int> = pidManager.rpm
+    val speed: StateFlow<Int> = pidManager.speed
+    val ect: StateFlow<Int> = pidManager.ect
+    val throttle: StateFlow<Int> = pidManager.throttle
+    val load: StateFlow<Int> = pidManager.load
+    val iat: StateFlow<Int> = pidManager.iat
+    val maf: StateFlow<Float> = pidManager.maf
+    val batt: StateFlow<Float> = pidManager.batt
+    val fuelRate: StateFlow<Float> = pidManager.fuelRate
+    val currentGear: StateFlow<Int> = pidManager.currentGear
+    val oilPressure: StateFlow<Float> = pidManager.oilPressure
+    val oilTemp: StateFlow<Int> = pidManager.oilTemp
+    val transFluidTemp: StateFlow<Int> = pidManager.transFluidTemp
+
+    fun startObserving(pid: PIDs) = pidManager.registerPid(pid)
+    fun stopObserving(pid: PIDs) = pidManager.unregisterPid(pid)
 
     init {
         viewModelScope.launch {
@@ -110,7 +170,7 @@ class MainViewModel @Inject constructor(
 
             launch {
                 sppClient.connectionEvents.collect { evt ->
-                    _events.emit(evt)
+                    _bluetoothEvent.emit(evt)
                 }
             }
 
@@ -125,14 +185,14 @@ class MainViewModel @Inject constructor(
                 }
             }
 
-            launch {
+            /*launch {
                 repository.getMileageDate().collect { difference ->
                     _recentMileage.value = when (difference) {
                         -1 -> "-"
                         else -> "$difference Km"
                     }
                 }
-            }
+            }*/
 
             launch {
                 repository.getFuelDate().collect { difference ->
@@ -140,12 +200,6 @@ class MainViewModel @Inject constructor(
                         (-1).toFloat() -> "-"
                         else -> "$difference Km/L"
                     }
-                }
-            }
-
-            launch {
-                repository.getFirstLunch().collect { difference ->
-                    _isFirstLunch.value = difference
                 }
             }
         }
@@ -160,46 +214,97 @@ class MainViewModel @Inject constructor(
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
 
-    val snapshot2: StateFlow<GmSnapshotPlus> = gmExtManagerPlus
-        .snapshot
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GmSnapshotPlus()
-        )
-
     fun startInfo() {
-        gaugeManager.start()
+        pidManager.pallStart()
     }
 
     fun stopInfo() {
-        gaugeManager.stop()
-    }
-
-    fun startGM() {
-        gmExtManagerPlus.start()
-    }
-
-    fun stopGM() {
-        gmExtManagerPlus.stop()
-    }
-
-    suspend fun saveFirstLunch() {
-        repository.saveFirstLunch(false)
+        pidManager.stop()
     }
 
     fun startScan() {
-        sppClient.requestScan()
+        viewModelScope.launch {
+            sppClient.requestStartScan()
+        }
+    }
+
+    fun stopScan() {
+        viewModelScope.launch {
+            sppClient.requestStopScan()
+        }
     }
 
     fun connectTo(scannedDevice: ScannedDevice) {
-        sppClient.requestConnect(scannedDevice)
+        viewModelScope.launch {
+            sppClient.requestConnect(scannedDevice)
+        }
     }
 
     fun disconnect() {
-        sppClient.requestDisconnect()
+        viewModelScope.launch {
+            sppClient.requestDisconnect()
+        }
     }
 
+    //위치 업데이트 시작
+    fun startLocationUpdates() {
+        locationProvider.requestLocationUpdates { location ->
+            _userLocation.value = LatLng.from(location.latitude, location.longitude)
+        }
+    }
+
+    //위치 업데이트 중단
+    fun stopLocationUpdate(){
+        locationProvider.stopLocationUpdates()
+    }
+
+    //주행기록 시작
+    fun onStartButtonClicked() {
+        viewModelScope.launch {
+            val sessionId = drivingRepository.startSession()
+            startUseCase.start(sessionId)
+        }
+    }
+
+    //주행기록 종료
+    fun onStopButtonClicked(currentSessionId: Long) {
+        startUseCase.stop()
+        viewModelScope.launch { drivingRepository.stopSession(currentSessionId) }
+    }
+
+    /**
+     * Returns a Flow of all driving sessions.
+     */
+    fun getAllSessions(): Flow<List<DrivingSession>> =
+        drivingRepository.getAllSessions()
+
+    /**
+     * Returns a Flow of data points for the given session ID.
+     */
+    fun getSessionData(sessionId: Long): Flow<List<DrivingDataPoint>> =
+        drivingRepository.getSessionData(sessionId)
+
+    // Slider position for playback control
+    private val _sliderPosition = MutableStateFlow(0f)
+    val sliderPosition: StateFlow<Float> = _sliderPosition.asStateFlow()
+
+    // Playback state
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+
+    /**
+     * Update slider position manually (e.g., user drag).
+     */
+    fun updateSlider(position: Float) {
+        _sliderPosition.value = position
+    }
+
+    /**
+     * Toggle play/pause for record playback animation.
+     */
+    fun togglePlay() {
+        _isPlaying.value = !_isPlaying.value
+    }
     // 인증 시작
     fun authenticateUser() {
         CoroutineScope(Dispatchers.IO).launch {

@@ -1,5 +1,8 @@
 package com.devidea.chevy.ui.main.compose
 
+import android.Manifest
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +16,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -43,11 +45,17 @@ import com.devidea.chevy.service.ConnectionEvent
 import com.devidea.chevy.service.ScannedDevice
 import com.devidea.chevy.ui.main.MainViewModel
 import com.devidea.chevy.ui.main.compose.gauge.GaugesGrid2
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import android.content.Intent
+import androidx.compose.material.icons.filled.Place
+import androidx.navigation.compose.rememberNavController
 
+const val TAG = "MainViewComponent"
 // 탭 종류 정의
 sealed class NavItem(val label: String, val icon: ImageVector) {
     object Home : NavItem("Home", Icons.Filled.Home)
-    //object Location : NavItem("Location", Icons.Filled.Place)
+    object History : NavItem("Location", Icons.Filled.Place)
     object Car : NavItem("Car", Icons.Filled.DirectionsCar)
     object Settings : NavItem("Settings", Icons.Filled.Settings)
 }
@@ -55,12 +63,12 @@ sealed class NavItem(val label: String, val icon: ImageVector) {
 @Composable
 fun CarManagementMainScreen(viewModel: MainViewModel) {
     var selectedTab by remember { mutableStateOf<NavItem>(NavItem.Home) }
-
+    val historyNavController = rememberNavController()
     Scaffold(
         topBar = { BluetoothActionComponent(viewModel = viewModel) },
         bottomBar = {
             CarBottomNavBar(
-                items = listOf(NavItem.Home, /*NavItem.Location,*/ NavItem.Car, NavItem.Settings),
+                items = listOf(NavItem.Home, NavItem.History, NavItem.Car, NavItem.Settings),
                 selected = selectedTab,
                 onItemSelected = { selectedTab = it }
             )
@@ -74,7 +82,10 @@ fun CarManagementMainScreen(viewModel: MainViewModel) {
         ) {
             when (selectedTab) {
                 is NavItem.Home -> HomeScreen()
-                //is NavItem.Location -> MAuthenticationScreen()//LocationScreen()
+                is NavItem.History -> HistoryNavGraph(
+                    navController = historyNavController,
+                    onBackToList = { /* 필요 시 루트로 popBackStack */ }
+                )
                 is NavItem.Car -> GaugesGrid2()
                 is NavItem.Settings -> {}//SettingsScreen()
             }
@@ -98,27 +109,44 @@ fun AppTopBar() {
     )
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun BluetoothActionComponent(viewModel: MainViewModel) {
-    val bluetoothState by viewModel.events.collectAsState(ConnectionEvent.Disconnected)
     val context = LocalContext.current
+    val bluetoothState by viewModel.bluetoothEvent.collectAsState(ConnectionEvent.Disconnected)
+    var statusText by remember { mutableStateOf("준비됨") }
+    var isShowBleDeviceListModal by remember { mutableStateOf(false) }
 
-    if (bluetoothState == ConnectionEvent.Scanning) {
-        //BleDeviceListModal(viewModel, requestScan = {viewModel.startScan()}, requestConnect = {viewModel.connectTo(it)} }, onBack = {viewModel.disconnect()})
-        BleDeviceListModal(viewModel = viewModel, requestScan = {}, requestConnect = {viewModel.connectTo(it)}, onBack = {})
+    LaunchedEffect(bluetoothState) {
+        isShowBleDeviceListModal = (bluetoothState == ConnectionEvent.Scanning)
     }
 
-    var statusText by remember { mutableStateOf("준비됨") }
+    if (isShowBleDeviceListModal) {
+        BleDeviceListModal(viewModel = viewModel, requestScan = {viewModel.startScan()}, requestConnect = {viewModel.connectTo(it)}, onBack = {viewModel.stopScan()})
+    }
+    // 1) 블루투스 권한(안드로이드 12+)
+    val permsState = rememberMultiplePermissionsState(
+        listOf(
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.POST_NOTIFICATIONS    // Android 13+ 알림 권한
+        )
+    )
+    // 요청 여부 플래그
+    var permissionRequested by remember { mutableStateOf(false) }
+    // 라쇼날 다이얼로그 표시 여부
+    var showRationaleDialog by remember { mutableStateOf(false) }
+
 
     // 2) 이벤트 수집
-    LaunchedEffect(viewModel.events) {
-        viewModel.events.collect { evt ->
+    LaunchedEffect(viewModel.bluetoothEvent) {
+        viewModel.bluetoothEvent.collect { evt ->
             statusText = when (evt) {
                 ConnectionEvent.Scanning    -> "검색 중..."
                 ConnectionEvent.Connecting  -> "연결 중..."
                 ConnectionEvent.Connected   -> "연결 완료"
                 ConnectionEvent.Disconnected-> "연결 해제됨"
-                is ConnectionEvent.Error    -> "오류: ${evt.message}"
+                ConnectionEvent.Error -> "연결에 실패 하였습니다."
             }
         }
     }
@@ -137,9 +165,31 @@ fun BluetoothActionComponent(viewModel: MainViewModel) {
 
         ElevatedButton(
             onClick = {
-                when (bluetoothState) {
-                    ConnectionEvent.Connecting -> viewModel.disconnect()
-                    else -> viewModel.startScan()
+                when {
+                    // 이미 모든 권한 승인된 상태
+                    permsState.allPermissionsGranted -> {
+                        when (bluetoothState) {
+                            ConnectionEvent.Connecting -> viewModel.disconnect()
+                            else -> viewModel.startScan()
+                        }
+                    }
+                    // 최초 클릭: 권한 요청
+                    !permissionRequested -> {
+                        permissionRequested = true
+                        permsState.launchMultiplePermissionRequest()
+                    }
+                    // 거부했지만 라쇼날 표시 가능한 경우
+                    permsState.shouldShowRationale -> {
+                        showRationaleDialog = true
+                    }
+                    // 영구 거부된 경우
+                    else -> {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                        )
+                    }
                 }
             },
             modifier = Modifier
@@ -184,6 +234,27 @@ fun BluetoothActionComponent(viewModel: MainViewModel) {
                     )
                 }
             }
+        }
+
+        if (showRationaleDialog) {
+            AlertDialog(
+                onDismissRequest = { showRationaleDialog = false },
+                title = { Text("권한 필요") },
+                text = { Text("블루투스 연결을 위해 권한이 필요합니다.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showRationaleDialog = false
+                        permsState.launchMultiplePermissionRequest()
+                    }) {
+                        Text("다시 요청")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRationaleDialog = false }) {
+                        Text("취소")
+                    }
+                }
+            )
         }
     }
 }
@@ -322,25 +393,12 @@ fun FuelGauge(currentPercent: Float) {
 
 @Composable
 fun ActionButtons(viewModel: MainViewModel) {
-    val gmState by viewModel.snapshot2.collectAsState()
-    Column {
-        Text(text = "oilLife: ${gmState.oilLife}")
-        Text(text = "transTemp: ${gmState.transTemp}")
-        Text(text = "oilTemp: ${gmState.oilTemp}")
-        Text(text = "batt12v: ${gmState.batt12v}")
-        Text(text = "fuelUsedMl: ${gmState.fuelUsedMl}")
-        Text(text = "chargeCurrent: ${gmState.chargeCurrent}")
-        Text(text = "gearPos: ${gmState.gearPos}")
-        Text(text = "outsideTemp: ${gmState.outsideTemp}")
-        Text(text = "transPressure: ${gmState.transPressure}")
-    }
-
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
         modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedButton(
-            onClick = { viewModel.startGM() },
+            onClick = {  },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.weight(1f)
         ) {
@@ -350,7 +408,7 @@ fun ActionButtons(viewModel: MainViewModel) {
         }
         Spacer(modifier = Modifier.width(16.dp))
         OutlinedButton(
-            onClick = { viewModel.startGM() },
+            onClick = {  },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.weight(1f)
         ) {

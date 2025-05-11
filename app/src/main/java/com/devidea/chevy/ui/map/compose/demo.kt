@@ -3,7 +3,6 @@ package com.devidea.chevy.ui.map.compose
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,9 +70,8 @@ import io.morfly.compose.bottomsheet.material3.BottomSheetScaffold
 import io.morfly.compose.bottomsheet.material3.rememberBottomSheetScaffoldState
 import io.morfly.compose.bottomsheet.material3.rememberBottomSheetState
 import io.morfly.compose.bottomsheet.material3.requireSheetVisibleHeightDp
-import kotlinx.coroutines.launch
 import androidx.core.net.toUri
-import com.devidea.chevy.storage.DocumentTag
+import com.devidea.chevy.storage.room.document.DocumentTag
 import kotlin.String
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

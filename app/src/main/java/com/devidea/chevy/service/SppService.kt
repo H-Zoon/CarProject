@@ -1,8 +1,9 @@
 package com.devidea.chevy.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -11,10 +12,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devidea.chevy.App.Companion.CHANNEL_ID
+import com.devidea.chevy.ui.main.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -43,7 +46,7 @@ sealed class ConnectionEvent {
     object Connecting : ConnectionEvent()
     object Connected : ConnectionEvent()
     object Disconnected : ConnectionEvent()
-    data class Error(val message: String) : ConnectionEvent()
+    object Error : ConnectionEvent()
 }
 
 class SppService : Service() {
@@ -89,21 +92,28 @@ class SppService : Service() {
     private val discoveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             if (intent.action == BluetoothDevice.ACTION_FOUND) {
-                intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)?.let { bt ->
-                    Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
-                    _scannedList.update { list ->
-                        if (list.any { it.address == bt.address }) list else list + ScannedDevice(bt.name.orEmpty(), bt.address, bt)
+                intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    ?.let { bt ->
+                        Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
+                        _scannedList.update { list ->
+                            if (list.any { it.address == bt.address }) list else list + ScannedDevice(
+                                bt.name.orEmpty(),
+                                bt.address,
+                                bt
+                            )
+                        }
                     }
-                }
             }
         }
     }
 
     // --- Binder ---
     private val binder = LocalBinder()
+
     inner class LocalBinder : Binder() {
         fun getService(): SppService = this@SppService
     }
+
     override fun onBind(intent: Intent?): IBinder {
         Log.d(TAG, "[Service] onBind")
         return binder
@@ -124,17 +134,39 @@ class SppService : Service() {
     // --- Foreground notification ---
     private fun startForegroundService() {
         Log.d(TAG, "[Service] startForegroundService called")
+
+        // 1) Oreo(API 26) 이상에서 채널 생성
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "OBD Service Channel",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
+            }
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
+        }
+
+        // 2) 클릭 시 돌아갈 Activity 인텐트 (실제 Activity 클래스로 변경)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         val pi = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, Class.forName("android.app.Activity")),
+            this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        // 3) Notification 빌드 (smallIcon, title, text, ongoing 필수)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setContentTitle("OBD Service")
             .setContentText("Bluetooth SPP running")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setContentIntent(pi)
+            .setOngoing(true)
             .build()
+
+        // 4) 포그라운드 서비스 시작
         startForeground(1, notification)
     }
 
@@ -157,11 +189,15 @@ class SppService : Service() {
     }
 
     fun requestStop() {
-        Log.d(TAG, "[Scan] requestStop called")
-        if (bluetoothAdapter.isDiscovering) bluetoothAdapter.cancelDiscovery()
-        if (isReceiverRegistered) {
-            unregisterReceiver(discoveryReceiver)
-            isReceiverRegistered = false
+        serviceScope.launch {
+            _connectionEvents.emit(ConnectionEvent.Disconnected)
+            _scannedList.value = emptyList()
+            Log.d(TAG, "[Scan] requestStop called")
+            if (bluetoothAdapter.isDiscovering) bluetoothAdapter.cancelDiscovery()
+            if (isReceiverRegistered) {
+                unregisterReceiver(discoveryReceiver)
+                isReceiverRegistered = false
+            }
         }
     }
 
@@ -182,7 +218,7 @@ class SppService : Service() {
                 Log.d(TAG, "[Connect] Connected event emitted")
             } catch (e: Exception) {
                 Log.e(TAG, "[Connect] Error: ${e.localizedMessage}")
-                _connectionEvents.emit(ConnectionEvent.Error(e.localizedMessage ?: "Unknown"))
+                _connectionEvents.emit(ConnectionEvent.Error)
                 requestDisconnect()
             }
         }
@@ -220,7 +256,7 @@ class SppService : Service() {
     // --- ELM327 init ---
     private suspend fun initializeElm327() {
         Log.d(TAG, "[Init] initializeElm327 starting")
-        listOf("ATZ","ATE0","ATL0","ATS0","ATH0","ATCAF1","ATSP0").forEach { cmd ->
+        listOf("ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATCAF1", "ATSP0").forEach { cmd ->
             Log.d(TAG, "[Init] Sending $cmd")
             sendRawSync(cmd)
             promptFlow.first()
@@ -258,12 +294,14 @@ class SppService : Service() {
                         sbLine.setLength(0)
                     }
                 }
-                '\r','\n' -> {
+
+                '\r', '\n' -> {
                     if (sbLine.isNotEmpty()) {
                         rawLines.emit(sbLine.toString())
                         sbLine.setLength(0)
                     }
                 }
+
                 else -> sbLine.append(ch)
             }
         }
@@ -310,36 +348,37 @@ class SppService : Service() {
     }
 
     // --- Query API ---
-    suspend fun query(header: String? = null, cmd: String, timeoutMs: Long = 1000): String = coroutineScope {
-        val key = cmd.lowercase()
-        Log.d(TAG, "[Query] start ▶ key=$key, header=$header, cmd=$cmd, timeout=${timeoutMs}ms")
-        val promise = CompletableDeferred<String>()
-        pending[key] = promise
-        if (header != null && header != currentHeader) {
-            Log.d(TAG, "[Query] send new header ATSH$header")
-            sendRawSync("ATSH$header")
-            currentHeader = header
-            delay(40)
-        }
-        Log.d(TAG, "[Query] sending cmd=$cmd")
-        sendRawSync(cmd)
-        try {
-            withTimeout(timeoutMs) {
-                val resp = promise.await()
-                Log.d(TAG, "[Query] received response ▶ $resp")
-                resp
+    suspend fun query(header: String? = null, cmd: String, timeoutMs: Long = 1000): String =
+        coroutineScope {
+            val key = cmd.lowercase()
+            Log.d(TAG, "[Query] start ▶ key=$key, header=$header, cmd=$cmd, timeout=${timeoutMs}ms")
+            val promise = CompletableDeferred<String>()
+            pending[key] = promise
+            if (header != null && header != currentHeader) {
+                Log.d(TAG, "[Query] send new header ATSH$header")
+                sendRawSync("ATSH$header")
+                currentHeader = header
+                delay(40)
             }
-        } finally {
-            pending.remove(key)
+            Log.d(TAG, "[Query] sending cmd=$cmd")
+            sendRawSync(cmd)
+            try {
+                withTimeout(timeoutMs) {
+                    val resp = promise.await()
+                    Log.d(TAG, "[Query] received response ▶ $resp")
+                    resp
+                }
+            } finally {
+                pending.remove(key)
+            }
         }
-    }
 
     // --- Key extraction ---
     private fun extractCmdKey(raw: String): String {
         val f = raw.replace("\\s".toRegex(), "")
         return when {
-            f.startsWith("41") -> "01" + f.substring(2,4)
-            f.startsWith("62") -> "22" + f.substring(2,6)
+            f.startsWith("41") -> "01" + f.substring(2, 4)
+            f.startsWith("62") -> "22" + f.substring(2, 6)
             f.startsWith("43") -> "03"
             else -> f.take(6)
         }.lowercase()

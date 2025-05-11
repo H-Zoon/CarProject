@@ -1,4 +1,4 @@
-package com.devidea.chevy.storage
+package com.devidea.chevy.storage.room.document
 
 import androidx.room.Dao
 import androidx.room.Insert

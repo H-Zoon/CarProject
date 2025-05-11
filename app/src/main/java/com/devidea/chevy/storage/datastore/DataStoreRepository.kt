@@ -1,17 +1,15 @@
-package com.devidea.chevy.storage
+package com.devidea.chevy.storage.datastore
 
 import android.content.Context
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
-import com.devidea.chevy.AppModule.ApplicationScope
+import com.devidea.chevy.module.AppModule
 import com.devidea.chevy.ui.main.compose.gauge.gaugeItems
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +29,7 @@ import javax.inject.Singleton
 class DataStoreRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
-    @ApplicationScope private val appScope: CoroutineScope
+    @AppModule.ApplicationScope private val appScope: CoroutineScope
 ) {
     init {
         appScope.launch(Dispatchers.IO) {
@@ -47,7 +45,7 @@ class DataStoreRepository @Inject constructor(
     private val CONNECT_DATE_KEY = longPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
     private val RECENT_FUEL_EFFICIENCY_KEY = floatPreferencesKey("recent_fuel")
-    private val FIRST_LUNCH_KEY = booleanPreferencesKey("first_lunch")
+
     private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
     private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
     private val MAX_HISTORY_SIZE = 10 // 최대 히스토리 수
@@ -171,19 +169,6 @@ class DataStoreRepository @Inject constructor(
         return dataStore.data
             .map { preferences ->
                 preferences[RECENT_FUEL_EFFICIENCY_KEY] ?: -1f
-            }
-    }
-
-    suspend fun saveFirstLunch(value: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[FIRST_LUNCH_KEY] = value
-        }
-    }
-
-    fun getFirstLunch(): Flow<Boolean> {
-        return dataStore.data
-            .map { preferences ->
-                preferences[FIRST_LUNCH_KEY] ?: true
             }
     }
 

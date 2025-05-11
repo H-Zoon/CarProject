@@ -1,4 +1,4 @@
-package com.devidea.chevy.storage
+package com.devidea.chevy.storage.room.document
 
 // DocumentRepository.kt
 import com.devidea.chevy.network.reomote.Document

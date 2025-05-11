@@ -1,12 +1,10 @@
 package com.devidea.chevy.ui.main.compose.gauge
 
 import androidx.compose.ui.geometry.Rect
-import android.util.Log
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +34,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.TransitEnterexit
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -52,7 +51,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.chevy.bluetooth.DefaultPid
 import com.devidea.chevy.ui.main.MainViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +67,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.devidea.chevy.drive.PIDs
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -126,8 +125,8 @@ fun GaugeCard(
 @Composable
 fun RpmGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.RPM)
-        onDispose { viewModel.stopObserving(DefaultPid.RPM) }
+        viewModel.startObserving(PIDs.RPM)
+        onDispose { viewModel.stopObserving(PIDs.RPM) }
     }
 
     val rpm by viewModel.rpm.collectAsStateWithLifecycle()
@@ -142,8 +141,8 @@ fun RpmGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun SpeedGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.SPEED)
-        onDispose { viewModel.stopObserving(DefaultPid.SPEED) }
+        viewModel.startObserving(PIDs.SPEED)
+        onDispose { viewModel.stopObserving(PIDs.SPEED) }
     }
 
     val speed by viewModel.speed.collectAsStateWithLifecycle()
@@ -158,8 +157,8 @@ fun SpeedGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun EctGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.ECT)
-        onDispose { viewModel.stopObserving(DefaultPid.ECT) }
+        viewModel.startObserving(PIDs.ECT)
+        onDispose { viewModel.stopObserving(PIDs.ECT) }
     }
 
     val ect by viewModel.ect.collectAsStateWithLifecycle()
@@ -174,8 +173,8 @@ fun EctGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun ThrottleGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.THROTTLE)
-        onDispose { viewModel.stopObserving(DefaultPid.THROTTLE) }
+        viewModel.startObserving(PIDs.THROTTLE)
+        onDispose { viewModel.stopObserving(PIDs.THROTTLE) }
     }
 
     val thr by viewModel.throttle.collectAsStateWithLifecycle()
@@ -190,8 +189,8 @@ fun ThrottleGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun LoadGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.LOAD)
-        onDispose { viewModel.stopObserving(DefaultPid.LOAD) }
+        viewModel.startObserving(PIDs.LOAD)
+        onDispose { viewModel.stopObserving(PIDs.LOAD) }
     }
 
     val load by viewModel.load.collectAsStateWithLifecycle()
@@ -206,8 +205,8 @@ fun LoadGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun IATGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.IAT)
-        onDispose { viewModel.stopObserving(DefaultPid.IAT) }
+        viewModel.startObserving(PIDs.IAT)
+        onDispose { viewModel.stopObserving(PIDs.IAT) }
     }
 
     val iat by viewModel.iat.collectAsStateWithLifecycle()
@@ -222,8 +221,8 @@ fun IATGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun MAFGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.MAF)
-        onDispose { viewModel.stopObserving(DefaultPid.MAF) }
+        viewModel.startObserving(PIDs.MAF)
+        onDispose { viewModel.stopObserving(PIDs.MAF) }
     }
 
     val maf by viewModel.maf.collectAsStateWithLifecycle()
@@ -238,8 +237,8 @@ fun MAFGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun BatteryGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.BATT)
-        onDispose { viewModel.stopObserving(DefaultPid.BATT) }
+        viewModel.startObserving(PIDs.BATT)
+        onDispose { viewModel.stopObserving(PIDs.BATT) }
     }
 
     val batt by viewModel.batt.collectAsStateWithLifecycle()
@@ -254,8 +253,8 @@ fun BatteryGauge(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun FuelRateGauge(viewModel: MainViewModel = hiltViewModel()) {
     DisposableEffect(Unit) {
-        viewModel.startObserving(DefaultPid.FUEL_RATE)
-        onDispose { viewModel.stopObserving(DefaultPid.FUEL_RATE) }
+        viewModel.startObserving(PIDs.FUEL_RATE)
+        onDispose { viewModel.stopObserving(PIDs.FUEL_RATE) }
     }
 
     val fr by viewModel.fuelRate.collectAsStateWithLifecycle()
@@ -264,6 +263,66 @@ fun FuelRateGauge(viewModel: MainViewModel = hiltViewModel()) {
         icon = Icons.Default.LocalGasStation,
         value = fr.toDashString(1),
         unit = "L/h"
+    )
+}
+
+@Composable
+fun CurrentGearGauge(viewModel: MainViewModel = hiltViewModel()) {
+    DisposableEffect(Unit) {
+        viewModel.startObserving(PIDs.CURRENT_GEAR)
+        onDispose { viewModel.stopObserving(PIDs.CURRENT_GEAR) }
+    }
+    val gear by viewModel.currentGear.collectAsStateWithLifecycle()
+    GaugeCard(
+        title = "Gear",
+        icon = Icons.Default.TransitEnterexit, // 적절한 기어 아이콘으로 교체하세요
+        value = if (gear in 1..6) gear.toString() else "N",
+        unit = ""
+    )
+}
+
+@Composable
+fun OilPressureGauge(viewModel: MainViewModel = hiltViewModel()) {
+    DisposableEffect(Unit) {
+        viewModel.startObserving(PIDs.OIL_PRESSURE)
+        onDispose { viewModel.stopObserving(PIDs.OIL_PRESSURE) }
+    }
+    val psi by viewModel.oilPressure.collectAsStateWithLifecycle()
+    GaugeCard(
+        title = "Oil Pressure",
+        icon = Icons.Default.LocalGasStation,
+        value = psi.toDashString(),
+        unit = "psi"
+    )
+}
+
+@Composable
+fun OilTempGauge(viewModel: MainViewModel = hiltViewModel()) {
+    DisposableEffect(Unit) {
+        viewModel.startObserving(PIDs.OIL_TEMP)
+        onDispose { viewModel.stopObserving(PIDs.OIL_TEMP) }
+    }
+    val temp by viewModel.oilTemp.collectAsStateWithLifecycle()
+    GaugeCard(
+        title = "Oil Temp",
+        icon = Icons.Default.Thermostat,
+        value = temp.toDashString(),
+        unit = "°C"
+    )
+}
+
+@Composable
+fun TransFluidTempGauge(viewModel: MainViewModel = hiltViewModel()) {
+    DisposableEffect(Unit) {
+        viewModel.startObserving(PIDs.TRANS_FLUID_TEMP)
+        onDispose { viewModel.stopObserving(PIDs.TRANS_FLUID_TEMP) }
+    }
+    val tft by viewModel.transFluidTemp.collectAsStateWithLifecycle()
+    GaugeCard(
+        title = "Trans Fluid Temp",
+        icon = Icons.Default.Thermostat,
+        value = tft.toDashString(),
+        unit = "°C"
     )
 }
 
@@ -283,7 +342,12 @@ val gaugeItems: List<GaugeItem> = listOf(
     GaugeItem("iat") { IATGauge() },
     GaugeItem("maf") { MAFGauge() },
     GaugeItem("battery") { BatteryGauge() },
-    GaugeItem("fuel_rate") { FuelRateGauge() }
+    GaugeItem("fuel_rate") { FuelRateGauge() },
+
+    GaugeItem("current_gear")   { CurrentGearGauge() },
+    GaugeItem("oil_pressure")   { OilPressureGauge() },
+    GaugeItem("oil_temp")       { OilTempGauge() },
+    GaugeItem("trans_fluid_temp"){ TransFluidTempGauge() }
 )
 
 @OptIn(ExperimentalFoundationApi::class)

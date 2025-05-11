@@ -1,4 +1,4 @@
-package com.devidea.chevy.storage
+package com.devidea.chevy.storage.room.document
 
 enum class DocumentTag {
     HOME,
