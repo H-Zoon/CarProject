@@ -8,14 +8,14 @@ plugins {
 }
 
 android {
-    namespace = "com.devidea.chevy"
+    namespace = "com.devidea.aicar"
     compileSdk = 35
 
     defaultConfig {
         ndk {
             abiFilters.addAll(listOf("armeabi", "armeabi-v7a", "arm64-v8a"))
         }
-        applicationId = "com.devidea.chevy"
+        applicationId = "com.devidea.aicar"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

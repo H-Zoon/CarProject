@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CarProject</string>
+    <string name="app_name">AICar</string>
 
     <string name="bt_connected">연결되었습니다.</string>
     <string name="bt_disconnected">연결되지 않았습니다.</string>
