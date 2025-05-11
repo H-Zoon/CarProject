@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.chevy.R
 import com.devidea.chevy.network.reomote.Document
 import com.devidea.chevy.ui.map.MapViewModel
@@ -50,7 +51,7 @@ import com.kakaomobility.knsdk.KNRoutePriority
 import com.kakaomobility.knsdk.trip.kntrip.knroute.KNRoute
 
 @Composable
-fun MapScreen(viewModel: MapViewModel, bottomPadding: Dp = 0.dp) {
+fun MapScreen(viewModel: MapViewModel = hiltViewModel(), bottomPadding: Dp = 0.dp) {
     val cameraState by viewModel.cameraIsTracking.collectAsState()
     val userLocation by viewModel.userLocation.collectAsState()
     val viewState by viewModel.uiState.collectAsState()

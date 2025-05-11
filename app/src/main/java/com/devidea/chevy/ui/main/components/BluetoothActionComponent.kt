@@ -86,6 +86,8 @@ fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
 
     // 2) 이벤트 수집
     LaunchedEffect(viewModel.bluetoothEvent) {
+        if(viewModel.bluetoothEvent == ConnectionEvent.Connected) viewModel.setConnectTime()
+
         viewModel.bluetoothEvent.collect { evt ->
             statusText = when (evt) {
                 ConnectionEvent.Scanning    -> "검색 중..."

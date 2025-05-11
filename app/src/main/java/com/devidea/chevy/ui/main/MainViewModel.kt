@@ -6,7 +6,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.chevy.App.Companion.instance
-import com.devidea.chevy.LocationProvider
 import com.devidea.chevy.drive.PIDManager
 import com.devidea.chevy.drive.PIDs
 import com.devidea.chevy.drive.RecordDrivingUseCase
@@ -18,7 +17,6 @@ import com.devidea.chevy.storage.room.drive.DrivingDataPoint
 import com.devidea.chevy.storage.room.drive.DrivingRepository
 import com.devidea.chevy.storage.room.drive.DrivingSession
 import com.devidea.chevy.ui.main.components.gaugeItems
-import com.kakao.vectormap.LatLng
 import com.kakaomobility.knsdk.KNLanguageType
 import com.kakaomobility.knsdk.KNSDK
 import com.kakaomobility.knsdk.common.objects.KNError_Code_C103
@@ -37,7 +35,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Instant
 import javax.inject.Inject
 
 @HiltViewModel
@@ -45,59 +42,9 @@ class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
     private val drivingRepository: DrivingRepository,
-    private val locationProvider: LocationProvider,
     private val pidManager: PIDManager,
     private val startUseCase: RecordDrivingUseCase,
 ) : ViewModel() {
-
-    val mockDataPoints = listOf(
-        DrivingDataPoint(
-            sessionOwnerId = 1L,
-            timestamp = Instant.parse("2025-05-11T10:00:00Z"),
-            latitude = 37.5665,
-            longitude = 126.9780,
-            rpm = 1500,
-            speed = 40,
-            engineTemp = 85
-        ),
-        DrivingDataPoint(
-            sessionOwnerId = 1L,
-            timestamp = Instant.parse("2025-05-11T10:00:10Z"),
-            latitude = 37.5670,
-            longitude = 126.9790,
-            rpm = 1600,
-            speed = 45,
-            engineTemp = 86
-        ),
-        DrivingDataPoint(
-            sessionOwnerId = 1L,
-            timestamp = Instant.parse("2025-05-11T10:00:20Z"),
-            latitude = 37.5675,
-            longitude = 126.9800,
-            rpm = 1700,
-            speed = 50,
-            engineTemp = 88
-        ),
-        DrivingDataPoint(
-            sessionOwnerId = 1L,
-            timestamp = Instant.parse("2025-05-11T10:00:30Z"),
-            latitude = 37.5680,
-            longitude = 126.9810,
-            rpm = 1800,
-            speed = 55,
-            engineTemp = 90
-        ),
-        DrivingDataPoint(
-            sessionOwnerId = 1L,
-            timestamp = Instant.parse("2025-05-11T10:00:40Z"),
-            latitude = 37.5685,
-            longitude = 126.9820,
-            rpm = 1900,
-            speed = 60,
-            engineTemp = 92
-        )
-    )
-
 
     val gauges = repository.selectedGaugeIds
         .map { ids ->
@@ -138,10 +85,6 @@ class MainViewModel @Inject constructor(
     //카카오 내비 인증 에러 메시지 상태를 관리하는 Flow
     private val _authErrorMessage = MutableStateFlow<String?>(null)
     val authErrorMessage: StateFlow<String?> = _authErrorMessage.asStateFlow()
-
-    // 사용자 위치를 관리하는 Flow
-    private val _userLocation = MutableStateFlow<LatLng?>(null)
-    val userLocation: StateFlow<LatLng?> = _userLocation.asStateFlow()
 
     val rpm: StateFlow<Int> = pidManager.rpm
     val speed: StateFlow<Int> = pidManager.speed
@@ -185,14 +128,14 @@ class MainViewModel @Inject constructor(
                 }
             }
 
-            /*launch {
+            launch {
                 repository.getMileageDate().collect { difference ->
                     _recentMileage.value = when (difference) {
                         -1 -> "-"
                         else -> "$difference Km"
                     }
                 }
-            }*/
+            }
 
             launch {
                 repository.getFuelDate().collect { difference ->
@@ -200,6 +143,12 @@ class MainViewModel @Inject constructor(
                         (-1).toFloat() -> "-"
                         else -> "$difference Km/L"
                     }
+                }
+            }
+
+            launch {
+                repository.getDrivingRecodeSetDate().collect { value ->
+                    _driveHistoryEnable.value = value
                 }
             }
         }
@@ -213,6 +162,29 @@ class MainViewModel @Inject constructor(
 
     private val _fullEfficiency = MutableStateFlow<String>("")
     val fullEfficiency: StateFlow<String> get() = _fullEfficiency
+
+    private val _driveHistoryEnable = MutableStateFlow<Boolean>(false)
+    val driveHistoryEnable: StateFlow<Boolean> get() = _driveHistoryEnable
+
+    fun setDrivingHistory(value: Boolean){
+        viewModelScope.launch {
+            repository.setDrivingRecode(value)
+        }
+    }
+
+    fun setConnectTime(){
+        viewModelScope.launch {
+            repository.saveConnectData()
+        }
+    }
+
+    fun setAvrEfficiency(value: Float){
+        viewModelScope.launch {
+            repository.saveFuelData(value)
+        }
+    }
+
+
 
     fun startInfo() {
         pidManager.pallStart()
@@ -244,18 +216,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             sppClient.requestDisconnect()
         }
-    }
-
-    //위치 업데이트 시작
-    fun startLocationUpdates() {
-        locationProvider.requestLocationUpdates { location ->
-            _userLocation.value = LatLng.from(location.latitude, location.longitude)
-        }
-    }
-
-    //위치 업데이트 중단
-    fun stopLocationUpdate(){
-        locationProvider.stopLocationUpdates()
     }
 
     //주행기록 시작

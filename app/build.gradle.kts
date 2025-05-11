@@ -60,26 +60,19 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.accompanist.permissions)
     implementation(libs.androidx.runtime.livedata)
-    implementation(libs.androidx.appcompat)
+    //implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.bluetooth)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.advanced.bottomsheet.material3)
 
     implementation (libs.kakao.map)
     implementation (libs.kakao.navi)
 
     implementation (libs.okhttp)
     implementation (libs.converter.gson)
-    implementation(libs.material)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
 
     //hilt
     ksp(libs.hilt.compiler)
@@ -89,31 +82,25 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.runtime.compose.android)
 
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-
-    implementation (libs.androidx.material3)
-    implementation (libs.androidx.material3.window.size.class1)
-    implementation (libs.androidx.material3.adaptive.navigation.suite)
 
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.rxjava2)
-    implementation (libs.material.icons.extended)
+    implementation(libs.advanced.bottomsheet.material3)
     implementation(libs.reorderable)
 
-    implementation ("com.google.maps.android:maps-compose:6.6.0")
-
-    // Optionally, you can include the Compose utils library for Clustering,
-    // Street View metadata checks, etc.
-    implementation ("com.google.maps.android:maps-compose-utils:6.6.0")
-
-    // Optionally, you can include the widgets library for ScaleBar, etc.
-    implementation ("com.google.maps.android:maps-compose-widgets:6.6.0")
+    val composeBom = platform("androidx.compose:compose-bom:2025.05.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material3.adaptive:adaptive")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
+    implementation("androidx.compose.runtime:runtime-livedata")
+    implementation("androidx.compose.runtime:runtime-rxjava2")
+    runtimeOnly("androidx.lifecycle:lifecycle-runtime-compose-android")
 
 
     /*

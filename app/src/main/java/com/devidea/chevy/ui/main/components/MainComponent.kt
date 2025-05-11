@@ -4,11 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +42,10 @@ fun AppTopBar() {
 
 @Composable
 fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
+    val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
+    val lastConnectionTime by viewModel.lastConnectDate.collectAsState()
+    val lastAverageEfficiency by viewModel.fullEfficiency.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,12 +53,12 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     ) {
         FuelGauge(currentPercent = 0.76f)
         Spacer(modifier = Modifier.height(24.dp))
-        ActionButtons(viewModel)
+        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = {viewModel.setDrivingHistory(value = it)})
         Spacer(modifier = Modifier.height(24.dp))
         MaintenanceSection(
             items = listOf(
-                MaintenanceItem("Oil Change", "Due in 500 km"),
-                MaintenanceItem("Tire Rotation", "Apr 25")
+                MaintenanceItem("마지막 연결시간", lastConnectionTime),
+                MaintenanceItem("마지막 평군 연비", lastAverageEfficiency)
             )
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -73,12 +78,12 @@ fun FuelGauge(currentPercent: Float) {
         modifier = Modifier.fillMaxWidth()
     ) {
         CircularProgressIndicator(
-            progress = currentPercent,
-            modifier = Modifier
-                .size(180.dp)
-                .clip(CircleShape),
-            strokeWidth = 12.dp,
-            color = MaterialTheme.colorScheme.primary
+        progress = { currentPercent },
+        modifier = Modifier
+                        .size(180.dp)
+                        .clip(CircleShape),
+        color = MaterialTheme.colorScheme.primary,
+        strokeWidth = 12.dp
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
@@ -99,30 +104,23 @@ fun FuelGauge(currentPercent: Float) {
 }
 
 @Composable
-fun ActionButtons(viewModel: MainViewModel) {
+fun DrivingRecordToggle(
+    isEnabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        modifier = Modifier.fillMaxWidth()
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(16.dp)
     ) {
-        OutlinedButton(
-            onClick = {  },
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(Icons.Filled.Lock, contentDescription = "Lock")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Lock")
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        OutlinedButton(
-            onClick = {  },
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(Icons.Filled.LockOpen, contentDescription = "Unlock")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Unlock")
-        }
+        Text(
+            text = "주행 기록"
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Switch(
+            checked = isEnabled,
+            onCheckedChange = onToggle
+        )
     }
 }
 
@@ -131,7 +129,7 @@ data class MaintenanceItem(val title: String, val subtitle: String)
 @Composable
 fun MaintenanceSection(items: List<MaintenanceItem>) {
     Text(
-        text = "Maintenance",
+        text = "연결기록",
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground
     )

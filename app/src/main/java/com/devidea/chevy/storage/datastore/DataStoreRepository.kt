@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -45,6 +46,7 @@ class DataStoreRepository @Inject constructor(
     private val CONNECT_DATE_KEY = longPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
     private val RECENT_FUEL_EFFICIENCY_KEY = floatPreferencesKey("recent_fuel")
+    private val DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
 
     private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
     private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
@@ -169,6 +171,19 @@ class DataStoreRepository @Inject constructor(
         return dataStore.data
             .map { preferences ->
                 preferences[RECENT_FUEL_EFFICIENCY_KEY] ?: -1f
+            }
+    }
+
+    suspend fun setDrivingRecode(value: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[DRIVING_RECORD_ENABLED] = value
+        }
+    }
+
+    fun getDrivingRecodeSetDate(): Flow<Boolean> {
+        return dataStore.data
+            .map { preferences ->
+                preferences[DRIVING_RECORD_ENABLED] == true
             }
     }
 
