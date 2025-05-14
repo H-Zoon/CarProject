@@ -36,7 +36,11 @@ import java.util.concurrent.ConcurrentHashMap
 // Helper data classes & constants (placeholders — implement as needed)
 // ——————————————————————————————————————————————————————————————————————————
 
-data class ScannedDevice(val name: String, val address: String, val device: BluetoothDevice)
+data class ScannedDevice(
+    val name: String,
+    val address: String,
+    val device: BluetoothDevice? = null
+)
 
 // ——————————————————————————————————————————————————————————————————————————
 // Service
@@ -216,19 +220,33 @@ class SppService : Service() {
         Log.d(TAG, "[Connect] requestConnect to ${device.address}")
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Connecting)
-            requestStop()
+            requestStop() // 혹시 남아 있는 이전 연결을 종료
+
             try {
                 withContext(Dispatchers.IO) {
-                    socket = createSocket(device.device).apply { connect() }
+                    // device.device가 null이라면 에러 처리
+                    val btDevice = device.device ?: run {
+                        Log.e(TAG, "[Connect] BluetoothDevice 인스턴스가 없습니다.")
+                        _connectionEvents.emit(ConnectionEvent.Error)
+                        return@withContext
+                    }
+
+                    // 실제 연결
+                    socket = createSocket(btDevice).apply { connect() }
                     Log.d(TAG, "[Connect] Socket connected")
+
                     setupStreams()
                     initializeElm327()
                 }
+
+                // IO 작업이 끝난 후, 메인 쓰레드에서 Connected 이벤트 발행
                 _connectionEvents.emit(ConnectionEvent.Connected)
                 Log.d(TAG, "[Connect] Connected event emitted")
+
             } catch (e: Exception) {
-                Log.e(TAG, "[Connect] Error: ${e.localizedMessage}")
+                Log.e(TAG, "[Connect] Error: ${e.localizedMessage}", e)
                 _connectionEvents.emit(ConnectionEvent.Error)
+                // 연결에 실패했으면 깨끗이 정리
                 requestDisconnect()
             }
         }

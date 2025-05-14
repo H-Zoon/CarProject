@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.devidea.aicar.module.AppModule
+import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.ui.main.components.gaugeItems
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,9 @@ class DataStoreRepository @Inject constructor(
     }
 
     private val TAG = "GaugeRepository"
+    private val SAVE_DEVICE_NAME = stringPreferencesKey("device_name")
+    private val SAVE_DEVICE_ADDR = stringPreferencesKey("device_addr")
+
     private val CONNECT_DATE_KEY = stringPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
     private val DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
@@ -121,6 +125,23 @@ class DataStoreRepository @Inject constructor(
     suspend fun resetAllGauges() = mutex.withLock {
         dataStore.edit { prefs ->
             prefs[GAUGE_ORDER_KEY] = gaugeIdPool.joinToString(",")
+        }
+    }
+
+    /* ---------- Connect Date ---------- */
+    /** 저장된 디바이스를 Flow로 제공 */
+    val getDevice: Flow<ScannedDevice?> = dataStore.data
+        .map { prefs ->
+            val name = prefs[SAVE_DEVICE_NAME]
+            val addr = prefs[SAVE_DEVICE_ADDR]
+            if (name != null && addr != null) ScannedDevice(name, addr) else null
+        }
+
+    /** 디바이스 저장 */
+    suspend fun saveDevice(device: ScannedDevice) {
+        dataStore.edit { prefs ->
+            prefs[SAVE_DEVICE_NAME] = device.name.orEmpty()
+            prefs[SAVE_DEVICE_ADDR] = device.address
         }
     }
 

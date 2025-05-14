@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -62,16 +63,45 @@ fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
     val bluetoothState by viewModel.bluetoothEvent.collectAsState(ConnectionEvent.Disconnected)
     var statusText by remember { mutableStateOf("준비됨") }
     var isShowBleDeviceListModal by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var lastConnectedDevice by remember { mutableStateOf<ScannedDevice?>(null) }
+
+    if (showSaveDialog && lastConnectedDevice != null) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("기기 저장") },
+            text = { Text("${lastConnectedDevice!!.name}을(를) 다음에도 자동으로 연결할 기기로 저장할까요?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.saveDevice(lastConnectedDevice!!)
+                    showSaveDialog = false
+                }) { Text("저장") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false }) { Text("취소") }
+            }
+        )
+    }
 
     LaunchedEffect(bluetoothState) {
         isShowBleDeviceListModal = (bluetoothState == ConnectionEvent.Scanning)
+
+        if (bluetoothState == ConnectionEvent.Connected) {
+            viewModel.setConnectTime()
+            if (viewModel.savedDevice.value == null) {
+                showSaveDialog = true
+            }
+        }
     }
 
     if (isShowBleDeviceListModal) {
         BleDeviceListModal(
             viewModel = viewModel,
             requestScan = { viewModel.startScan() },
-            requestConnect = { viewModel.connectTo(it) },
+            requestConnect = {
+                viewModel.connectTo(it)
+                lastConnectedDevice = it
+            },
             onBack = { viewModel.stopScan() })
     }
     // 1) 블루투스 권한(안드로이드 12+)
@@ -216,6 +246,8 @@ fun BleDeviceListModal(
     requestConnect: (ScannedDevice) -> Unit,
     onBack: () -> Unit
 ) {
+    val saved = viewModel.savedDevice.collectAsState().value
+
     // Dialog를 사용해 화면 중앙에 모달처럼 띄움
     Dialog(onDismissRequest = onBack) {
         Surface(
@@ -226,6 +258,14 @@ fun BleDeviceListModal(
                 .wrapContentHeight()
         ) {
             val devices by viewModel.devices.observeAsState(emptyList())
+
+            val sortedDevices = remember(devices, saved) {
+                if (saved != null) {
+                    // saved가 발견된 경우, saved를 맨 앞에, 나머지 디바이스 뒤에
+                    val others = devices.filter { it.address != saved.address }
+                    listOf(saved) + others
+                } else devices
+            }
 
             Column(
                 modifier = Modifier
@@ -256,7 +296,7 @@ fun BleDeviceListModal(
                         .fillMaxWidth()
                         .heightIn(max = 300.dp)  // 너무 길어지지 않도록 제한
                 ) {
-                    items(devices) { device ->
+                    items(sortedDevices) { device ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -272,6 +312,14 @@ fun BleDeviceListModal(
                                 Text(
                                     text = device.address,
                                     style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                            if (viewModel.savedDevice.value?.address == device.address) {
+                                // 저장된 기기가 스캔 결과에 포함된 순간
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "저장된 기기",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
