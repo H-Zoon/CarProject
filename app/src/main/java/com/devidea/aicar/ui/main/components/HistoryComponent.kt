@@ -33,9 +33,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import android.graphics.Paint
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
+import com.devidea.aicar.storage.room.drive.DrivingSession
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryNavGraph(
@@ -73,6 +76,7 @@ fun HistoryNavGraph(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionListScreen(
     viewModel: MainViewModel = hiltViewModel(),
@@ -82,22 +86,128 @@ fun SessionListScreen(
     val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
         .withZone(ZoneId.systemDefault())
 
-    LazyColumn(modifier = Modifier.padding(vertical = 8.dp)) {
-        items(sessions) { session ->
-            val start = formatter.format(session.startTime)
-            val end = session.endTime?.let { formatter.format(it) } ?: "--"
+    // SnackbarHostState and dialog states
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var targetSession by remember { mutableStateOf<DrivingSession?>(null) }
+    var showDeleteAllDialog by remember { mutableStateOf(false) }
+    var recentlyDeletedSession by remember { mutableStateOf<DrivingSession?>(null) }
+    var recentlyDeletedSessions by remember { mutableStateOf<List<DrivingSession>>(emptyList()) }
 
-            ListItem(
-                headlineContent = { Text("Session #${session.sessionId}") },
-                supportingContent = { Text("$start ~ $end") },
-                modifier = Modifier
-                    .clickable { onSessionClick(session.sessionId) }
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Sessions") },
+                actions = {
+                    IconButton(onClick = { showDeleteAllDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete all sessions"
+                        )
+                    }
+                }
             )
-            Divider()
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(vertical = 8.dp)
+        ) {
+            items(sessions, key = { it.sessionId }) { session ->
+                val start = formatter.format(session.startTime)
+                val end = session.endTime?.let { formatter.format(it) } ?: "--"
+
+                ListItem(
+                    headlineContent = { Text("Session #${session.sessionId}") },
+                    supportingContent = { Text("$start ~ $end") },
+                    trailingContent = {
+                        IconButton(
+                            onClick = {
+                                targetSession = session
+                                showDeleteDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete session"
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .clickable { onSessionClick(session.sessionId) }
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Divider()
+            }
         }
     }
+
+    // Single delete confirmation dialog
+    if (showDeleteDialog && targetSession != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Session") },
+            text = { Text("Are you sure you want to delete session #${targetSession!!.sessionId}? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        recentlyDeletedSession = targetSession
+                        viewModel.deleteSession(targetSession!!.sessionId)
+                        showDeleteDialog = false
+                        coroutineScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "삭제되었습니다.",
+                                actionLabel = "복구하기"
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                recentlyDeletedSession?.let {
+                                    viewModel.restoreSession(it)
+                                }
+                            }
+                        }
+                    }
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Delete all confirmation dialog
+    if (showDeleteAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAllDialog = false },
+            title = { Text("Delete All Sessions") },
+            text = { Text("Are you sure you want to delete all sessions? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        recentlyDeletedSessions = sessions
+                        viewModel.deleteAllSessions()
+                        showDeleteAllDialog = false
+                        coroutineScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "모두 삭제되었습니다.",
+                                actionLabel = "복구하기"
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.restoreAllSessions(recentlyDeletedSessions)
+                            }
+                        }
+                    }
+                ) { Text("Delete All") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAllDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

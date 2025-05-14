@@ -22,6 +22,16 @@ interface DrivingRepository {
      * Uploads a completed session and its data to the remote server.
      */
     suspend fun syncSession(sessionId: Long)
+
+
+    /** 개별 세션 삭제 */
+    suspend fun deleteSession(sessionId: Long)
+
+    /** 전체 세션 삭제 */
+    suspend fun deleteAllSessions()
+
+    // DrivingRepository.kt
+    suspend fun insertSession(session: DrivingSession): Long
 }
 
 /**
@@ -68,5 +78,17 @@ class DrivingRepositoryImpl @Inject constructor(
 
         // 4. Optionally mark session as synced locally
         dao.markSessionSynced(sessionId)*/
+    }
+
+    override suspend fun deleteSession(sessionId: Long) = withContext(Dispatchers.IO) {
+        dao.deleteSessionById(sessionId)
+    }
+
+    override suspend fun deleteAllSessions() = withContext(Dispatchers.IO) {
+        dao.deleteAllSessions()
+    }
+
+    override suspend fun insertSession(session: DrivingSession) = withContext(Dispatchers.IO) {
+        dao.insertSession(session)
     }
 }

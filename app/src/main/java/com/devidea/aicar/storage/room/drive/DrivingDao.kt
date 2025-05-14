@@ -45,4 +45,12 @@ interface DrivingDao {
      */
     @Query("UPDATE DrivingSession SET isSynced = 1 WHERE sessionId = :sessionId")
     suspend fun markSessionSynced(sessionId: Long)
+
+    /** 개별 세션 삭제 */
+    @Query("DELETE FROM DrivingSession WHERE sessionId = :sessionId")
+    suspend fun deleteSessionById(sessionId: Long)
+
+    /** 전체 세션 삭제 */
+    @Query("DELETE FROM DrivingSession")
+    suspend fun deleteAllSessions()
 }

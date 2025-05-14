@@ -130,7 +130,7 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             launch {
-                /*val sessionId = drivingRepository.startSession()
+                val sessionId = drivingRepository.startSession()
 
                 // 3. mockDataPoints 리스트를 순회하며 saveDataPoint() 호출
                 enhancedMockDataPoints.forEach { point ->
@@ -140,7 +140,7 @@ class MainViewModel @Inject constructor(
                 }
 
                 // 4. 세션을 종료(EndTime 업데이트)
-                drivingRepository.stopSession(sessionId)*/
+                drivingRepository.stopSession(sessionId)
 
                 sppClient.deviceList.collect { list ->
                     _devices.postValue(list)
@@ -260,6 +260,27 @@ class MainViewModel @Inject constructor(
     fun getAllSessions(): Flow<List<DrivingSession>> =
         drivingRepository.getAllSessions()
 
+    fun deleteAllSessions(){
+        viewModelScope.launch {
+            drivingRepository.deleteAllSessions()
+        }
+    }
+
+    fun deleteSession(sessionId: Long) {
+        viewModelScope.launch {
+            drivingRepository.deleteSession(sessionId)
+        }
+    }
+
+    fun restoreSession(session: DrivingSession) {
+        viewModelScope.launch { drivingRepository.insertSession(session) }
+    }
+
+    fun restoreAllSessions(sessions: List<DrivingSession>) {
+        viewModelScope.launch {
+            sessions.forEach { drivingRepository.insertSession(it) }
+        }
+    }
     /**
      * Returns a Flow of data points for the given session ID.
      */
