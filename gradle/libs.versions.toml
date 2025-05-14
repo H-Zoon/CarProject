@@ -10,6 +10,7 @@ compose-plugin = "1.6.11"
 hiltLifecycleViewmodel = "1.0.0-alpha03"
 hiltNavigationCompose = "1.2.0"
 knsdk_ui = "1.10.4-beta.2"
+kotlinxCoroutinesCore = "1.10.2"
 ksp = "2.0.0-1.0.23"
 agp = "8.9.2"
 kotlin = "2.0.0"
@@ -49,6 +50,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 androidx-room-rxjava2 = { module = "androidx.room:room-rxjava2", version.ref = "roomRuntime" }
 
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 advanced-bottomsheet-material3 = { module = "io.morfly.compose:advanced-bottomsheet-material3", version.ref = "advancedBottomsheetMaterial3" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }

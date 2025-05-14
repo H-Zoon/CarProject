@@ -11,6 +11,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -140,7 +141,7 @@ class SppService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "OBD Service Channel",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_LOW,
             ).apply {
                 description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
             }
@@ -167,7 +168,18 @@ class SppService : Service() {
             .build()
 
         // 4) 포그라운드 서비스 시작
-        startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ : 타입까지 붙인 오버로드 사용
+            startForeground(
+                1,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            )
+        } else {
+            // 이전 버전은 기존 방식
+            startForeground(1, notification)
+        }
     }
 
     // --- Scan / Stop ---
@@ -179,12 +191,12 @@ class SppService : Service() {
             registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
             isReceiverRegistered = true
             bluetoothAdapter.startDiscovery()
-           /* try {
-                withTimeout(DISCOVERY_TIMEOUT_MS) { awaitCancellation() }
-            } catch (_: TimeoutCancellationException) {
-            } finally {
-                requestStop()
-            }*/
+            /* try {
+                 withTimeout(DISCOVERY_TIMEOUT_MS) { awaitCancellation() }
+             } catch (_: TimeoutCancellationException) {
+             } finally {
+                 requestStop()
+             }*/
         }
     }
 

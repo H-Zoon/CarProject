@@ -68,7 +68,11 @@ fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
     }
 
     if (isShowBleDeviceListModal) {
-        BleDeviceListModal(viewModel = viewModel, requestScan = {viewModel.startScan()}, requestConnect = {viewModel.connectTo(it)}, onBack = {viewModel.stopScan()})
+        BleDeviceListModal(
+            viewModel = viewModel,
+            requestScan = { viewModel.startScan() },
+            requestConnect = { viewModel.connectTo(it) },
+            onBack = { viewModel.stopScan() })
     }
     // 1) 블루투스 권한(안드로이드 12+)
     val permsState = rememberMultiplePermissionsState(
@@ -85,17 +89,15 @@ fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
 
 
     // 2) 이벤트 수집
-    LaunchedEffect(viewModel.bluetoothEvent) {
-        if(viewModel.bluetoothEvent == ConnectionEvent.Connected) viewModel.setConnectTime()
+    LaunchedEffect(bluetoothState) {
+        if (bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
 
-        viewModel.bluetoothEvent.collect { evt ->
-            statusText = when (evt) {
-                ConnectionEvent.Scanning    -> "검색 중..."
-                ConnectionEvent.Connecting  -> "연결 중..."
-                ConnectionEvent.Connected   -> "연결 완료"
-                ConnectionEvent.Disconnected-> "연결 해제됨"
-                ConnectionEvent.Error -> "연결에 실패 하였습니다."
-            }
+        statusText = when (bluetoothState) {
+            ConnectionEvent.Scanning -> "검색 중..."
+            ConnectionEvent.Connecting -> "연결 중..."
+            ConnectionEvent.Connected -> "연결 완료"
+            ConnectionEvent.Disconnected -> "연결 해제됨"
+            ConnectionEvent.Error -> "연결에 실패 하였습니다."
         }
     }
 

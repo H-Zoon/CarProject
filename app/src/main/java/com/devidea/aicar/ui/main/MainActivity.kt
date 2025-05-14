@@ -32,7 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devidea.aicar.ui.main.components.BluetoothActionComponent
 import com.devidea.aicar.ui.main.components.HistoryNavGraph
 import com.devidea.aicar.ui.main.components.HomeScreen
-import com.devidea.aicar.ui.main.components.GaugesGrid
+import com.devidea.aicar.ui.main.components.DashboardScreen
 import com.devidea.aicar.ui.theme.CarProjectTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -87,7 +87,7 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
                     navController = historyNavController,
                     onBackToList = { /* 필요 시 루트로 popBackStack */ }
                 )
-                is NavItem.Car -> GaugesGrid()
+                is NavItem.Car -> DashboardScreen()
                 is NavItem.Settings -> {}//SettingsScreen()
             }
         }

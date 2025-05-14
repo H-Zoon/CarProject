@@ -91,7 +91,7 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.runtime.compose.android)
 
-
+    implementation (libs.kotlinx.coroutines.core)
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.rxjava2)

@@ -43,21 +43,16 @@ class DataStoreRepository @Inject constructor(
     }
 
     private val TAG = "GaugeRepository"
-    private val CONNECT_DATE_KEY = longPreferencesKey("connect_date")
+    private val CONNECT_DATE_KEY = stringPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
-    private val RECENT_FUEL_EFFICIENCY_KEY = floatPreferencesKey("recent_fuel")
     private val DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
 
     private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
     private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
-    private val MAX_HISTORY_SIZE = 10 // 최대 히스토리 수
 
-    /* ---------- Gauge 선택 저장 / 조회 ---------- */
-    /*    private val MIN_GAUGES = 1          // 최소 1개 이상
-        private val MAX_GAUGES = 8          // 최대 8개까지*/
     private val gaugeIdPool = gaugeItems.map { it.id }.toSet()  // 허용 ID
 
-    private val mutex = Mutex()               // ⚠️ 동시 접근 보호
+    private val mutex = Mutex()
 
     /** 선택된 Gauge ID 목록을 Flow 로 노출 (기본값은 [defaultGaugeIds]) */
     val selectedGaugeIds: Flow<List<String>> = dataStore.data
@@ -130,19 +125,16 @@ class DataStoreRepository @Inject constructor(
     }
 
     /* ---------- Connect Date ---------- */
-    suspend fun saveConnectData() {
+    suspend fun saveConnectData(date: String) {
         dataStore.edit { preferences ->
-            preferences[CONNECT_DATE_KEY] = LocalDate.now().toEpochDay()
+            preferences[CONNECT_DATE_KEY] = date
         }
     }
 
-    fun getConnectDate(): Flow<Long> {
+    fun getConnectDate(): Flow<String> {
         return dataStore.data
             .map { preferences ->
-                val savedDate = preferences[CONNECT_DATE_KEY]?.let { LocalDate.ofEpochDay(it) }
-                savedDate?.let {
-                    ChronoUnit.DAYS.between(it, LocalDate.now())
-                } ?: -1
+                preferences[CONNECT_DATE_KEY] ?: ""
             }
     }
 
@@ -157,20 +149,6 @@ class DataStoreRepository @Inject constructor(
         return dataStore.data
             .map { preferences ->
                 preferences[RECENT_MILEAGE_KEY] ?: -1
-            }
-    }
-
-    /* ---------- Fuel Efficiency ---------- */
-    suspend fun saveFuelData(value: Float) {
-        dataStore.edit { preferences ->
-            preferences[RECENT_FUEL_EFFICIENCY_KEY] = value
-        }
-    }
-
-    fun getFuelDate(): Flow<Float> {
-        return dataStore.data
-            .map { preferences ->
-                preferences[RECENT_FUEL_EFFICIENCY_KEY] ?: -1f
             }
     }
 

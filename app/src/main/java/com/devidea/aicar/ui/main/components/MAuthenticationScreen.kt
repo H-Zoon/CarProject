@@ -1,3 +1,4 @@
+/*
 package com.devidea.aicar.ui.main.components
 
 import androidx.compose.foundation.layout.Arrangement
@@ -75,3 +76,4 @@ fun MAuthenticationScreen(modifier: Modifier = Modifier, viewModel: MainViewMode
         MapScreenHost()
     }
 }
+*/

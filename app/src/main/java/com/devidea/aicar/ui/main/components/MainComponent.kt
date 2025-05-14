@@ -44,7 +44,6 @@ fun AppTopBar() {
 fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
     val lastConnectionTime by viewModel.lastConnectDate.collectAsState()
-    val lastAverageEfficiency by viewModel.fullEfficiency.collectAsState()
 
     Column(
         modifier = Modifier
@@ -53,12 +52,12 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     ) {
         FuelGauge(currentPercent = 0.76f)
         Spacer(modifier = Modifier.height(24.dp))
-        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = { viewModel.setDrivingHistory(value = it) })
+        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = { viewModel.setDrivingHistory(enabled = it) })
         Spacer(modifier = Modifier.height(24.dp))
         MaintenanceSection(
             items = listOf(
                 MaintenanceItem("마지막 연결시간", lastConnectionTime),
-                MaintenanceItem("마지막 평군 연비", lastAverageEfficiency)
+                //MaintenanceItem("마지막 평군 연비", lastAverageEfficiency)
             )
         )
         Spacer(modifier = Modifier.height(24.dp))
