@@ -6,3 +6,8 @@ plugins {
     alias(libs.plugins.google.dagger.hilt) apply false
     alias(libs.plugins.compose.compiler) apply false
 }
+buildscript {
+    dependencies {
+        classpath(libs.secrets.gradle.plugin)
+    }
+}

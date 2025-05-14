@@ -35,5 +35,6 @@ data class DrivingDataPoint(
     val longitude: Double,
     val rpm: Int,
     val speed: Int,
-    val engineTemp: Int
+    val engineTemp: Int,
+    val instantKPL: Float
 )

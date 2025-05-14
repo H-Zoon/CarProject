@@ -53,7 +53,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
     ) {
         FuelGauge(currentPercent = 0.76f)
         Spacer(modifier = Modifier.height(24.dp))
-        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = {viewModel.setDrivingHistory(value = it)})
+        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = { viewModel.setDrivingHistory(value = it) })
         Spacer(modifier = Modifier.height(24.dp))
         MaintenanceSection(
             items = listOf(

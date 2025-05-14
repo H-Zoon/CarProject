@@ -122,7 +122,7 @@ class PIDManager @Inject constructor(private val sppClient: SppClient) {
                 activeDefaultPids.forEach { pid ->
                     Log.d(TAG, "[poll] querying pid=${pid.name} : ${pid.code} / ${pid.header}")
                     try {
-                        sppClient.query(cmd = "01${pid.code}", header = pid.header, timeoutMs = 1500)
+                        sppClient.query(cmd = pid.code, header = pid.header, timeoutMs = 1500)
                     } catch (e: Exception) {
                         Log.w(TAG, "[poll] Exception pid=${pid.code}: ${e.localizedMessage}")
                     }
@@ -132,14 +132,15 @@ class PIDManager @Inject constructor(private val sppClient: SppClient) {
         }
     }
 
-    suspend fun startQuery(pid : PIDs): String?{
-        try {
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T: Number> startQuery(pid: PIDs): T? {
+        return try {
             val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = 1500)
-            Log.d(TAG, "[poll] resp=${resp}")
-            return Decoders.parsers[pid]?.invoke(resp).toString()
+            Log.d(TAG, "[poll] resp=$resp")
+            Decoders.parsers[pid]?.invoke(resp) as? T
         } catch (e: Exception) {
             Log.w(TAG, "[poll] NO DATA pid=${pid.code}: ${e.localizedMessage}")
-            return null
+            null
         }
     }
 

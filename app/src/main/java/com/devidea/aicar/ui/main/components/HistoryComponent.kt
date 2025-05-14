@@ -34,6 +34,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import android.graphics.Paint
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.shadow
+import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun HistoryNavGraph(
@@ -105,9 +107,15 @@ fun SessionDetailScreen(
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val dataPoints by viewModel.getSessionData(sessionId).collectAsState(initial = emptyList())
+
     val speedSeries = dataPoints.map { it.speed.toInt() }
     val rpmSeries = dataPoints.map { it.rpm.toInt() }
     val tempSeries = dataPoints.map { it.engineTemp.toInt() }
+    val instantKPLSeries = dataPoints.map { it.instantKPL.toFloat() }
+    val path = remember(dataPoints) {
+        dataPoints.map { LatLng(it.latitude, it.longitude) }
+    }
+
     val sliderPosition by viewModel.sliderPosition.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
@@ -128,7 +136,17 @@ fun SessionDetailScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.height(300.dp)) { /* 지도 영역 */ }
+        Box(modifier = Modifier
+            .height(300.dp)
+            .shadow(elevation = 10.dp)) {
+            SessionTrackMap(
+                path = path,
+                sliderPosition = sliderPosition,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            )
+        }
 
         LazyColumn(
             modifier = Modifier
@@ -158,6 +176,16 @@ fun SessionDetailScreen(
             item {
                 TempLineChart(
                     data = tempSeries,
+                    markerPosition = sliderPosition.toInt(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+            }
+
+            item {
+                InstantKPLChart(
+                    data = instantKPLSeries,
                     markerPosition = sliderPosition.toInt(),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -357,6 +385,26 @@ fun TempLineChart(
 ) {
     LineChart(
         data = data,
+        lineColor = MaterialTheme.colorScheme.tertiary,
+        title = title,
+        unit = unit,
+        markerPosition = markerPosition,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun InstantKPLChart(
+    data: List<Float>,
+    title: String = "순간연비",
+    unit: String = "KM/L",
+    markerPosition: Int? = null,
+    modifier: Modifier = Modifier
+) {
+    val intList1: List<Int> = data.map { it.toInt() }
+
+    LineChart(
+        data = intList1,
         lineColor = MaterialTheme.colorScheme.tertiary,
         title = title,
         unit = unit,

@@ -221,9 +221,9 @@ class MapViewModel @Inject constructor(
 
     // 위치 업데이트 시작
     private fun startLocationUpdates() {
-        locationProvider.requestLocationUpdates { location ->
+       /* locationProvider.requestLocationUpdates { location ->
             _userLocation.value = LatLng.from(location.latitude, location.longitude)
-        }
+        }*/
     }
 
     // 카메라 추적 시작
@@ -293,7 +293,6 @@ class MapViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        locationProvider.stopLocationUpdates()
         stopTracking()
     }
 }

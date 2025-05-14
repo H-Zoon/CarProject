@@ -179,12 +179,12 @@ class SppService : Service() {
             registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
             isReceiverRegistered = true
             bluetoothAdapter.startDiscovery()
-            try {
+           /* try {
                 withTimeout(DISCOVERY_TIMEOUT_MS) { awaitCancellation() }
             } catch (_: TimeoutCancellationException) {
             } finally {
                 requestStop()
-            }
+            }*/
         }
     }
 

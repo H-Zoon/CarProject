@@ -41,6 +41,20 @@ object Decoders {
         },
         PIDs.TRANS_FLUID_TEMP to { f ->
             f.substring(4,6).toInt(16) - 40
+        },
+        // Short-term Fuel Trim (PID 0x06): (A - 128) * 100 / 128 [%]
+        PIDs.S_FUEL_TRIM   to { f ->
+            val a = f.substring(4,6).toInt(16)
+            (a - 128) * 100f / 128f
+        },
+        // Long-term Fuel Trim (PID 0x07): (A - 128) * 100 / 128 [%]
+        PIDs.L_FUEL_TRIM   to { f ->
+            val a = f.substring(4,6).toInt(16)
+            (a - 128) * 100f / 128f
+        },
+        // Barometric Pressure (PID 0x33): A [kPa]
+        PIDs.BAROMETRIC    to { f ->
+            f.substring(4,6).toInt(16).toFloat()
         }
     )
 }

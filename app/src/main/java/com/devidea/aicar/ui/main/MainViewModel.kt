@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.devidea.aicar.App.Companion.instance
 import com.devidea.aicar.drive.PIDManager
 import com.devidea.aicar.drive.PIDs
-import com.devidea.aicar.drive.RecordDrivingUseCase
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
@@ -35,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,9 +42,33 @@ class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
     private val drivingRepository: DrivingRepository,
-    private val pidManager: PIDManager,
-    private val startUseCase: RecordDrivingUseCase,
+    private val pidManager: PIDManager
 ) : ViewModel() {
+
+    val enhancedMockDataPoints = listOf(
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T09:59:50Z"), latitude = 37.5660, longitude = 126.9775, rpm = 0,    speed = 0,  engineTemp = 25, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T09:59:55Z"), latitude = 37.5662, longitude = 126.9776, rpm = 800,  speed = 0,  engineTemp = 35, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:00Z"), latitude = 37.5665, longitude = 126.9780, rpm = 1500, speed = 10, engineTemp = 45, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:05Z"), latitude = 37.5668, longitude = 126.9785, rpm = 2000, speed = 25, engineTemp = 50, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:10Z"), latitude = 37.5672, longitude = 126.9790, rpm = 2500, speed = 40, engineTemp = 60, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:15Z"), latitude = 37.5676, longitude = 126.9795, rpm = 3000, speed = 55, engineTemp = 70, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:20Z"), latitude = 37.5680, longitude = 126.9800, rpm = 3500, speed = 70, engineTemp = 80, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:25Z"), latitude = 37.5684, longitude = 126.9805, rpm = 3800, speed = 65, engineTemp = 85, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:30Z"), latitude = 37.5688, longitude = 126.9810, rpm = 4000, speed = 60, engineTemp = 90, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:35Z"), latitude = 37.5692, longitude = 126.9815, rpm = 4200, speed = 55, engineTemp = 95, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:40Z"), latitude = 37.5696, longitude = 126.9820, rpm = 4400, speed = 50, engineTemp = 100, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:45Z"), latitude = 37.5700, longitude = 126.9825, rpm = 3000, speed = 75, engineTemp = 105, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:50Z"), latitude = 37.5704, longitude = 126.9830, rpm = 2500, speed = 80, engineTemp = 110, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:55Z"), latitude = 37.5708, longitude = 126.9835, rpm = 2000, speed = 85, engineTemp = 115, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:00Z"), latitude = 37.5712, longitude = 126.9840, rpm = 1500, speed = 90, engineTemp = 120, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:05Z"), latitude = 37.5715, longitude = 126.9842, rpm = 1000, speed = 30, engineTemp = 118, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:06Z"), latitude = 37.5716, longitude = 126.9843, rpm = 900,  speed = 15, engineTemp = 117, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:07Z"), latitude = 37.5717, longitude = 126.9844, rpm = 800,  speed = 0,  engineTemp = 115, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:12Z"), latitude = 37.5717, longitude = 126.9844, rpm = 750,  speed = 0,  engineTemp = 116, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:17Z"), latitude = 37.5718, longitude = 126.9845, rpm = 1200, speed = 10, engineTemp = 118, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:22Z"), latitude = 37.5720, longitude = 126.9847, rpm = 2000, speed = 30, engineTemp = 120, instantKPL = 10f),
+        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:27Z"), latitude = 37.5722, longitude = 126.9849, rpm = 2500, speed = 35, engineTemp = 130, instantKPL = 10f)
+    )
 
     val gauges = repository.selectedGaugeIds
         .map { ids ->
@@ -106,6 +130,18 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             launch {
+                /*val sessionId = drivingRepository.startSession()
+
+                // 3. mockDataPoints 리스트를 순회하며 saveDataPoint() 호출
+                enhancedMockDataPoints.forEach { point ->
+                    // point.copy를 써서 sessionOwnerId만 방금 생성된 sessionId로 바꿔줍니다.
+                    val toInsert = point.copy(sessionOwnerId = sessionId)
+                    drivingRepository.saveDataPoint(toInsert)
+                }
+
+                // 4. 세션을 종료(EndTime 업데이트)
+                drivingRepository.stopSession(sessionId)*/
+
                 sppClient.deviceList.collect { list ->
                     _devices.postValue(list)
                 }
@@ -216,20 +252,6 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             sppClient.requestDisconnect()
         }
-    }
-
-    //주행기록 시작
-    fun onStartButtonClicked() {
-        viewModelScope.launch {
-            val sessionId = drivingRepository.startSession()
-            startUseCase.start(sessionId)
-        }
-    }
-
-    //주행기록 종료
-    fun onStopButtonClicked(currentSessionId: Long) {
-        startUseCase.stop()
-        viewModelScope.launch { drivingRepository.stopSession(currentSessionId) }
     }
 
     /**
