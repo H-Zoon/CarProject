@@ -27,6 +27,20 @@ interface DrivingDao {
     @Query("SELECT * FROM DrivingDataPoint WHERE sessionOwnerId = :sessionId ORDER BY timestamp")
     fun getDataPoints(sessionId: Long): Flow<List<DrivingDataPoint>>
 
+
+    @Query("SELECT * FROM DrivingSession WHERE DATE(startTime) = :dateStr ORDER BY startTime DESC")
+    fun getSessionsByDate(dateStr: String): Flow<List<DrivingSession>>
+
+    @Query(
+        """
+        SELECT DISTINCT DATE(startTime)
+        FROM DrivingSession
+        WHERE substr(startTime,1,4) = :yearStr
+          AND substr(startTime,6,2) = :monthStr
+        """
+    )
+    fun getSessionDatesInMonth(yearStr: String, monthStr: String): Flow<List<String>>
+
     /**
      * Retrieve a single session by its ID.
      */
@@ -53,4 +67,12 @@ interface DrivingDao {
     /** 전체 세션 삭제 */
     @Query("DELETE FROM DrivingSession")
     suspend fun deleteAllSessions()
+
+    // 1) DAO에 하루 범위 쿼리 추가 (DrivingDao.kt)
+    @Query("""
+  SELECT * FROM DrivingSession
+  WHERE startTime BETWEEN :startMillis AND :endMillis
+  ORDER BY startTime DESC
+""")
+    fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
 }

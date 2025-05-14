@@ -23,6 +23,8 @@ import com.kakaomobility.knsdk.common.objects.KNError_Code_C302
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,10 +33,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,28 +52,226 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     val enhancedMockDataPoints = listOf(
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T09:59:50Z"), latitude = 37.5660, longitude = 126.9775, rpm = 0,    speed = 0,  engineTemp = 25, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T09:59:55Z"), latitude = 37.5662, longitude = 126.9776, rpm = 800,  speed = 0,  engineTemp = 35, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:00Z"), latitude = 37.5665, longitude = 126.9780, rpm = 1500, speed = 10, engineTemp = 45, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:05Z"), latitude = 37.5668, longitude = 126.9785, rpm = 2000, speed = 25, engineTemp = 50, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:10Z"), latitude = 37.5672, longitude = 126.9790, rpm = 2500, speed = 40, engineTemp = 60, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:15Z"), latitude = 37.5676, longitude = 126.9795, rpm = 3000, speed = 55, engineTemp = 70, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:20Z"), latitude = 37.5680, longitude = 126.9800, rpm = 3500, speed = 70, engineTemp = 80, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:25Z"), latitude = 37.5684, longitude = 126.9805, rpm = 3800, speed = 65, engineTemp = 85, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:30Z"), latitude = 37.5688, longitude = 126.9810, rpm = 4000, speed = 60, engineTemp = 90, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:35Z"), latitude = 37.5692, longitude = 126.9815, rpm = 4200, speed = 55, engineTemp = 95, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:40Z"), latitude = 37.5696, longitude = 126.9820, rpm = 4400, speed = 50, engineTemp = 100, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:45Z"), latitude = 37.5700, longitude = 126.9825, rpm = 3000, speed = 75, engineTemp = 105, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:50Z"), latitude = 37.5704, longitude = 126.9830, rpm = 2500, speed = 80, engineTemp = 110, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:00:55Z"), latitude = 37.5708, longitude = 126.9835, rpm = 2000, speed = 85, engineTemp = 115, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:00Z"), latitude = 37.5712, longitude = 126.9840, rpm = 1500, speed = 90, engineTemp = 120, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:05Z"), latitude = 37.5715, longitude = 126.9842, rpm = 1000, speed = 30, engineTemp = 118, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:06Z"), latitude = 37.5716, longitude = 126.9843, rpm = 900,  speed = 15, engineTemp = 117, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:07Z"), latitude = 37.5717, longitude = 126.9844, rpm = 800,  speed = 0,  engineTemp = 115, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:12Z"), latitude = 37.5717, longitude = 126.9844, rpm = 750,  speed = 0,  engineTemp = 116, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:17Z"), latitude = 37.5718, longitude = 126.9845, rpm = 1200, speed = 10, engineTemp = 118, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:22Z"), latitude = 37.5720, longitude = 126.9847, rpm = 2000, speed = 30, engineTemp = 120, instantKPL = 10f),
-        DrivingDataPoint(sessionOwnerId = 1L, timestamp = Instant.parse("2025-05-11T10:01:27Z"), latitude = 37.5722, longitude = 126.9849, rpm = 2500, speed = 35, engineTemp = 130, instantKPL = 10f)
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T09:59:50Z"),
+            latitude = 37.5660,
+            longitude = 126.9775,
+            rpm = 0,
+            speed = 0,
+            engineTemp = 25,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T09:59:55Z"),
+            latitude = 37.5662,
+            longitude = 126.9776,
+            rpm = 800,
+            speed = 0,
+            engineTemp = 35,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:00Z"),
+            latitude = 37.5665,
+            longitude = 126.9780,
+            rpm = 1500,
+            speed = 10,
+            engineTemp = 45,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:05Z"),
+            latitude = 37.5668,
+            longitude = 126.9785,
+            rpm = 2000,
+            speed = 25,
+            engineTemp = 50,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:10Z"),
+            latitude = 37.5672,
+            longitude = 126.9790,
+            rpm = 2500,
+            speed = 40,
+            engineTemp = 60,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:15Z"),
+            latitude = 37.5676,
+            longitude = 126.9795,
+            rpm = 3000,
+            speed = 55,
+            engineTemp = 70,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:20Z"),
+            latitude = 37.5680,
+            longitude = 126.9800,
+            rpm = 3500,
+            speed = 70,
+            engineTemp = 80,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:25Z"),
+            latitude = 37.5684,
+            longitude = 126.9805,
+            rpm = 3800,
+            speed = 65,
+            engineTemp = 85,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:30Z"),
+            latitude = 37.5688,
+            longitude = 126.9810,
+            rpm = 4000,
+            speed = 60,
+            engineTemp = 90,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:35Z"),
+            latitude = 37.5692,
+            longitude = 126.9815,
+            rpm = 4200,
+            speed = 55,
+            engineTemp = 95,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:40Z"),
+            latitude = 37.5696,
+            longitude = 126.9820,
+            rpm = 4400,
+            speed = 50,
+            engineTemp = 100,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:45Z"),
+            latitude = 37.5700,
+            longitude = 126.9825,
+            rpm = 3000,
+            speed = 75,
+            engineTemp = 105,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:50Z"),
+            latitude = 37.5704,
+            longitude = 126.9830,
+            rpm = 2500,
+            speed = 80,
+            engineTemp = 110,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:00:55Z"),
+            latitude = 37.5708,
+            longitude = 126.9835,
+            rpm = 2000,
+            speed = 85,
+            engineTemp = 115,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:00Z"),
+            latitude = 37.5712,
+            longitude = 126.9840,
+            rpm = 1500,
+            speed = 90,
+            engineTemp = 120,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:05Z"),
+            latitude = 37.5715,
+            longitude = 126.9842,
+            rpm = 1000,
+            speed = 30,
+            engineTemp = 118,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:06Z"),
+            latitude = 37.5716,
+            longitude = 126.9843,
+            rpm = 900,
+            speed = 15,
+            engineTemp = 117,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:07Z"),
+            latitude = 37.5717,
+            longitude = 126.9844,
+            rpm = 800,
+            speed = 0,
+            engineTemp = 115,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:12Z"),
+            latitude = 37.5717,
+            longitude = 126.9844,
+            rpm = 750,
+            speed = 0,
+            engineTemp = 116,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:17Z"),
+            latitude = 37.5718,
+            longitude = 126.9845,
+            rpm = 1200,
+            speed = 10,
+            engineTemp = 118,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:22Z"),
+            latitude = 37.5720,
+            longitude = 126.9847,
+            rpm = 2000,
+            speed = 30,
+            engineTemp = 120,
+            instantKPL = 10f
+        ),
+        DrivingDataPoint(
+            sessionOwnerId = 1L,
+            timestamp = Instant.parse("2025-05-11T10:01:27Z"),
+            latitude = 37.5722,
+            longitude = 126.9849,
+            rpm = 2500,
+            speed = 35,
+            engineTemp = 130,
+            instantKPL = 10f
+        )
     )
 
     val gauges = repository.selectedGaugeIds
@@ -202,25 +406,23 @@ class MainViewModel @Inject constructor(
     private val _driveHistoryEnable = MutableStateFlow<Boolean>(false)
     val driveHistoryEnable: StateFlow<Boolean> get() = _driveHistoryEnable
 
-    fun setDrivingHistory(value: Boolean){
+    fun setDrivingHistory(value: Boolean) {
         viewModelScope.launch {
             repository.setDrivingRecode(value)
         }
     }
 
-    fun setConnectTime(){
+    fun setConnectTime() {
         viewModelScope.launch {
             repository.saveConnectData()
         }
     }
 
-    fun setAvrEfficiency(value: Float){
+    fun setAvrEfficiency(value: Float) {
         viewModelScope.launch {
             repository.saveFuelData(value)
         }
     }
-
-
 
     fun startInfo() {
         pidManager.pallStart()
@@ -257,10 +459,65 @@ class MainViewModel @Inject constructor(
     /**
      * Returns a Flow of all driving sessions.
      */
+
+    // 기본을 오늘 날짜로 초기화
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate
+    fun selectDate(date: LocalDate?) {
+        _selectedDate.value = date
+    }
+
+    // ViewModel.kt
+    private val _month = MutableStateFlow(YearMonth.now())
+    val month: StateFlow<YearMonth> = _month
+
+    fun changeMonth(delta: Int) {
+        _month.value = _month.value.plusMonths(delta.toLong())
+    }
+
+    // Sessions filtered by selected date
+    val sessions: StateFlow<List<DrivingSession>> = _selectedDate
+        .flatMapLatest { date ->
+            if (date != null) {
+                // Use ISO_LOCAL_DATE format ("yyyy-MM-dd") for SQL date comparison
+                drivingRepository.getSessionsByDate(date)
+            } else {
+                drivingRepository.getAllSessions()
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val markedDates: StateFlow<Set<LocalDate>> =
+        _month
+            .flatMapLatest { ym ->
+                // 해당 달의 시작과 끝을 밀리초로 계산
+                val start = ym.atDay(1)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli()
+                val end = ym.atEndOfMonth()
+                    .plusDays(1).atStartOfDay(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli() - 1
+
+                // getSessionsInRange 로 세션 목록을 가져온 뒤 날짜로 변환
+                drivingRepository
+                    .getSessionsInRange(start, end)
+                    .map { sessions ->
+                        sessions
+                            .map { session ->
+                                session.startTime              // Instant
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate()
+                            }
+                            .toSet()
+                    }
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+
     fun getAllSessions(): Flow<List<DrivingSession>> =
         drivingRepository.getAllSessions()
 
-    fun deleteAllSessions(){
+    fun deleteAllSessions() {
         viewModelScope.launch {
             drivingRepository.deleteAllSessions()
         }
@@ -281,6 +538,7 @@ class MainViewModel @Inject constructor(
             sessions.forEach { drivingRepository.insertSession(it) }
         }
     }
+
     /**
      * Returns a Flow of data points for the given session ID.
      */
@@ -308,6 +566,7 @@ class MainViewModel @Inject constructor(
     fun togglePlay() {
         _isPlaying.value = !_isPlaying.value
     }
+
     // 인증 시작
     fun authenticateUser() {
         CoroutineScope(Dispatchers.IO).launch {

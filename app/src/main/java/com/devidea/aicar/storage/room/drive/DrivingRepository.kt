@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -32,6 +34,21 @@ interface DrivingRepository {
 
     // DrivingRepository.kt
     suspend fun insertSession(session: DrivingSession): Long
+
+    fun getSessionsByDate(dateStr: String): Flow<List<DrivingSession>>
+
+    /** 하루 단위 범위 조회 */
+    fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
+
+    /** 지정한 날짜(00:00~23:59:59)에 해당하는 세션 조회 */
+    fun getSessionsByDate(date: LocalDate): Flow<List<DrivingSession>> =
+        getSessionsInRange(
+            startMillis = date.atStartOfDay(ZoneId.systemDefault())
+                .toInstant().toEpochMilli(),
+            endMillis   = date.plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant().toEpochMilli() - 1
+        )
 }
 
 /**
@@ -91,4 +108,9 @@ class DrivingRepositoryImpl @Inject constructor(
     override suspend fun insertSession(session: DrivingSession) = withContext(Dispatchers.IO) {
         dao.insertSession(session)
     }
+
+    override fun getSessionsByDate(dateStr: String) = dao.getSessionsByDate(dateStr)
+
+    override fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>> =
+        dao.getSessionsInRange(startMillis, endMillis)
 }
