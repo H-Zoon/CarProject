@@ -120,10 +120,10 @@ class MainViewModel @Inject constructor(
 
 
     /** 연속 PID 데이터 폴링을 시작합니다. */
-    fun startPalling() = pidManager.pallStart()
+    fun startPalling() = pidManager.startPall()
 
     /** PID 데이터 폴링을 중지합니다. */
-    fun stopPalling() = pidManager.stop()
+    fun stopPalling() = pidManager.stopAll()
 
     //endregion
 

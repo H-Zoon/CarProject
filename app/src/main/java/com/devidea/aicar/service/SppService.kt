@@ -137,17 +137,15 @@ class SppService : Service() {
         Log.d(TAG, "[Service] startForegroundService called")
 
         // 1) Oreo(API 26) 이상에서 채널 생성
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "OBD Service Channel",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
-            }
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "OBD Service Channel",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
         }
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+            .createNotificationChannel(channel)
 
         // 2) 클릭 시 돌아갈 Activity 인텐트 (실제 Activity 클래스로 변경)
         val intent = Intent(this, MainActivity::class.java).apply {

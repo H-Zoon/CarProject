@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.devidea.aicar.drive.PIDs
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -270,19 +271,19 @@ data class GaugeItem(
 )
 
 val gaugeItems: List<GaugeItem> = listOf(
-    GaugeItem("rpm") { RpmGauge() },
-    GaugeItem("speed") { SpeedGauge() },
-    GaugeItem("ect") { EctGauge() },
-    GaugeItem("throttle") { ThrottleGauge() },
-    GaugeItem("load") { LoadGauge() },
-    GaugeItem("iat") { IATGauge() },
-    GaugeItem("maf") { MAFGauge() },
-    GaugeItem("battery") { BatteryGauge() },
-    GaugeItem("fuel_rate") { FuelRateGauge() },
-    GaugeItem("current_gear") { CurrentGearGauge() },
-    GaugeItem("oil_pressure") { OilPressureGauge() },
-    GaugeItem("oil_temp") { OilTempGauge() },
-    GaugeItem("trans_fluid_temp") { TransFluidTempGauge() }
+    GaugeItem(PIDs.RPM.name)             { RpmGauge() },
+    GaugeItem(PIDs.SPEED.name)           { SpeedGauge() },
+    GaugeItem(PIDs.ECT.name)             { EctGauge() },
+    GaugeItem(PIDs.THROTTLE.name)        { ThrottleGauge() },
+    GaugeItem(PIDs.LOAD.name)            { LoadGauge() },
+    GaugeItem(PIDs.IAT.name)             { IATGauge() },
+    GaugeItem(PIDs.MAF.name)             { MAFGauge() },
+    GaugeItem(PIDs.BATT.name)            { BatteryGauge() },
+    GaugeItem(PIDs.FUEL_RATE.name)       { FuelRateGauge() },
+    GaugeItem(PIDs.CURRENT_GEAR.name)    { CurrentGearGauge() },
+    GaugeItem(PIDs.OIL_PRESSURE.name)    { OilPressureGauge() },
+    GaugeItem(PIDs.OIL_TEMP.name)        { OilTempGauge() },
+    GaugeItem(PIDs.TRANS_FLUID_TEMP.name){ TransFluidTempGauge() }
 )
 
 @OptIn(ExperimentalFoundationApi::class)
