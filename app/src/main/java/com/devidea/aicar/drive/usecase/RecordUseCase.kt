@@ -52,15 +52,19 @@ class RecordUseCase @Inject constructor(
     }
         .distinctUntilChanged()
 
+    var sessionId : Long? = null
+
     init {
         // 4) 변화가 생길 때마다 start/stop 호출
         shouldRecord
             .onEach { enabled ->
                 if (enabled) {
                     // 세션 시작한 뒤에 실제 기록 로직
-                    val sessionId = drivingRepository.startSession()
-                    start(sessionId)
+                    sessionId = drivingRepository.startSession()
+                    if(sessionId != null) start(sessionId!!)
                 } else {
+                    if(sessionId != null) drivingRepository.stopSession(sessionId!!)
+                    sessionId = null
                     stop()
                 }
             }
