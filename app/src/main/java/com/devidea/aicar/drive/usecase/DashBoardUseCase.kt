@@ -1,28 +1,28 @@
-package com.devidea.aicar.drive
+package com.devidea.aicar.drive.usecase
 
+import android.util.Log
+import com.devidea.aicar.drive.Decoders
+import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.service.SppClient
+import com.devidea.aicar.storage.datastore.DataStoreRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import android.util.Log
-import com.devidea.aicar.storage.datastore.DataStoreRepository
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class PIDManager @Inject constructor(
+class DashBoardUseCase @Inject constructor(
     private val sppClient: SppClient,
     private val dataStoreRepository: DataStoreRepository
 ) {
@@ -33,7 +33,7 @@ class PIDManager @Inject constructor(
         /** gaugeId(String) → PIDs?  변환 함수 */
         private fun gaugeIdToPid(id: String): PIDs? =
             PIDs.entries.firstOrNull { it.name.equals(id, ignoreCase = true) }
-                ?: PIDs.fromCode(id)
+                ?: PIDs.Companion.fromCode(id)
     }
 
     private val liveFrames: SharedFlow<String> = sppClient.liveFrames
@@ -70,7 +70,7 @@ class PIDManager @Inject constructor(
             .map { it.replace(" ", "").uppercase() }   // 프레임 정규화
             .filter { prefix != null && it.startsWith(prefix) }
             .map { Decoders.parsers.getValue(pid)(it) as Int }
-            .stateIn(scope, SharingStarted.Eagerly, init)
+            .stateIn(scope, SharingStarted.Companion.Eagerly, init)
     }
 
     private val floatFlows: Map<PIDs, StateFlow<Float>> =
@@ -80,7 +80,7 @@ class PIDManager @Inject constructor(
                 .map { it.replace(" ", "").uppercase() }
                 .filter { prefix != null && it.startsWith(prefix) }
                 .map { Decoders.parsers.getValue(pid)(it) as Float }
-                .stateIn(scope, SharingStarted.Eagerly, init)
+                .stateIn(scope, SharingStarted.Companion.Eagerly, init)
         }
 
     // 편의 프로퍼티
@@ -100,8 +100,7 @@ class PIDManager @Inject constructor(
     val oilTemp: StateFlow<Int> get() = intFlows.getValue(PIDs.OIL_TEMP)
     val transFluidTemp: StateFlow<Int> get() = intFlows.getValue(PIDs.TRANS_FLUID_TEMP)
 
-    private val _activePids = MutableStateFlow<Set<PIDs>>(emptySet())
-    val activePids: StateFlow<Set<PIDs>> = _activePids.asStateFlow()
+    private val activePids = MutableStateFlow<Set<PIDs>>(emptySet())
 
     private fun restartPollLoop(pidSet: Set<PIDs>) {
         pollJob?.cancel()
@@ -132,40 +131,27 @@ class PIDManager @Inject constructor(
             dataStoreRepository.selectedGaugeIds            // Flow<List<String>>
                 .map { it.mapNotNull(::gaugeIdToPid).toSet() }
                 .distinctUntilChanged()
-                .collect(_activePids::value::set)
+                .collect(activePids::value::set)
         }
 
         pollCtlJob = scope.launch {
-            _activePids
+            activePids
                 .collect(::restartPollLoop)
         }
 
         // 초기 값으로 한 번 돌려서 즉시 폴링 시작
-        restartPollLoop(_activePids.value)
+        restartPollLoop(activePids.value)
         Log.d(TAG, "[obs] observers started")
     }
 
     fun stopAll() {
         gaugeJob?.cancel()
         pollCtlJob?.cancel()
-        pollJob?.cancel()        // restartPollLoop 가 만든 실제 폴링 루프
+        pollJob?.cancel()
         gaugeJob = null
         pollCtlJob = null
         pollJob  = null
         Log.d(TAG, "[obs] observers stopped")
-    }
-
-
-    @Suppress("UNCHECKED_CAST")
-    suspend fun <T : Number> startQuery(pid: PIDs): T? {
-        return try {
-            val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = 1500)
-            Log.d(TAG, "[poll] resp=$resp")
-            Decoders.parsers[pid]?.invoke(resp) as? T
-        } catch (e: Exception) {
-            Log.w(TAG, "[poll] NO DATA pid=${pid.code}: ${e.localizedMessage}")
-            null
-        }
     }
 
     private fun PIDs.responsePrefixOrNull(): String? = runCatching {

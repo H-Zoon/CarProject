@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.aicar.drive.PIDManager
+import com.devidea.aicar.drive.usecase.DashBoardUseCase
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
@@ -45,7 +45,7 @@ class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
     private val drivingRepository: DrivingRepository,
-    private val pidManager: PIDManager
+    private val pidManager: DashBoardUseCase
 ) : ViewModel() {
 
     //region 게이지 관리

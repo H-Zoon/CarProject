@@ -1,8 +1,11 @@
-package com.devidea.aicar.drive
+package com.devidea.aicar.drive.usecase
 
 import android.location.Location
 import android.util.Log
 import com.devidea.aicar.LocationProvider
+import com.devidea.aicar.drive.Decoders
+import com.devidea.aicar.drive.FuelEconomyImproved
+import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
@@ -15,20 +18,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.launchIn
 
 class RecordUseCase @Inject constructor(
-    private val pidManager: PIDManager,
     private val locationProvider: LocationProvider,
     private val drivingRepository: DrivingRepository,
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
 ) {
+    companion object{
+        const val TAG = "RecordUseCase"
+    }
 
     // 1) DataStore 에서 읽어오는 Boolean 플래그
     private val flagFlow: Flow<Boolean> =
@@ -101,13 +106,13 @@ class RecordUseCase @Inject constructor(
         sessionId: Long,
         location: Location
     ) {
-        val maf   = pidManager.startQuery(PIDs.MAF)         ?: 0f
-        val rpm   = pidManager.startQuery(PIDs.RPM)         ?: 0
-        val ect   = pidManager.startQuery(PIDs.ECT)         ?: 0
-        val speed = pidManager.startQuery(PIDs.SPEED)       ?: 0
-        val stft  = pidManager.startQuery(PIDs.S_FUEL_TRIM) ?: 0f
-        val ltft  = pidManager.startQuery(PIDs.L_FUEL_TRIM) ?: 0f
-        val baro  = pidManager.startQuery(PIDs.BAROMETRIC)  ?: 0f
+        val maf   = startQuery(PIDs.MAF)         ?: 0f
+        val rpm   = startQuery(PIDs.RPM)         ?: 0
+        val ect   = startQuery(PIDs.ECT)         ?: 0
+        val speed = startQuery(PIDs.SPEED)       ?: 0
+        val stft  = startQuery(PIDs.S_FUEL_TRIM) ?: 0f
+        val ltft  = startQuery(PIDs.L_FUEL_TRIM) ?: 0f
+        val baro  = startQuery(PIDs.BAROMETRIC)  ?: 0f
 
         val instantKPL = FuelEconomyImproved.calculateInstantKPL(
             mafGperS    = maf,
@@ -119,19 +124,31 @@ class RecordUseCase @Inject constructor(
 
         val dataPoint = DrivingDataPoint(
             sessionOwnerId = sessionId,
-            timestamp      = Instant.now(),
-            latitude       = location.latitude,
-            longitude      = location.longitude,
-            rpm            = rpm,
-            speed          = speed,
-            engineTemp     = ect,
-            instantKPL     = instantKPL
+            timestamp = Instant.now(),
+            latitude = location.latitude,
+            longitude = location.longitude,
+            rpm = rpm,
+            speed = speed,
+            engineTemp = ect,
+            instantKPL = instantKPL
         )
 
         try {
             drivingRepository.saveDataPoint(dataPoint)
         } catch (e: Exception) {
             Log.e("RecordUseCase", "saveDataPoint error", e)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Number> startQuery(pid: PIDs): T? {
+        return try {
+            val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = 1500)
+            Log.d(TAG, "[poll] resp=$resp")
+            Decoders.parsers[pid]?.invoke(resp) as? T
+        } catch (e: Exception) {
+            Log.w(TAG, "[poll] NO DATA pid=${pid.code}: ${e.localizedMessage}")
+            null
         }
     }
 }
