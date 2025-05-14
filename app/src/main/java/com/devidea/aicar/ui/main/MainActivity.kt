@@ -33,6 +33,7 @@ import com.devidea.aicar.ui.main.components.BluetoothActionComponent
 import com.devidea.aicar.ui.main.components.HistoryNavGraph
 import com.devidea.aicar.ui.main.components.HomeScreen
 import com.devidea.aicar.ui.main.components.DashboardScreen
+import com.devidea.aicar.ui.main.components.SettingsScreen
 import com.devidea.aicar.ui.theme.CarProjectTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -88,7 +89,7 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
                     onBackToList = { /* 필요 시 루트로 popBackStack */ }
                 )
                 is NavItem.Car -> DashboardScreen()
-                is NavItem.Settings -> {}//SettingsScreen()
+                is NavItem.Settings -> SettingsScreen()
             }
         }
     }

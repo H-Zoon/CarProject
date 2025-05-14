@@ -50,7 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.aicar.ui.main.MainViewModel
+import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +67,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.devidea.aicar.drive.PIDs
+import com.devidea.aicar.ui.main.viewmodels.DashBoardViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -121,7 +122,7 @@ fun GaugeCard(
 }
 
 @Composable
-fun RpmGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun RpmGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val rpm by viewModel.rpm.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "RPM",
@@ -132,7 +133,7 @@ fun RpmGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun SpeedGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun SpeedGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val speed by viewModel.speed.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Speed",
@@ -143,7 +144,7 @@ fun SpeedGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun EctGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun EctGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val ect by viewModel.ect.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Coolant Temp",
@@ -154,7 +155,7 @@ fun EctGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun ThrottleGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun ThrottleGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val thr by viewModel.throttle.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Throttle",
@@ -165,7 +166,7 @@ fun ThrottleGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun LoadGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun LoadGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val load by viewModel.load.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Engine Load",
@@ -176,7 +177,7 @@ fun LoadGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun IATGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun IATGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val iat by viewModel.iat.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Intake Temp",
@@ -187,7 +188,7 @@ fun IATGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun MAFGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun MAFGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val maf by viewModel.maf.collectAsStateWithLifecycle(initialValue = 0f)
     GaugeCard(
         title = "Mass Air Flow",
@@ -198,7 +199,7 @@ fun MAFGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun BatteryGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun BatteryGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val batt by viewModel.batt.collectAsStateWithLifecycle(initialValue = 0f)
     GaugeCard(
         title = "Battery V",
@@ -209,7 +210,7 @@ fun BatteryGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun FuelRateGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun FuelRateGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val fr by viewModel.fuelRate.collectAsStateWithLifecycle(initialValue = 0f)
     GaugeCard(
         title = "Fuel Rate",
@@ -220,7 +221,7 @@ fun FuelRateGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun CurrentGearGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun CurrentGearGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val gear by viewModel.currentGear.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Gear",
@@ -231,7 +232,7 @@ fun CurrentGearGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun OilPressureGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun OilPressureGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val psi by viewModel.oilPressure.collectAsStateWithLifecycle(initialValue = 0f)
     GaugeCard(
         title = "Oil Pressure",
@@ -242,7 +243,7 @@ fun OilPressureGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun OilTempGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun OilTempGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val temp by viewModel.oilTemp.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Oil Temp",
@@ -253,7 +254,7 @@ fun OilTempGauge(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun TransFluidTempGauge(viewModel: MainViewModel = hiltViewModel()) {
+fun TransFluidTempGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val tft by viewModel.transFluidTemp.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Trans Fluid Temp",
@@ -289,7 +290,7 @@ val gaugeItems: List<GaugeItem> = listOf(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
-    viewModel: MainViewModel = hiltViewModel()
+    viewModel: DashBoardViewModel = hiltViewModel()
 ) {
     // 해당 화면에 진입하면 폴링 시작, 떠나면 폴링 종료
     DisposableEffect(Unit) {

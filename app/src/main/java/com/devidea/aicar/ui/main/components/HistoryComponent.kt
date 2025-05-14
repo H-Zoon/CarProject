@@ -27,7 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
-import com.devidea.aicar.ui.main.MainViewModel
+import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 import kotlinx.coroutines.delay
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import com.devidea.aicar.storage.room.drive.DrivingSession
+import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -87,7 +88,7 @@ fun HistoryNavGraph(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionListScreen(
-    viewModel: MainViewModel = hiltViewModel(),
+    viewModel: HistoryViewModel = hiltViewModel(),
     onSessionClick: (Long) -> Unit
 ) {
     // State flows
@@ -325,7 +326,7 @@ fun CalendarGrid(
 fun SessionDetailScreen(
     sessionId: Long,
     onBack: () -> Unit,
-    viewModel: MainViewModel = hiltViewModel(),
+    viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val dataPoints by viewModel.getSessionData(sessionId).collectAsState(initial = emptyList())
 

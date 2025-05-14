@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.aicar.ui.main.MainViewModel
+import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 
 const val TAG = "MainViewComponent"
 // 탭 종류 정의

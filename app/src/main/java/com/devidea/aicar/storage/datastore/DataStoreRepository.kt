@@ -46,6 +46,7 @@ class DataStoreRepository @Inject constructor(
     private val TAG = "GaugeRepository"
     private val SAVE_DEVICE_NAME = stringPreferencesKey("device_name")
     private val SAVE_DEVICE_ADDR = stringPreferencesKey("device_addr")
+    private val AUTO_CONNECT_KEY = booleanPreferencesKey("auto_connect_on_charge")
 
     private val CONNECT_DATE_KEY = stringPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
@@ -144,6 +145,17 @@ class DataStoreRepository @Inject constructor(
             prefs[SAVE_DEVICE_ADDR] = device.address
         }
     }
+
+    // 저장
+    suspend fun setAutoConnectOnCharge(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[AUTO_CONNECT_KEY] = enabled
+        }
+    }
+
+    // Flow
+    val isAutoConnectOnCharge: Flow<Boolean> = dataStore.data
+        .map { prefs -> prefs[AUTO_CONNECT_KEY] ?: false }
 
     /* ---------- Connect Date ---------- */
     suspend fun saveConnectData(date: String) {

@@ -52,7 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.R
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
-import com.devidea.aicar.ui.main.MainViewModel
+import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
