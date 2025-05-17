@@ -44,7 +44,6 @@ import javax.inject.Inject
 class MapViewModel @Inject constructor(
     private val addressRepository: AddressRepository,
     private val dataStoreRepository: DataStoreRepository,
-    private val locationProvider: LocationProvider,
     private val repository: DocumentRepository,
     context: Context
 ) :  AndroidViewModel(context as Application), DefaultLifecycleObserver {

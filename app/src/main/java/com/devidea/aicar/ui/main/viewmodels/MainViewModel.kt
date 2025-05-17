@@ -8,12 +8,16 @@ import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
+import com.devidea.aicar.storage.room.notification.NotificationEntity
+import com.devidea.aicar.storage.room.notification.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -29,6 +33,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
+    private val notificationRepository: NotificationRepository,
     private val sppClient: SppClient,
 ) : ViewModel() {
 
@@ -94,6 +99,37 @@ class MainViewModel @Inject constructor(
         repository.setDrivingRecode(enabled)
     }
 
+    //endregion
+
+    //region 알림 관련 데이터
+
+    // 알림 목록 Flow
+    val notifications: StateFlow<List<NotificationEntity>> =
+        notificationRepository.observeAllNotifications()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // 새 알림 삽입
+    fun insertNotification(notification: NotificationEntity) = viewModelScope.launch {
+        notificationRepository.insertNotification(notification)
+    }
+
+    // 개별 알림 읽음 처리
+    fun markAsRead(id: Long) = viewModelScope.launch {
+        notificationRepository.markAsRead(id)
+    }
+
+    // 전체 알림 읽음 처리
+    fun markAllAsRead() = viewModelScope.launch {
+        notificationRepository.markAllAsRead()
+    }
+
+    // 개별 삭제 / 전체 삭제
+    fun deleteNotification(id: Long) = viewModelScope.launch {
+        notificationRepository.deleteById(id)
+    }
+    fun clearAllNotifications() = viewModelScope.launch {
+        notificationRepository.clearAllNotifications()
+    }
     //endregion
 
     init {

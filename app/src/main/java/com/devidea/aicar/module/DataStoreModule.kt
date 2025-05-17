@@ -1,10 +1,10 @@
-package com.devidea.aicar.storage.datastore
+package com.devidea.aicar.module
 
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
-import com.devidea.aicar.module.AppModule
+import com.devidea.aicar.storage.datastore.DataStoreRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DataStoreModule {
+class DataStoreModule {
 
     private val Context.dataStore by preferencesDataStore(name = "settings")
 

@@ -9,7 +9,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,32 +27,31 @@ import com.devidea.aicar.ui.main.NavItem
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 
 const val TAG = "MainViewComponent"
-// 탭 종류 정의
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppTopBar() {
-    TopAppBar(
-        title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
-        actions = {
-            IconButton(onClick = { /* 알림 클릭 */ }) {
-                Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
-            }
-        },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    )
-}
-
-
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = hiltViewModel()) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
     val lastConnectionTime by viewModel.lastConnectDate.collectAsState()
+    var notification by remember { mutableStateOf(false) }
+
+    if (notification) NotificationScreen(onBack = {})
+
     Scaffold(
         modifier = modifier,
-        topBar = { AppTopBar() },
+        topBar = {
+            TopAppBar(
+                title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
+                actions = {
+                    IconButton(onClick = { notification = true }) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
     ) { paddingValues ->
         Column(
             modifier = modifier

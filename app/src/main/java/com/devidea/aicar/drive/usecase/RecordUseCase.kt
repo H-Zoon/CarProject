@@ -11,6 +11,8 @@ import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingRepository
+import com.devidea.aicar.storage.room.notification.NotificationEntity
+import com.devidea.aicar.storage.room.notification.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,6 +35,7 @@ class RecordUseCase @Inject constructor(
     private val drivingRepository: DrivingRepository,
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
+    private val notificationRepository: NotificationRepository,
 ) {
     companion object{
         const val TAG = "RecordUseCase"
@@ -62,11 +65,30 @@ class RecordUseCase @Inject constructor(
         shouldRecord
             .onEach { enabled ->
                 if (enabled) {
-                    // 세션 시작한 뒤에 실제 기록 로직
                     sessionId = drivingRepository.startSession()
                     if(sessionId != null) start(sessionId!!)
+
+                    val now = Instant.now()
+                    notificationRepository.insertNotification(
+                        NotificationEntity(
+                            title = "주행 기록 시작",
+                            body = "세션 $sessionId 이(가) ${now}에 시작되었습니다.",
+                            timestamp = now
+                        )
+                    )
+
                 } else {
                     if(sessionId != null) drivingRepository.stopSession(sessionId!!)
+
+                    val now = Instant.now()
+                    notificationRepository.insertNotification(
+                        NotificationEntity(
+                            title = "주행 기록 종료",
+                            body = "세션 $sessionId 이(가) ${now}에 종료되었습니다.",
+                            timestamp = now
+                        )
+                    )
+
                     sessionId = null
                     stop()
                 }

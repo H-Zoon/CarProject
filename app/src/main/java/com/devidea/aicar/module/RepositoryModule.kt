@@ -8,6 +8,9 @@ import com.devidea.aicar.storage.room.document.DocumentRepository
 import com.devidea.aicar.storage.room.drive.DrivingDao
 import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.drive.DrivingRepositoryImpl
+import com.devidea.aicar.storage.room.notification.NotificationDao
+import com.devidea.aicar.storage.room.notification.NotificationRepository
+import com.devidea.aicar.storage.room.notification.NotificationRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -47,6 +50,12 @@ class RepositoryModule {
         return database.driveDAO()
     }
 
+    @Provides
+    @Singleton
+    fun provideNotificationDao(database: AppDatabase): NotificationDao {
+        return database.notificationDao()
+    }
+
     @Module
     @InstallIn(SingletonComponent::class)
     abstract class RepositoryModule {
@@ -56,5 +65,11 @@ class RepositoryModule {
         abstract fun bindDrivingRepository(
             impl: DrivingRepositoryImpl
         ): DrivingRepository
+
+        @Binds
+        @Singleton
+        abstract fun bindNotificationRepository(
+            impl: NotificationRepositoryImpl
+        ): NotificationRepository
     }
 }

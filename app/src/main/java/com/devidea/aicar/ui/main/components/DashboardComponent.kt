@@ -344,7 +344,6 @@ fun DashboardScreen(
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
-                            // 윈도우 좌표계로 포인터 위치 가져오기
                             lastPointer = event.changes.first().position
                         }
                     }
