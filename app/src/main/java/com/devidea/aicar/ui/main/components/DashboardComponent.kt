@@ -50,7 +50,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -276,8 +275,8 @@ val gaugeItems: List<GaugeItem> = listOf(
     GaugeItem(PIDs.SPEED.name)           { SpeedGauge() },
     GaugeItem(PIDs.ECT.name)             { EctGauge() },
     GaugeItem(PIDs.THROTTLE.name)        { ThrottleGauge() },
-    GaugeItem(PIDs.LOAD.name)            { LoadGauge() },
-    GaugeItem(PIDs.IAT.name)             { IATGauge() },
+    GaugeItem(PIDs.ENGIN_LOAD.name)      { LoadGauge() },
+    GaugeItem(PIDs.INTAKE_TEMP.name)     { IATGauge() },
     GaugeItem(PIDs.MAF.name)             { MAFGauge() },
     GaugeItem(PIDs.BATT.name)            { BatteryGauge() },
     GaugeItem(PIDs.FUEL_RATE.name)       { FuelRateGauge() },

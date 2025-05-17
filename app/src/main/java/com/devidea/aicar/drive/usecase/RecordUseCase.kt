@@ -4,7 +4,7 @@ import android.location.Location
 import android.util.Log
 import com.devidea.aicar.LocationProvider
 import com.devidea.aicar.drive.Decoders
-import com.devidea.aicar.drive.FuelEconomyImproved
+import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
 import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.SppClient
@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import javax.inject.Inject
 
@@ -110,20 +113,19 @@ class RecordUseCase @Inject constructor(
         sessionId: Long,
         location: Location
     ) {
-        val maf   = startQuery(PIDs.MAF)         ?: 0f
-        val rpm   = startQuery(PIDs.RPM)         ?: 0
-        val ect   = startQuery(PIDs.ECT)         ?: 0
-        val speed = startQuery(PIDs.SPEED)       ?: 0
-        val stft  = startQuery(PIDs.S_FUEL_TRIM) ?: 0f
-        val ltft  = startQuery(PIDs.L_FUEL_TRIM) ?: 0f
+        val maf   = safeQuery(PIDs.MAF)         ?: 0f
+        val rpm   = safeQuery(PIDs.RPM)         ?: 0
+        val ect   = safeQuery(PIDs.ECT)         ?: 0
+        val speed = safeQuery(PIDs.SPEED)       ?: 0
+        val stft  = safeQuery(PIDs.S_FUEL_TRIM) ?: 0f
+        val ltft  = safeQuery(PIDs.L_FUEL_TRIM) ?: 0f
         val baro  = startQuery(PIDs.BAROMETRIC)  ?: 0f
 
-        val instantKPL = FuelEconomyImproved.calculateInstantKPL(
-            mafGperS    = maf,
-            speedKmh    = speed,
-            stftPercent = stft,
-            ltftPercent = ltft,
-            baroKpa     = baro
+        val instantKPL = calculateInstantFuelEconomy(
+            maf = maf,
+            speedKmh = speed,
+            stft = stft,
+            ltft = ltft
         )
 
         val dataPoint = DrivingDataPoint(
@@ -143,6 +145,17 @@ class RecordUseCase @Inject constructor(
             Log.e("RecordUseCase", "saveDataPoint error", e)
         }
     }
+
+    private val queryMutex = Mutex()
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Number> safeQuery(pid: PIDs): T? =
+        withTimeoutOrNull(1500) {
+            queryMutex.withLock {
+                val resp = sppClient.query(pid.code, header = pid.header)
+                Decoders.parsers[pid]?.invoke(resp) as? T
+            }
+        }
+
 
     @Suppress("UNCHECKED_CAST")
     suspend fun <T : Number> startQuery(pid: PIDs): T? {

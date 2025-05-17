@@ -247,7 +247,7 @@ fun BleDeviceListModal(
     onBack: () -> Unit
 ) {
     val saved = viewModel.savedDevice.collectAsState().value
-
+    val devices by viewModel.devices.observeAsState(emptyList())
     // Dialog를 사용해 화면 중앙에 모달처럼 띄움
     Dialog(onDismissRequest = onBack) {
         Surface(
@@ -257,14 +257,23 @@ fun BleDeviceListModal(
                 .fillMaxWidth(0.9f)
                 .wrapContentHeight()
         ) {
-            val devices by viewModel.devices.observeAsState(emptyList())
 
             val sortedDevices = remember(devices, saved) {
                 if (saved != null) {
-                    // saved가 발견된 경우, saved를 맨 앞에, 나머지 디바이스 뒤에
-                    val others = devices.filter { it.address != saved.address }
-                    listOf(saved) + others
-                } else devices
+                    // 1) 스캔된 리스트에서 saved.address와 일치하는 객체를 찾아보고
+                    val matched = devices.find { it.address == saved.address }
+                    if (matched != null) {
+                        // 2) 그 객체를 맨 앞에, 나머지는 뒤에
+                        val others = devices.filter { it.address != matched.address }
+                        listOf(matched) + others
+                    } else {
+                        // 매칭된 객체가 없으면 원본 순서 유지
+                        devices
+                    }
+                } else {
+                    // saved가 없으면 원본 순서 유지
+                    devices
+                }
             }
 
             Column(
@@ -314,7 +323,7 @@ fun BleDeviceListModal(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                             }
-                            if (viewModel.savedDevice.value?.address == device.address) {
+                            if (saved?.address == device.address) {
                                 // 저장된 기기가 스캔 결과에 포함된 순간
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,

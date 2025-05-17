@@ -49,8 +49,8 @@ class DashBoardUseCase @Inject constructor(
         PIDs.SPEED to 0,
         PIDs.ECT to 0,
         PIDs.THROTTLE to 0,
-        PIDs.LOAD to 0,
-        PIDs.IAT to 0,
+        PIDs.ENGIN_LOAD to 0,
+        PIDs.INTAKE_TEMP to 0,
         PIDs.CURRENT_GEAR to 0,
         PIDs.OIL_TEMP to 0,
         PIDs.TRANS_FLUID_TEMP to 0
@@ -88,8 +88,8 @@ class DashBoardUseCase @Inject constructor(
     val speed: StateFlow<Int> get() = intFlows.getValue(PIDs.SPEED)
     val ect: StateFlow<Int> get() = intFlows.getValue(PIDs.ECT)
     val throttle: StateFlow<Int> get() = intFlows.getValue(PIDs.THROTTLE)
-    val load: StateFlow<Int> get() = intFlows.getValue(PIDs.LOAD)
-    val iat: StateFlow<Int> get() = intFlows.getValue(PIDs.IAT)
+    val enginLoad: StateFlow<Int> get() = intFlows.getValue(PIDs.ENGIN_LOAD)
+    val iat: StateFlow<Int> get() = intFlows.getValue(PIDs.INTAKE_TEMP)
 
     val maf: StateFlow<Float> get() = floatFlows.getValue(PIDs.MAF)
     val batt: StateFlow<Float> get() = floatFlows.getValue(PIDs.BATT)

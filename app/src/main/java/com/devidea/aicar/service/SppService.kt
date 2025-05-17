@@ -234,15 +234,11 @@ class SppService : Service() {
                     // 실제 연결
                     socket = createSocket(btDevice).apply { connect() }
                     Log.d(TAG, "[Connect] Socket connected")
-
+                    _connectionEvents.emit(ConnectionEvent.Connected)
+                    Log.d(TAG, "[Connect] Connected event emitted")
                     setupStreams()
                     initializeElm327()
                 }
-
-                // IO 작업이 끝난 후, 메인 쓰레드에서 Connected 이벤트 발행
-                _connectionEvents.emit(ConnectionEvent.Connected)
-                Log.d(TAG, "[Connect] Connected event emitted")
-
             } catch (e: Exception) {
                 Log.e(TAG, "[Connect] Error: ${e.localizedMessage}", e)
                 _connectionEvents.emit(ConnectionEvent.Error)

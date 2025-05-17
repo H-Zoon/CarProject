@@ -32,7 +32,7 @@ class LocationProvider @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     @SuppressLint("MissingPermission")
     fun locationUpdates(
-        intervalMs: Long = 3_000L,
+        intervalMs: Long = 1_000L,
         fastestMs: Long = 500L,
         priority: Int = Priority.PRIORITY_HIGH_ACCURACY
     ): Flow<Location> = callbackFlow {
