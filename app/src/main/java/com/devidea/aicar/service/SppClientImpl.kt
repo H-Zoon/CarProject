@@ -27,6 +27,7 @@ interface SppClient {
     suspend fun requestStopScan()
     suspend fun requestConnect(device: ScannedDevice)
     suspend fun requestDisconnect()
+    suspend fun requestNotification(notifId: Int, title: String, body: String)
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
     val deviceList: StateFlow<List<ScannedDevice>>
     val connectionEvents: SharedFlow<ConnectionEvent>
@@ -89,6 +90,13 @@ class SppClientImpl @Inject constructor(
 
     override suspend fun requestConnect(device: ScannedDevice) { ensureBoundService().requestConnect(device) }
     override suspend fun requestDisconnect() { ensureBoundService().requestDisconnect() }
+    override suspend fun requestNotification(
+        notifId: Int,
+        title: String,
+        body: String
+    ) {
+        ensureBoundService().sendNotification(notifId, title, body)
+    }
 
     override suspend fun query(cmd: String, header: String?, timeoutMs: Long): String {
         return ensureBoundService().query(header, cmd, timeoutMs)

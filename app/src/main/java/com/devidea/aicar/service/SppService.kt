@@ -17,7 +17,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.devidea.aicar.App.Companion.CHANNEL_ID
 import com.devidea.aicar.ui.main.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -59,12 +58,28 @@ class SppService : Service() {
         private const val TAG = "SppService"
         private const val DISCOVERY_TIMEOUT_MS = 10_000L
         private val BT_SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+        // OBD 포그라운드 채널
+        private const val NOTIFICATION_TITLE = "AICAR"
+        private const val NOTIFICATION_BODY = "블루투스 연결이 시작되었습니다."
+        private const val FOREGROUND_CHANNEL_ID = "AICAR"
+        private const val FOREGROUND_CHANNEL_NAME = "AICAR_bluetooth"
+
+        // 주행 기록 알림 채널
+        private const val RECORD_CHANNEL_ID = "record_channel"
+        private const val RECORD_CHANNEL_NAME = "주행 기록 알림"
+        private const val RECORD_CHANNEL_DESC = "주행 기록 시작/종료 알림"
     }
 
     // --- Bluetooth adapter & streams ---
     private val bluetoothAdapter by lazy {
         (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
     }
+
+    private val notificationManager: NotificationManager by lazy {
+        getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    }
+
     private var socket: BluetoothSocket? = null
     private var reader: BufferedReader? = null
     private var writer: BufferedWriter? = null
@@ -142,8 +157,8 @@ class SppService : Service() {
 
         // 1) Oreo(API 26) 이상에서 채널 생성
         val channel = NotificationChannel(
-            CHANNEL_ID,
-            "OBD Service Channel",
+            FOREGROUND_CHANNEL_ID,
+            FOREGROUND_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
@@ -161,10 +176,10 @@ class SppService : Service() {
         )
 
         // 3) Notification 빌드 (smallIcon, title, text, ongoing 필수)
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setContentTitle("OBD Service")
-            .setContentText("Bluetooth SPP running")
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setContentText(NOTIFICATION_BODY)
             .setContentIntent(pi)
             .setOngoing(true)
             .build()
@@ -182,6 +197,16 @@ class SppService : Service() {
             // 이전 버전은 기존 방식
             startForeground(1, notification)
         }
+    }
+
+    fun sendNotification(notifId: Int, title: String, body: String) {
+        val notif = NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .build()
+        notificationManager.notify(notifId, notif)
     }
 
     // --- Scan / Stop ---

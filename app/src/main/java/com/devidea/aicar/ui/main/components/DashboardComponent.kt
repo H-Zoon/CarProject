@@ -330,7 +330,7 @@ fun DashboardScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.title_setting), style = MaterialTheme.typography.titleLarge) },
+                title = { Text(stringResource(R.string.title_manage), style = MaterialTheme.typography.titleLarge) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
