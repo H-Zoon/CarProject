@@ -39,12 +39,16 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -63,8 +67,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.devidea.aicar.R
 import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.ui.main.viewmodels.DashBoardViewModel
 import sh.calvin.reorderable.ReorderableItem
@@ -271,24 +277,25 @@ data class GaugeItem(
 )
 
 val gaugeItems: List<GaugeItem> = listOf(
-    GaugeItem(PIDs.RPM.name)             { RpmGauge() },
-    GaugeItem(PIDs.SPEED.name)           { SpeedGauge() },
-    GaugeItem(PIDs.ECT.name)             { EctGauge() },
-    GaugeItem(PIDs.THROTTLE.name)        { ThrottleGauge() },
-    GaugeItem(PIDs.ENGIN_LOAD.name)      { LoadGauge() },
-    GaugeItem(PIDs.INTAKE_TEMP.name)     { IATGauge() },
-    GaugeItem(PIDs.MAF.name)             { MAFGauge() },
-    GaugeItem(PIDs.BATT.name)            { BatteryGauge() },
-    GaugeItem(PIDs.FUEL_RATE.name)       { FuelRateGauge() },
-    GaugeItem(PIDs.CURRENT_GEAR.name)    { CurrentGearGauge() },
-    GaugeItem(PIDs.OIL_PRESSURE.name)    { OilPressureGauge() },
-    GaugeItem(PIDs.OIL_TEMP.name)        { OilTempGauge() },
-    GaugeItem(PIDs.TRANS_FLUID_TEMP.name){ TransFluidTempGauge() }
+    GaugeItem(PIDs.RPM.name) { RpmGauge() },
+    GaugeItem(PIDs.SPEED.name) { SpeedGauge() },
+    GaugeItem(PIDs.ECT.name) { EctGauge() },
+    GaugeItem(PIDs.THROTTLE.name) { ThrottleGauge() },
+    GaugeItem(PIDs.ENGIN_LOAD.name) { LoadGauge() },
+    GaugeItem(PIDs.INTAKE_TEMP.name) { IATGauge() },
+    GaugeItem(PIDs.MAF.name) { MAFGauge() },
+    GaugeItem(PIDs.BATT.name) { BatteryGauge() },
+    GaugeItem(PIDs.FUEL_RATE.name) { FuelRateGauge() },
+    GaugeItem(PIDs.CURRENT_GEAR.name) { CurrentGearGauge() },
+    GaugeItem(PIDs.OIL_PRESSURE.name) { OilPressureGauge() },
+    GaugeItem(PIDs.OIL_TEMP.name) { OilTempGauge() },
+    GaugeItem(PIDs.TRANS_FLUID_TEMP.name) { TransFluidTempGauge() }
 )
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    modifier: Modifier = Modifier,
     viewModel: DashBoardViewModel = hiltViewModel()
 ) {
     // 해당 화면에 진입하면 폴링 시작, 떠나면 폴링 종료
@@ -319,102 +326,114 @@ fun DashboardScreen(
         }
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        // 윈도우 좌표계로 포인터 위치 가져오기
-                        lastPointer = event.changes.first().position
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.title_setting), style = MaterialTheme.typography.titleLarge) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = modifier
+                .padding(top = paddingValues.calculateTopPadding())
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            // 윈도우 좌표계로 포인터 위치 가져오기
+                            lastPointer = event.changes.first().position
+                        }
                     }
                 }
-            }
-    ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            state = gridState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = 16.dp,
-                end = 16.dp,
-                // 하단에 삭제 영역 높이(100.dp)를 포함한 고정 패딩
-                bottom = 16.dp + 100.dp
-            ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            itemsIndexed(list, key = { _, it -> it.id }) { _, gauge ->
-                ReorderableItem(state = reorderState, key = gauge.id) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
-                    Surface(shadowElevation = elevation) {
-                        Box(
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = { /*...*/ },
-                                    onDragStopped = {
-                                        deleteZoneRect.value
-                                            ?.takeIf { it.contains(lastPointer) }
-                                            ?.let { viewModel.onGaugeToggle(gauge.id) }
-                                    }
-                                )
-                                .background(Color.White)
-                                .fillMaxSize()
-                        ) {
-                            gauge.content()
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                modifier = modifier,
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    // 하단에 삭제 영역 높이(100.dp)를 포함한 고정 패딩
+                    bottom = 16.dp + 100.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                itemsIndexed(list, key = { _, it -> it.id }) { _, gauge ->
+                    ReorderableItem(state = reorderState, key = gauge.id) { isDragging ->
+                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
+                        Surface(shadowElevation = elevation) {
+                            Box(
+                                modifier = Modifier
+                                    .longPressDraggableHandle(
+                                        onDragStarted = { /*...*/ },
+                                        onDragStopped = {
+                                            deleteZoneRect.value
+                                                ?.takeIf { it.contains(lastPointer) }
+                                                ?.let { viewModel.onGaugeToggle(gauge.id) }
+                                        }
+                                    )
+                                    .background(Color.White)
+                                    .fillMaxSize()
+                            ) {
+                                gauge.content()
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // FAB을 우측 하단에 배치
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Gauge")
-        }
-
-        // 드래그 중일 때만 보이는 삭제 영역
-        if (reorderState.isAnyItemDragging) {
-            Box(
+            // FAB을 우측 하단에 배치
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .background(
-                        Color.Red.copy(alpha = if (deleteZoneRect.value?.contains(lastPointer) == true) 0.8f else 0.4f)
-                    )
-                    .onGloballyPositioned { coords ->
-                        deleteZoneRect.value = coords.boundsInWindow()
-                    },
-                contentAlignment = Alignment.Center
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Drag here to delete",
-                    modifier = Modifier.size(36.dp),
-                    tint = Color.White
+                Icon(Icons.Default.Add, contentDescription = "Add Gauge")
+            }
+
+            // 드래그 중일 때만 보이는 삭제 영역
+            if (reorderState.isAnyItemDragging) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Color.Red.copy(alpha = if (deleteZoneRect.value?.contains(lastPointer) == true) 0.8f else 0.4f)
+                        )
+                        .onGloballyPositioned { coords ->
+                            deleteZoneRect.value = coords.boundsInWindow()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Drag here to delete",
+                        modifier = Modifier.size(36.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // 추가 다이얼로그
+            if (showAddDialog) {
+                AddGaugeDialog(
+                    allItems = gaugeItems,
+                    selectedIds = list.map { it.id }.toSet(),
+                    onAdd = { gauge ->
+                        viewModel.onGaugeToggle(gauge.id)
+                        showAddDialog = false
+                    },
+                    onDismiss = { showAddDialog = false }
                 )
             }
-        }
-
-        // 추가 다이얼로그
-        if (showAddDialog) {
-            AddGaugeDialog(
-                allItems = gaugeItems,
-                selectedIds = list.map { it.id }.toSet(),
-                onAdd = { gauge ->
-                    viewModel.onGaugeToggle(gauge.id)
-                    showAddDialog = false
-                },
-                onDismiss = { showAddDialog = false }
-            )
         }
     }
 }
@@ -422,6 +441,7 @@ fun DashboardScreen(
 
 @Composable
 fun AddGaugeDialog(
+    modifier: Modifier = Modifier,
     allItems: List<GaugeItem>,
     selectedIds: Set<String>,
     onAdd: (GaugeItem) -> Unit,
@@ -443,14 +463,14 @@ fun AddGaugeDialog(
         text = {
             // 2) 상단에 가로 스크롤 LazyRow
             LazyRow(
-                modifier = Modifier
+                modifier = modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 content = {
                     items(available.size, key = { available[it].id }) { gauge ->
                         Card(
-                            modifier = Modifier
+                            modifier = modifier
                                 .size(100.dp)
                                 .clickable {
                                     onAdd(available[gauge])
@@ -459,16 +479,16 @@ fun AddGaugeDialog(
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
                             Column(
-                                modifier = Modifier
+                                modifier = modifier
                                     .fillMaxSize()
                                     .padding(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Box(modifier = Modifier.size(48.dp)) {
+                                Box(modifier = modifier.size(48.dp)) {
                                     available[gauge].content()
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = modifier.height(4.dp))
                                 Text(
                                     text = available[gauge].id.uppercase(),
                                     style = MaterialTheme.typography.labelSmall
@@ -486,7 +506,7 @@ fun AddGaugeDialog(
         },
         // 필요시 배경 모서리나 크기 조정
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
     )

@@ -43,6 +43,10 @@
     <string name="permission_post_notifications_description">차량 상태, 연결 상태 등 주요 정보를 실시간으로 알려드립니다.</string>
     <string name="permission_location_title">위치 권한</string>
     <string name="permission_location_description">주변 블루투스 기기를 정확히 탐색하기 위해 필요합니다.</string>
-    <string name="title_activity_map">MapActivity</string>
-    <string name="title_activity_main3">MainActivity3</string>
+
+    <string name="title_main">AICar</string>
+    <string name="title_history">주행기록</string>
+    <string name="title_manage">차량관리</string>
+    <string name="title_setting">설정</string>
+
 </resources>

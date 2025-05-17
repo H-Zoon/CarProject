@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.devidea.aicar.ui.main.CarBottomNavBar
+import com.devidea.aicar.ui.main.NavItem
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 
 const val TAG = "MainViewComponent"
@@ -25,7 +27,7 @@ const val TAG = "MainViewComponent"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar() {
-    CenterAlignedTopAppBar(
+    TopAppBar(
         title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
         actions = {
             IconButton(onClick = { /* 알림 클릭 */ }) {
@@ -39,34 +41,40 @@ fun AppTopBar() {
 }
 
 
-
 @Composable
-fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun HomeScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = hiltViewModel()) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
     val lastConnectionTime by viewModel.lastConnectDate.collectAsState()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        FuelGauge(currentPercent = 0.76f)
-        Spacer(modifier = Modifier.height(24.dp))
-        DrivingRecordToggle(isEnabled = driveHistoryEnable, onToggle = { viewModel.setDrivingHistory(enabled = it) })
-        Spacer(modifier = Modifier.height(24.dp))
-        MaintenanceSection(
-            items = listOf(
-                MaintenanceItem("마지막 연결시간", lastConnectionTime),
-                //MaintenanceItem("마지막 평군 연비", lastAverageEfficiency)
+    Scaffold(
+        modifier = modifier,
+        topBar = { AppTopBar() },
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .padding(top = paddingValues.calculateTopPadding())
+        ) {
+            FuelGauge(currentPercent = 0.76f)
+            Spacer(modifier = Modifier.height(24.dp))
+            BluetoothActionComponent()
+            Spacer(modifier = Modifier.height(24.dp))
+            DrivingRecordToggle(
+                isEnabled = driveHistoryEnable,
+                onToggle = { viewModel.setDrivingHistory(enabled = it) })
+            Spacer(modifier = Modifier.height(24.dp))
+            MaintenanceSection(
+                items = listOf(
+                    MaintenanceItem("마지막 연결시간", lastConnectionTime),
+                    //MaintenanceItem("마지막 평군 연비", lastAverageEfficiency)
+                )
             )
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        TripHistorySection(
-            trips = listOf(
-                TripItem("Apr 20", "58.3 km", "Seoul"),
-                TripItem("Apr 15", "231.6 km", "Incheon")
+            Spacer(modifier = Modifier.height(24.dp))
+            TripHistorySection(
+                trips = listOf(
+                    TripItem("Apr 20", "58.3 km", "Seoul"),
+                    TripItem("Apr 15", "231.6 km", "Incheon")
+                )
             )
-        )
+        }
     }
 }
 
@@ -77,12 +85,12 @@ fun FuelGauge(currentPercent: Float) {
         modifier = Modifier.fillMaxWidth()
     ) {
         CircularProgressIndicator(
-        progress = { currentPercent },
-        modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape),
-        color = MaterialTheme.colorScheme.primary,
-        strokeWidth = 12.dp
+            progress = { currentPercent },
+            modifier = Modifier
+                .size(180.dp)
+                .clip(CircleShape),
+            color = MaterialTheme.colorScheme.primary,
+            strokeWidth = 12.dp
         )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally

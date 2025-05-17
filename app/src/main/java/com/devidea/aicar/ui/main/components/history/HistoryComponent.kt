@@ -25,8 +25,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
+import com.devidea.aicar.R
 import com.devidea.aicar.storage.room.drive.DrivingSession
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import kotlinx.coroutines.launch
@@ -142,12 +144,7 @@ fun SessionListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = selectedDate?.format(titleFormatter)
-                            ?: LocalDate.now().format(titleFormatter),
-                        modifier = Modifier.clickable { showCalendar = true }
-                    )
-                },
+                    Text(stringResource(R.string.title_history)) },
                 actions = {
                     IconButton(onClick = { showDeleteAllDialog = true }) {
                         Icon(
@@ -159,34 +156,49 @@ fun SessionListScreen(
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { _ ->
-        LazyColumn{
-            items(sessions, key = { it.sessionId }) { session ->
-                val start = dateTimeFormatter.format(session.startTime)
-                val end = session.endTime?.let { dateTimeFormatter.format(it) } ?: "--"
-                ListItem(
-                    headlineContent = { Text("Session #${session.sessionId}") },
-                    supportingContent = { Text("$start ~ $end") },
-                    trailingContent = {
-                        IconButton(onClick = {
-                            targetSession = session
-                            showDeleteDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete session"
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .clickable { onSessionClick(session.sessionId) }
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-                Divider()
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = selectedDate?.format(titleFormatter)
+                    ?: LocalDate.now().format(titleFormatter),
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier
+                    .height(50.dp)
+                    .clickable { showCalendar = true }
+            )
+
+            LazyColumn(modifier = Modifier) {
+                items(sessions, key = { it.sessionId }) { session ->
+                    val start = dateTimeFormatter.format(session.startTime)
+                    val end = session.endTime?.let { dateTimeFormatter.format(it) } ?: "--"
+                    ListItem(
+                        headlineContent = { Text("Session #${session.sessionId}") },
+                        supportingContent = { Text("$start ~ $end") },
+                        trailingContent = {
+                            IconButton(onClick = {
+                                targetSession = session
+                                showDeleteDialog = true
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete session"
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .clickable { onSessionClick(session.sessionId) }
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                    Divider()
+                }
             }
         }
     }
-
     // Single delete dialog
     if (showDeleteDialog && targetSession != null) {
         AlertDialog(
@@ -288,7 +300,7 @@ fun CalendarGrid(
 
     // Weekday headers
     Row(modifier = Modifier.fillMaxWidth()) {
-        listOf("Sun","Mon","Tue","Wed","Thu","Fri","Sat").forEach { day ->
+        listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
             Text(
                 text = day,
                 modifier = Modifier.weight(1f),
