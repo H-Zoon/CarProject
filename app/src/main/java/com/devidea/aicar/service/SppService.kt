@@ -88,10 +88,10 @@ class SppService : Service() {
 
     private val rawLines = MutableSharedFlow<String>(extraBufferCapacity = 256)
     private val frames = MutableSharedFlow<String>(extraBufferCapacity = 256)
-    val liveFrames: SharedFlow<String> = frames.asSharedFlow()
 
     private val promptFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
+    // 동시 요청에 대한 구조 변경
+    private val pending = ConcurrentHashMap<String, MutableList<CompletableDeferred<String>>>()
 
     // --- Discovery receiver ---
     private val discoveryReceiver = object : BroadcastReceiver() {
@@ -193,12 +193,6 @@ class SppService : Service() {
             registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
             isReceiverRegistered = true
             bluetoothAdapter.startDiscovery()
-            /* try {
-                 withTimeout(DISCOVERY_TIMEOUT_MS) { awaitCancellation() }
-             } catch (_: TimeoutCancellationException) {
-             } finally {
-                 requestStop()
-             }*/
         }
     }
 
@@ -294,7 +288,7 @@ class SppService : Service() {
     internal suspend fun sendRawSync(cmd: String) = withContext(Dispatchers.IO) {
         writerMutex.withLock {
             Log.d(TAG, "[Writer] sendRawSync writing $cmd")
-            writer?.apply { write("$cmd\r"); flush() } ?: error("Writer unavailable")
+            writer?.apply { write("$cmd\r"); flush() } ?: Log.e(TAG, "Writer unavailable")
         }
     }
 
@@ -307,7 +301,7 @@ class SppService : Service() {
         while (isActive) {
             val n = input.read(buf)
             if (n <= 0) break
-            val ch = buf[0].toChar()
+            val ch = buf[0].toInt().toChar()
             when (ch) {
                 '>' -> {
                     Log.d(TAG, "[Reader] Detected '>' prompt")
@@ -366,8 +360,7 @@ class SppService : Service() {
         Log.d(TAG, "[Router] started")
         frames.collect { f ->
             val key = extractCmdKey(f)
-            Log.d(TAG, "[Router] frame=$f key=$key")
-            pending.remove(key)?.complete(f)
+            pending.remove(key)?.forEach { it.complete(f) }
         }
     }
 
@@ -377,7 +370,9 @@ class SppService : Service() {
             val key = cmd.lowercase()
             Log.d(TAG, "[Query] start ▶ key=$key, header=$header, cmd=$cmd, timeout=${timeoutMs}ms")
             val promise = CompletableDeferred<String>()
-            pending[key] = promise
+            pending.compute(key) { _, list ->
+                (list ?: mutableListOf()).apply { add(promise) }
+            }
             if (header != null && header != currentHeader) {
                 Log.d(TAG, "[Query] send new header ATSH$header")
                 sendRawSync("ATSH$header")

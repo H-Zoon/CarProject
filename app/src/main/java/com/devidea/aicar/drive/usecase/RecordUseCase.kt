@@ -113,13 +113,13 @@ class RecordUseCase @Inject constructor(
         sessionId: Long,
         location: Location
     ) {
-        val maf   = safeQuery(PIDs.MAF)         ?: 0f
-        val rpm   = safeQuery(PIDs.RPM)         ?: 0
-        val ect   = safeQuery(PIDs.ECT)         ?: 0
-        val speed = safeQuery(PIDs.SPEED)       ?: 0
-        val stft  = safeQuery(PIDs.S_FUEL_TRIM) ?: 0f
-        val ltft  = safeQuery(PIDs.L_FUEL_TRIM) ?: 0f
-        val baro  = startQuery(PIDs.BAROMETRIC)  ?: 0f
+        val maf = safeQuery(PIDs.MAF)?.toFloat() ?: 0f
+        val rpm = safeQuery(PIDs.RPM)?.toInt() ?: 0
+        val ect = safeQuery(PIDs.ECT)?.toInt() ?: 0
+        val speed = safeQuery(PIDs.SPEED)?.toInt() ?: 0
+        val stft  = safeQuery(PIDs.S_FUEL_TRIM)?.toFloat() ?: 0f
+        val ltft  = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f
+        //val baro  = startQuery(PIDs.BAROMETRIC)  ?: 0f
 
         val instantKPL = calculateInstantFuelEconomy(
             maf = maf,
@@ -147,25 +147,12 @@ class RecordUseCase @Inject constructor(
     }
 
     private val queryMutex = Mutex()
-    @Suppress("UNCHECKED_CAST")
-    suspend fun <T : Number> safeQuery(pid: PIDs): T? =
+
+    suspend fun safeQuery(pid: PIDs): Number? =
         withTimeoutOrNull(1500) {
             queryMutex.withLock {
                 val resp = sppClient.query(pid.code, header = pid.header)
-                Decoders.parsers[pid]?.invoke(resp) as? T
+                Decoders.parsers[pid]?.invoke(resp)
             }
         }
-
-
-    @Suppress("UNCHECKED_CAST")
-    suspend fun <T : Number> startQuery(pid: PIDs): T? {
-        return try {
-            val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = 1500)
-            Log.d(TAG, "[poll] resp=$resp")
-            Decoders.parsers[pid]?.invoke(resp) as? T
-        } catch (e: Exception) {
-            Log.w(TAG, "[poll] NO DATA pid=${pid.code}: ${e.localizedMessage}")
-            null
-        }
-    }
 }

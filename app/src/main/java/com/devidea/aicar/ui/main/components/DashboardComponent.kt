@@ -155,11 +155,11 @@ fun EctGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
 
 @Composable
 fun ThrottleGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
-    val thr by viewModel.throttle.collectAsStateWithLifecycle(initialValue = 0)
+    val thr by viewModel.throttle.collectAsStateWithLifecycle(initialValue = 0f)
     GaugeCard(
         title = "Throttle",
         icon = Icons.Default.Tune,
-        value = thr.toDashString(),
+        value = thr.toDashString(1),
         unit = "%"
     )
 }

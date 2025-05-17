@@ -26,9 +26,9 @@ class DashBoardViewModel @Inject constructor(
     val rpm: SharedFlow<Int> = pidManager.rpm
     val speed: SharedFlow<Int> = pidManager.speed
     val ect: SharedFlow<Int> = pidManager.ect
-    val throttle: SharedFlow<Int> = pidManager.throttle
+    val throttle: SharedFlow<Float> = pidManager.throttle
     val load: SharedFlow<Int> = pidManager.enginLoad
-    val iat: SharedFlow<Int> = pidManager.iat
+    val iat: SharedFlow<Int> = pidManager.intakeTemp
 
     val maf: SharedFlow<Float> = pidManager.maf
     val batt: SharedFlow<Float> = pidManager.batt

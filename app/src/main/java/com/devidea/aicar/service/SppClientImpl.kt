@@ -30,7 +30,6 @@ interface SppClient {
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
     val deviceList: StateFlow<List<ScannedDevice>>
     val connectionEvents: SharedFlow<ConnectionEvent>
-    val liveFrames: SharedFlow<String>
 }
 
 @Singleton
@@ -46,9 +45,6 @@ class SppClientImpl @Inject constructor(
 
     private val _connectionEvents = MutableSharedFlow<ConnectionEvent>(replay = 1)
     override val connectionEvents: SharedFlow<ConnectionEvent> = _connectionEvents.asSharedFlow()
-
-    private val _liveFrames = MutableSharedFlow<String>(extraBufferCapacity = 256)
-    override val liveFrames: SharedFlow<String> = _liveFrames.asSharedFlow()
 
     private val clientScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -69,10 +65,6 @@ class SppClientImpl @Inject constructor(
 
             svc.connectionEvents
                 .onEach { _connectionEvents.tryEmit(it) }
-                .launchIn(clientScope)
-
-            svc.liveFrames
-                .onEach { _liveFrames.emit(it) }
                 .launchIn(clientScope)
         }
         override fun onServiceDisconnected(name: ComponentName) {

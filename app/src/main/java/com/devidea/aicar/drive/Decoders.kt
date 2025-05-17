@@ -8,7 +8,7 @@ package com.devidea.aicar.drive
 object Decoders {
     private const val TAG = "GaugeManager"
 
-    internal val parsers: Map<PIDs, (String) -> Any> = mapOf(
+    internal val parsers: Map<PIDs, (String) -> Number> = mapOf(
         PIDs.RPM to { f ->
             val a = f.substring(4,6).toInt(16)
             val b = f.substring(6,8).toInt(16)
