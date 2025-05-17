@@ -30,7 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.devidea.aicar.ui.main.components.BluetoothActionComponent
-import com.devidea.aicar.ui.main.components.HistoryNavGraph
+import com.devidea.aicar.ui.main.components.history.HistoryNavGraph
 import com.devidea.aicar.ui.main.components.HomeScreen
 import com.devidea.aicar.ui.main.components.DashboardScreen
 import com.devidea.aicar.ui.main.components.SettingsScreen
