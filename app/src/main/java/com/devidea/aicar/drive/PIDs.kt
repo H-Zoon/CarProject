@@ -8,8 +8,8 @@ enum class PIDs(val code: String, val header: String) {
     S_FUEL_TRIM("0106", "7E0"),
     /** Long-term Fuel Trim: 장기간 연료 보정 비율 (LTFT, %) */
     L_FUEL_TRIM("0107", "7E0"),
-    /** Barometric Pressure: 대기압 (kPa) */
-    BAROMETRIC("0133", "7E0"),
+    /** Barometric Pressure: 대기압 (kPa) (필요없음)*/
+    //BAROMETRIC("0133", "7E0"),
     /** Engine Coolant Temperature: 냉각수 온도 (°C, A-40) */
     ECT("0105", "7E0"),
     /** Engine Load: 엔진 부하 (% of max load, A*100/255) */
@@ -26,8 +26,8 @@ enum class PIDs(val code: String, val header: String) {
     THROTTLE("0111", "7E0"),
     /** Control Module Voltage: 배터리 전압 (V, A/100) */
     BATT("0142", "7E0"),
-    /** Fuel Rate: 연료 소비 유량 (L/h, Mode 01 PID 0x5E) */
-    FUEL_RATE("015E", "7E0"),
+    /** Fuel Rate: 연료 소비 유량 (L/h, Mode 01 PID 0x5E) (미지원)*/
+    //FUEL_RATE("015E", "7E0"),
     /** Ambient Air Temperature: 외기 온도 (°C, A-40) */
     AMBIENT_AIR_TEMP("0146", "7E0"),
     /** Catalyst Temperature Bank 1: 촉매 온도 (°C, A-40) */

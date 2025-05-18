@@ -29,11 +29,13 @@ object Decoders {
             val b = f.substring(6,8).toInt(16)
             (a shl 8 or b) / 1000f
         },
-        PIDs.FUEL_RATE to { f ->
+
+        /*PIDs.FUEL_RATE to { f ->
             val a = f.substring(4,6).toInt(16)
             val b = f.substring(6,8).toInt(16)
             (a shl 8 or b) / 20f
-        },
+        },*/
+
         PIDs.CURRENT_GEAR to { f ->
             f.substring(6,8).toInt(16)
         },
@@ -53,8 +55,10 @@ object Decoders {
             val a = f.substring(4,6).toInt(16)
             (a - 128) * 100f / 128f
         },
+
         // Barometric Pressure (PID 0x33): A [kPa]
-        PIDs.BAROMETRIC to { f -> f.substring(4,6).toInt(16).toFloat() },
+       /* PIDs.BAROMETRIC to { f -> f.substring(4,6).toInt(16).toFloat() },*/
+
         // Ambient Air Temperature (PID 0x46): A - 40 [°C]
         PIDs.AMBIENT_AIR_TEMP to { f -> f.substring(4,6).toInt(16) - 40 },
         // Catalyst Temperature Bank1 (PID 0x3C): (256*A + B)/10 - 40 [°C]

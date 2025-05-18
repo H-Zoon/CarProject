@@ -285,7 +285,7 @@ val gaugeItems: List<GaugeItem> = listOf(
     GaugeItem(PIDs.INTAKE_TEMP.name) { IATGauge() },
     GaugeItem(PIDs.MAF.name) { MAFGauge() },
     GaugeItem(PIDs.BATT.name) { BatteryGauge() },
-    GaugeItem(PIDs.FUEL_RATE.name) { FuelRateGauge() },
+    //GaugeItem(PIDs.FUEL_RATE.name) { FuelRateGauge() },
     GaugeItem(PIDs.CURRENT_GEAR.name) { CurrentGearGauge() },
     GaugeItem(PIDs.OIL_PRESSURE.name) { OilPressureGauge() },
     GaugeItem(PIDs.OIL_TEMP.name) { OilTempGauge() },

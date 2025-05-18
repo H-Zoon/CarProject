@@ -37,36 +37,31 @@ class RecordUseCase @Inject constructor(
     private val sppClient: SppClient,
     private val notificationRepository: NotificationRepository,
 ) {
-    companion object{
+    companion object {
         const val TAG = "RecordUseCase"
     }
 
-    // 1) DataStore 에서 읽어오는 Boolean 플래그
     private val flagFlow: Flow<Boolean> =
         repository.getDrivingRecodeSetDate()
             .distinctUntilChanged()
 
-    // 2) SppClient 의 연결 상태: Connected 이벤트만 true로
     private val connectedFlow: Flow<Boolean> =
         sppClient.connectionEvents
             .map { it is ConnectionEvent.Connected }
             .distinctUntilChanged()
 
-    // 3) 둘을 묶어서 “기록을 실제로 활성화할 때”만 true
     val shouldRecord: Flow<Boolean> = combine(flagFlow, connectedFlow) { flag, connected ->
         flag && connected
-    }
-        .distinctUntilChanged()
+    }.distinctUntilChanged()
 
-    var sessionId : Long? = null
+    var sessionId: Long? = null
 
     init {
-        // 4) 변화가 생길 때마다 start/stop 호출
         shouldRecord
             .onEach { enabled ->
                 if (enabled) {
                     sessionId = drivingRepository.startSession()
-                    if(sessionId != null) start(sessionId!!)
+                    if (sessionId != null) start(sessionId!!)
 
                     val now = Instant.now()
                     notificationRepository.insertNotification(
@@ -76,15 +71,8 @@ class RecordUseCase @Inject constructor(
                             timestamp = now
                         )
                     )
-
-                    /*sppClient.requestUpdateNotification(
-                        sessionId!!.toInt(),
-                        "주행 기록 시작",
-                        "세션 $sessionId 을(를) 기록합니다."
-                    )*/
-
                 } else {
-                    if(sessionId != null) drivingRepository.stopSession(sessionId!!)
+                    if (sessionId != null) drivingRepository.stopSession(sessionId!!)
 
                     val now = Instant.now()
                     notificationRepository.insertNotification(
@@ -94,13 +82,6 @@ class RecordUseCase @Inject constructor(
                             timestamp = now
                         )
                     )
-
-                  /*  sppClient.requestNotification(
-                        (sessionId!! + 1000).toInt(),  // ID 충돌 방지
-                        "주행 기록 종료",
-                        "세션 $sessionId 이(가) 종료되었습니다."
-                    )*/
-
                     sessionId = null
                     stop()
                 }
@@ -108,23 +89,15 @@ class RecordUseCase @Inject constructor(
             .launchIn(CoroutineScope(SupervisorJob() + Dispatchers.Default))
     }
 
-    // 재사용 가능한 Scope
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    // 위치 수집용 Job
     private var collectJob: Job? = null
 
-    /**
-     * 호출 시점부터 stop()이 호출될 때까지 위치 업데이트를 수집하여
-     * 각 위치마다 데이터 포인트를 기록합니다.
-     */
     fun start(sessionId: Long) {
-        // 이미 수집 중이면 무시
         if (collectJob?.isActive == true) return
 
         collectJob = scope.launch {
             locationProvider.locationUpdates()
                 .collect { location ->
-                    // 각 위치마다 별도 코루틴으로 데이터 기록
                     launch {
                         recordDataPoint(sessionId, location)
                     }
@@ -132,17 +105,11 @@ class RecordUseCase @Inject constructor(
         }
     }
 
-    /**
-     * 모든 위치 수집 및 저장 작업을 중단합니다.
-     */
     fun stop() {
         collectJob?.cancel()
         collectJob = null
     }
 
-    /**
-     * 위치와 세션 ID를 받아 센서값 조회 → 연비 계산 → DB 저장까지 처리
-     */
     private suspend fun recordDataPoint(
         sessionId: Long,
         location: Location
@@ -151,9 +118,8 @@ class RecordUseCase @Inject constructor(
         val rpm = safeQuery(PIDs.RPM)?.toInt() ?: 0
         val ect = safeQuery(PIDs.ECT)?.toInt() ?: 0
         val speed = safeQuery(PIDs.SPEED)?.toInt() ?: 0
-        val stft  = safeQuery(PIDs.S_FUEL_TRIM)?.toFloat() ?: 0f
-        val ltft  = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f
-        //val baro  = startQuery(PIDs.BAROMETRIC)  ?: 0f
+        val stft = safeQuery(PIDs.S_FUEL_TRIM)?.toFloat() ?: 0f
+        val ltft = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f
 
         val instantKPL = calculateInstantFuelEconomy(
             maf = maf,
