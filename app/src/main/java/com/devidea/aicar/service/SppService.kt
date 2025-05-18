@@ -17,6 +17,11 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.devidea.aicar.App.Companion.ACTION_AUTO_CONNECT
+import com.devidea.aicar.App.Companion.FOREGROUND_CHANNEL_ID
+import com.devidea.aicar.App.Companion.FOREGROUND_CHANNEL_NAME
+import com.devidea.aicar.App.Companion.NOTIFICATION_BODY
+import com.devidea.aicar.App.Companion.NOTIFICATION_TITLE
 import com.devidea.aicar.ui.main.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -59,12 +64,9 @@ class SppService : Service() {
         private const val DISCOVERY_TIMEOUT_MS = 10_000L
         private val BT_SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-        // OBD 포그라운드 채널
-        private const val NOTIFICATION_TITLE = "AICAR"
-        private const val NOTIFICATION_BODY = "블루투스 연결이 시작되었습니다."
-        private const val FOREGROUND_CHANNEL_ID = "AICAR"
-        private const val FOREGROUND_CHANNEL_NAME = "AICAR_bluetooth"
+        private const val NOTIF_ID = 1
 
+        // OBD 포그라운드 채널
         // 주행 기록 알림 채널
         private const val RECORD_CHANNEL_ID = "record_channel"
         private const val RECORD_CHANNEL_NAME = "주행 기록 알림"
@@ -78,6 +80,35 @@ class SppService : Service() {
 
     private val notificationManager: NotificationManager by lazy {
         getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    private val notifBuilder by lazy {
+        val mainPI = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val autoPI = PendingIntent.getBroadcast(
+            this, 2,
+            Intent(this, AutoConnectReceiver::class.java).apply {
+                action = ACTION_AUTO_CONNECT
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setContentText(NOTIFICATION_BODY)
+            .setContentIntent(mainPI)
+            .setOngoing(true)
+            .addAction(
+                android.R.drawable.stat_sys_data_bluetooth,
+                "자동 연결",
+                autoPI
+            )
     }
 
     private var socket: BluetoothSocket? = null
@@ -154,8 +185,6 @@ class SppService : Service() {
     // --- Foreground notification ---
     private fun startForegroundService() {
         Log.d(TAG, "[Service] startForegroundService called")
-
-        // 1) Oreo(API 26) 이상에서 채널 생성
         val channel = NotificationChannel(
             FOREGROUND_CHANNEL_ID,
             FOREGROUND_CHANNEL_NAME,
@@ -166,47 +195,26 @@ class SppService : Service() {
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(channel)
 
-        // 2) 클릭 시 돌아갈 Activity 인텐트 (실제 Activity 클래스로 변경)
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pi = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // 3) Notification 빌드 (smallIcon, title, text, ongoing 필수)
-        val notification = NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setContentTitle(NOTIFICATION_TITLE)
-            .setContentText(NOTIFICATION_BODY)
-            .setContentIntent(pi)
-            .setOngoing(true)
-            .build()
-
         // 4) 포그라운드 서비스 시작
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ : 타입까지 붙인 오버로드 사용
             startForeground(
                 1,
-                notification,
+                notifBuilder.build(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
             )
         } else {
             // 이전 버전은 기존 방식
-            startForeground(1, notification)
+            startForeground(1, notifBuilder.build())
         }
     }
 
-    fun sendNotification(notifId: Int, title: String, body: String) {
-        val notif = NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setAutoCancel(true)
+     fun updateNotification(message : String) {
+        val updated = notifBuilder
+            .setContentText(message)
             .build()
-        notificationManager.notify(notifId, notif)
+
+        notificationManager.notify(NOTIF_ID, updated)
     }
 
     // --- Scan / Stop ---
@@ -239,7 +247,6 @@ class SppService : Service() {
         Log.d(TAG, "[Connect] requestConnect to ${device.address}")
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Connecting)
-            requestStop() // 혹시 남아 있는 이전 연결을 종료
 
             try {
                 withContext(Dispatchers.IO) {

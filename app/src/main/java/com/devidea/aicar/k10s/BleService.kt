@@ -130,7 +130,7 @@ class BleService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, App.Companion.CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, "CHANNEL_ID")
             .setContentTitle("LeBluetoothService")
             .setContentText("Initializing Bluetooth LE Service")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -150,7 +150,7 @@ class BleService : Service() {
         )
 
 
-        val notification = NotificationCompat.Builder(this, App.Companion.CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, "CHANNEL_ID")
             .setContentTitle("LeBluetoothService")
             //.setContentText("Bluetooth State: $stateText")
             .setSmallIcon(R.drawable.ic_launcher_foreground)

@@ -77,8 +77,8 @@ dependencies {
     implementation(libs.androidx.bluetooth)
     implementation(libs.androidx.constraintlayout)
 
-    implementation (libs.kakao.map)
-    implementation (libs.kakao.navi)
+    compileOnly (libs.kakao.map)
+    compileOnly (libs.kakao.navi)
 
     implementation (libs.okhttp)
     implementation (libs.converter.gson)
@@ -110,6 +110,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
     implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.compose.runtime:runtime-rxjava2")
+    implementation ("com.google.android.gms:play-services-location:21.2.0")
     runtimeOnly("androidx.lifecycle:lifecycle-runtime-compose-android")
 
 

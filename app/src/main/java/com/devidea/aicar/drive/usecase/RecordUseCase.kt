@@ -77,11 +77,11 @@ class RecordUseCase @Inject constructor(
                         )
                     )
 
-                    sppClient.requestNotification(
+                    /*sppClient.requestUpdateNotification(
                         sessionId!!.toInt(),
                         "주행 기록 시작",
                         "세션 $sessionId 을(를) 기록합니다."
-                    )
+                    )*/
 
                 } else {
                     if(sessionId != null) drivingRepository.stopSession(sessionId!!)
@@ -95,11 +95,11 @@ class RecordUseCase @Inject constructor(
                         )
                     )
 
-                    sppClient.requestNotification(
+                  /*  sppClient.requestNotification(
                         (sessionId!! + 1000).toInt(),  // ID 충돌 방지
                         "주행 기록 종료",
                         "세션 $sessionId 이(가) 종료되었습니다."
-                    )
+                    )*/
 
                     sessionId = null
                     stop()

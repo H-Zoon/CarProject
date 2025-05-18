@@ -109,7 +109,8 @@ fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
         listOf(
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.POST_NOTIFICATIONS    // Android 13+ 알림 권한
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
     // 요청 여부 플래그

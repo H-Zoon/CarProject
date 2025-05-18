@@ -1,11 +1,13 @@
 package com.devidea.aicar.service
 
+import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.core.content.ContextCompat
+import com.devidea.aicar.storage.datastore.DataStoreRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.onEach
@@ -27,7 +30,8 @@ interface SppClient {
     suspend fun requestStopScan()
     suspend fun requestConnect(device: ScannedDevice)
     suspend fun requestDisconnect()
-    suspend fun requestNotification(notifId: Int, title: String, body: String)
+    suspend fun requestUpdateNotification(message: String)
+    suspend fun requestAutoConnect()
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
     val deviceList: StateFlow<List<ScannedDevice>>
     val connectionEvents: SharedFlow<ConnectionEvent>
@@ -35,7 +39,9 @@ interface SppClient {
 
 @Singleton
 class SppClientImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val bluetoothAdapter: BluetoothAdapter,
+    private val repository: DataStoreRepository
 ) : SppClient {
     // — 바인딩 완료를 기다릴 Deferred
     private val serviceReady = CompletableDeferred<SppService>()
@@ -65,7 +71,17 @@ class SppClientImpl @Inject constructor(
                 .launchIn(clientScope)
 
             svc.connectionEvents
-                .onEach { _connectionEvents.tryEmit(it) }
+                .onEach {
+                    _connectionEvents.tryEmit(it)
+                    val message = when (it) {
+                        ConnectionEvent.Scanning -> "기기 검색중입니다"
+                        ConnectionEvent.Connecting -> "기기가 연결중입니다."
+                        ConnectionEvent.Connected -> "기기가 연결되였습니다"
+                        ConnectionEvent.Disconnected -> "연결이 해제되었습니다"
+                        ConnectionEvent.Error -> "오류가 발생하였습니다"
+                    }
+                    requestUpdateNotification(message)
+                }
                 .launchIn(clientScope)
         }
         override fun onServiceDisconnected(name: ComponentName) {
@@ -90,12 +106,15 @@ class SppClientImpl @Inject constructor(
 
     override suspend fun requestConnect(device: ScannedDevice) { ensureBoundService().requestConnect(device) }
     override suspend fun requestDisconnect() { ensureBoundService().requestDisconnect() }
-    override suspend fun requestNotification(
-        notifId: Int,
-        title: String,
-        body: String
-    ) {
-        ensureBoundService().sendNotification(notifId, title, body)
+    override suspend fun requestUpdateNotification(message: String) { ensureBoundService().updateNotification(message) }
+
+    override suspend fun requestAutoConnect() {
+        repository.getDevice.firstOrNull()?.let {
+            val btDevice = bluetoothAdapter.getRemoteDevice(it.address)
+            ensureBoundService().requestConnect(ScannedDevice(it.name, it.address, btDevice))
+        }?: run {
+            requestUpdateNotification("저장된 블루투스 기기가 없습니다.")
+        }
     }
 
     override suspend fun query(cmd: String, header: String?, timeoutMs: Long): String {

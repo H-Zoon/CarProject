@@ -27,7 +27,7 @@ enum class PIDs(val code: String, val header: String) {
     /** Control Module Voltage: 배터리 전압 (V, A/100) */
     BATT("0142", "7E0"),
     /** Fuel Rate: 연료 소비 유량 (L/h, Mode 01 PID 0x5E) */
-    FUEL_RATE("5E", "7E0"),
+    FUEL_RATE("015E", "7E0"),
     /** Ambient Air Temperature: 외기 온도 (°C, A-40) */
     AMBIENT_AIR_TEMP("0146", "7E0"),
     /** Catalyst Temperature Bank 1: 촉매 온도 (°C, A-40) */
@@ -41,13 +41,13 @@ enum class PIDs(val code: String, val header: String) {
 
     // 제조사 확장 PID
     /** Current Gear: 현재 변속 기어 */
-    CURRENT_GEAR("22199A", "7E1"),
+    CURRENT_GEAR("22199A", "7E0"),
     /** Oil Pressure: 오일 압력 (kPa) */
     OIL_PRESSURE("22115C", "7E0"),
     /** Oil Temperature: 오일 온도 (°C) */
     OIL_TEMP("221154", "7E0"),
     /** Transmission Fluid Temperature: 변속기 오일 온도 (°C) */
-    TRANS_FLUID_TEMP("221940", "7E1");
+    TRANS_FLUID_TEMP("221940", "7E0");
 
     companion object {
         private val map = PIDs.entries.associateBy(PIDs::code)

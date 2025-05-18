@@ -35,14 +35,14 @@ object Decoders {
             (a shl 8 or b) / 20f
         },
         PIDs.CURRENT_GEAR to { f ->
-            f.substring(4,6).toInt(16)
+            f.substring(6,8).toInt(16)
         },
         PIDs.OIL_PRESSURE to { f ->
-            val a = f.substring(4,6).toInt(16)
-            a * 0.65f - 17.5f
+            val a = f.substring(6,8).toInt(16)
+            (a * 4.0 - 101) * 0.145038
         },
-        PIDs.OIL_TEMP to { f -> f.substring(4,6).toInt(16) - 40 },
-        PIDs.TRANS_FLUID_TEMP to { f -> f.substring(4,6).toInt(16) - 40 },
+        PIDs.OIL_TEMP to { f -> f.substring(6,8).toInt(16) - 40 },
+        PIDs.TRANS_FLUID_TEMP to { f -> f.substring(6,8).toInt(16) - 40 },
         // Short-term Fuel Trim (PID 0x06): (A - 128) * 100 / 128 [%]
         PIDs.S_FUEL_TRIM to { f ->
             val a = f.substring(4,6).toInt(16)
