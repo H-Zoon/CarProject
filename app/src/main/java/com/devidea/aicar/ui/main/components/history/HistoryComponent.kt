@@ -35,37 +35,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 
-@Composable
-fun HistoryNavGraph(
-    navController: NavHostController,
-    onBackToList: () -> Unit
-) {
-    NavHost(
-        navController = navController,
-        startDestination = "sessionList"
-    ) {
-        composable("sessionList") {
-            SessionListScreen(
-                onSessionClick = { sessionId ->
-                    navController.navigate("sessionOverview/$sessionId")
-                }
-            )
-        }
-        composable(
-            route = "sessionOverview/{sessionId}",
-            arguments = listOf(navArgument("sessionId") {
-                type = NavType.LongType
-            })
-        ) { backStackEntry ->
-            val sessionId = backStackEntry.arguments!!.getLong("sessionId")
-            SessionOverviewScreen(
-                sessionId = sessionId,
-                onBack = { navController.popBackStack() }
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionOverviewScreen(

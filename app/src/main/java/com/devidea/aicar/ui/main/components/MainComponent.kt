@@ -9,9 +9,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,15 +20,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.aicar.ui.main.CarBottomNavBar
-import com.devidea.aicar.ui.main.NavItem
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 
 const val TAG = "MainViewComponent"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = hiltViewModel()) {
+fun HomeScreen(modifier: Modifier = Modifier, onNotificationClick: () -> Unit, viewModel: MainViewModel = hiltViewModel()) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
     val lastConnectionTime by viewModel.lastConnectDate.collectAsState()
     var notification by remember { mutableStateOf(false) }
@@ -43,7 +39,7 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = hiltVie
             TopAppBar(
                 title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
                 actions = {
-                    IconButton(onClick = { notification = true }) {
+                    IconButton(onClick = onNotificationClick) {
                         Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
                     }
                 },
