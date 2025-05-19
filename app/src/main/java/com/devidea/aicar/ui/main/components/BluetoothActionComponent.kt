@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,15 +17,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
@@ -35,14 +42,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,199 +65,232 @@ import com.devidea.aicar.ui.main.viewmodels.MainViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun BluetoothActionComponent(viewModel: MainViewModel = hiltViewModel()) {
-    val context = LocalContext.current
-    val bluetoothState by viewModel.bluetoothEvent.collectAsState(ConnectionEvent.Disconnected)
-    var statusText by remember { mutableStateOf("준비됨") }
-    var isShowBleDeviceListModal by remember { mutableStateOf(false) }
-    var showSaveDialog by remember { mutableStateOf(false) }
-    var lastConnectedDevice by remember { mutableStateOf<ScannedDevice?>(null) }
-
-    if (showSaveDialog && lastConnectedDevice != null) {
-        AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
-            title = { Text("기기 저장") },
-            text = { Text("${lastConnectedDevice!!.name}을(를) 다음에도 자동으로 연결할 기기로 저장할까요?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.saveDevice(lastConnectedDevice!!)
-                    showSaveDialog = false
-                }) { Text("저장") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) { Text("취소") }
-            }
-        )
-    }
-
-    LaunchedEffect(bluetoothState) {
-        isShowBleDeviceListModal = (bluetoothState == ConnectionEvent.Scanning)
-
-        if (bluetoothState == ConnectionEvent.Connected) {
-            viewModel.setConnectTime()
-            if (viewModel.savedDevice.value == null) {
-                showSaveDialog = true
-            }
-        }
-    }
-
-    if (isShowBleDeviceListModal) {
-        BleDeviceListModal(
-            viewModel = viewModel,
-            requestScan = { viewModel.startScan() },
-            requestConnect = {
-                viewModel.connectTo(it)
-                lastConnectedDevice = it
-            },
-            onBack = { viewModel.stopScan() })
-    }
-    // 1) 블루투스 권한(안드로이드 12+)
-    val permsState = rememberMultiplePermissionsState(
-        listOf(
+fun BluetoothControl(
+    bluetoothState: ConnectionEvent,
+    lastConnectionTime: String,
+    savedDevice: ScannedDevice?,
+    deviceList: List<ScannedDevice>,
+    onStartScan: () -> Unit,
+    onConnect: (ScannedDevice) -> Unit,
+    onDisconnect: () -> Unit,
+    onSaveDevice: (ScannedDevice) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // 1) Permissions API 사용 간소화
+    val permissionState = rememberMultiplePermissionsState(
+        permissions = listOf(
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
-    // 요청 여부 플래그
-    var permissionRequested by remember { mutableStateOf(false) }
-    // 라쇼날 다이얼로그 표시 여부
-    var showRationaleDialog by remember { mutableStateOf(false) }
 
+    // 2) Dialog / Modal 상태 통합
+    var showRationale by rememberSaveable { mutableStateOf(false) }
+    var showDeviceList by rememberSaveable { mutableStateOf(false) }
+    var showSaveDialog by rememberSaveable { mutableStateOf(false) }
+    var lastConnectedDevice by rememberSaveable { mutableStateOf<ScannedDevice?>(null) }
 
-    // 2) 이벤트 수집
-    LaunchedEffect(bluetoothState) {
-        if (bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
-
-        statusText = when (bluetoothState) {
-            ConnectionEvent.Scanning -> "검색 중..."
-            ConnectionEvent.Connecting -> "연결 중..."
-            ConnectionEvent.Connected -> "연결 완료"
-            ConnectionEvent.Disconnected -> "연결 해제됨"
-            ConnectionEvent.Error -> "연결에 실패 하였습니다."
+    // 3) 상태 텍스트는 derivedStateOf 로 효율화
+    val statusText by remember(bluetoothState) {
+        derivedStateOf {
+            when (bluetoothState) {
+                ConnectionEvent.Scanning     -> "검색 중..."
+                ConnectionEvent.Connecting   -> "연결 중..."
+                ConnectionEvent.Connected    -> "연결 완료"
+                ConnectionEvent.Disconnected -> "연결 해제됨"
+                ConnectionEvent.Error        -> "연결에 실패하였습니다."
+            }
         }
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = statusText,
-            style = MaterialTheme.typography.titleMedium
-        )
+    val context = LocalContext.current
 
-        ElevatedButton(
-            onClick = {
-                when {
-                    // 이미 모든 권한 승인된 상태
-                    permsState.allPermissionsGranted -> {
-                        when (bluetoothState) {
-                            ConnectionEvent.Connecting -> viewModel.disconnect()
-                            else -> viewModel.startScan()
-                        }
-                    }
-                    // 최초 클릭: 권한 요청
-                    !permissionRequested -> {
-                        permissionRequested = true
-                        permsState.launchMultiplePermissionRequest()
-                    }
-                    // 거부했지만 라쇼날 표시 가능한 경우
-                    permsState.shouldShowRationale -> {
-                        showRationaleDialog = true
-                    }
-                    // 영구 거부된 경우
-                    else -> {
-                        context.startActivity(
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
-                        )
-                    }
-                }
-            },
-            modifier = Modifier
-                .size(48.dp)
-                .shadow(10.dp, shape = RoundedCornerShape(50.dp)), // 기본 그림자 오프셋 10dp
-            shape = RoundedCornerShape(50.dp),
-            colors = ButtonDefaults.elevatedButtonColors(
-                containerColor = MaterialTheme.colorScheme.surface // 원하시면 다른 색으로 변경 가능
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            when (bluetoothState) {
-                ConnectionEvent.Connected -> {
-                    Icon(
-                        painter = painterResource(id = R.drawable.icon_link),
-                        contentDescription = stringResource(R.string.bluetooth_connected),
-                        modifier = Modifier.size(38.dp)
-                    )
-                }
+    // 4) 스캔/연결 상태 변화 처리
+    LaunchedEffect(bluetoothState) {
+        showDeviceList = bluetoothState == ConnectionEvent.Scanning
 
-                ConnectionEvent.Disconnected -> {
-                    Icon(
-                        painter = painterResource(id = R.drawable.icon_search),
-                        contentDescription = stringResource(R.string.bluetooth_disconnected),
-                        modifier = Modifier.size(38.dp)
-                    )
-                }
-
-                ConnectionEvent.Scanning, ConnectionEvent.Connecting -> {
-                    CircularProgressIndicator(
-                        strokeWidth = 4.dp,
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                is ConnectionEvent.Error -> {
-                    Icon(
-                        painter = painterResource(id = R.drawable.icon_search),
-                        contentDescription = stringResource(R.string.bluetooth_disconnected),
-                        modifier = Modifier.size(38.dp)
-                    )
-                }
-            }
+        if (bluetoothState == ConnectionEvent.Connected && lastConnectedDevice != null && savedDevice == null) {
+            showSaveDialog = true
         }
+    }
 
-        if (showRationaleDialog) {
+    // 5) 스캔 모달
+    if (showDeviceList) {
+        BleDeviceListModal(
+            deviceList = deviceList,
+            savedDevice = savedDevice,
+            requestConnect = {
+                lastConnectedDevice = it
+                onConnect(it)
+            },
+            onBack = onDisconnect
+        )
+    }
+
+    // 6) 저장 확인 다이얼로그
+    if (showSaveDialog) {
+        lastConnectedDevice?.let { device ->
             AlertDialog(
-                onDismissRequest = { showRationaleDialog = false },
-                title = { Text("권한 필요") },
-                text = { Text("블루투스 연결을 위해 권한이 필요합니다.") },
+                onDismissRequest = { showSaveDialog = false },
+                title = { Text("기기 저장") },
+                text = { Text("${device.name}을 다음에 자동 연결 기기로 저장할까요?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        showRationaleDialog = false
-                        permsState.launchMultiplePermissionRequest()
-                    }) {
-                        Text("다시 요청")
-                    }
+                        onSaveDevice(device)
+                        showSaveDialog = false
+                    }) { Text("저장") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showRationaleDialog = false }) {
-                        Text("취소")
+                    TextButton(onClick = { showSaveDialog = false }) { Text("취소") }
+                }
+            )
+        }
+    }
+
+    // 7) 메인 카드 UI
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            ConnectionStatusRow(state = bluetoothState, statusText = statusText)
+            Spacer(Modifier.height(8.dp))
+            ConnectionDeviceRow()
+            Spacer(Modifier.height(8.dp))
+            LastConnectionTimeRow(timeText = lastConnectionTime)
+            Spacer(Modifier.height(16.dp))
+            ActionButton(
+                state = bluetoothState,
+                enabled = bluetoothState !in listOf(ConnectionEvent.Scanning, ConnectionEvent.Connecting),
+                onClick = {
+                    when {
+                        permissionState.allPermissionsGranted -> {
+                            if (bluetoothState == ConnectionEvent.Connected) onDisconnect()
+                            else onStartScan()
+                        }
+                        permissionState.shouldShowRationale -> showRationale = true
+                        else -> permissionState.launchMultiplePermissionRequest()
                     }
                 }
             )
         }
     }
+
+    // 8) 권한 요청 라쇼날 다이얼로그
+    if (showRationale) {
+        AlertDialog(
+            onDismissRequest = { showRationale = false },
+            title = { Text("권한 필요") },
+            text = { Text("블루투스 사용을 위해 권한이 필요합니다.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRationale = false
+                    permissionState.launchMultiplePermissionRequest()
+                }) { Text("다시 요청") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRationale = false }) { Text("취소") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ConnectionStatusRow(state: ConnectionEvent, statusText: String) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("블루투스 연결 상태", style = MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .background(
+                        if (state == ConnectionEvent.Connected) Color.Green else Color.Gray,
+                        shape = CircleShape
+                    )
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(statusText, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+@Composable
+private fun ConnectionDeviceRow(nameText: String? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("연결된 기기", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            nameText?: "연결된 기기가 없습니다.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun LastConnectionTimeRow(timeText: String) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("마지막 연결 시간", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            timeText,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ActionButton(
+    state: ConnectionEvent,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            when (state) {
+                ConnectionEvent.Connected    -> "연결 해제"
+                ConnectionEvent.Disconnected,
+                ConnectionEvent.Error        -> "기기 검색"
+                ConnectionEvent.Connecting   -> "연결중"
+                ConnectionEvent.Scanning     -> "검색중"
+            }
+        )
+    }
 }
 
 @Composable
 fun BleDeviceListModal(
-    viewModel: MainViewModel,
-    requestScan: () -> Unit,
     requestConnect: (ScannedDevice) -> Unit,
+    savedDevice: ScannedDevice?,
+    deviceList: List<ScannedDevice>,
     onBack: () -> Unit
 ) {
-    val saved = viewModel.savedDevice.collectAsState().value
-    val devices by viewModel.devices.observeAsState(emptyList())
     // Dialog를 사용해 화면 중앙에 모달처럼 띄움
     Dialog(onDismissRequest = onBack) {
         Surface(
@@ -259,21 +301,21 @@ fun BleDeviceListModal(
                 .wrapContentHeight()
         ) {
 
-            val sortedDevices = remember(devices, saved) {
-                if (saved != null) {
+            val sortedDevices = remember(deviceList, savedDevice) {
+                if (savedDevice != null) {
                     // 1) 스캔된 리스트에서 saved.address와 일치하는 객체를 찾아보고
-                    val matched = devices.find { it.address == saved.address }
+                    val matched = deviceList.find { it.address == savedDevice.address }
                     if (matched != null) {
                         // 2) 그 객체를 맨 앞에, 나머지는 뒤에
-                        val others = devices.filter { it.address != matched.address }
+                        val others = deviceList.filter { it.address != matched.address }
                         listOf(matched) + others
                     } else {
                         // 매칭된 객체가 없으면 원본 순서 유지
-                        devices
+                        deviceList
                     }
                 } else {
                     // saved가 없으면 원본 순서 유지
-                    devices
+                    deviceList
                 }
             }
 
@@ -324,7 +366,7 @@ fun BleDeviceListModal(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                             }
-                            if (saved?.address == device.address) {
+                            if (savedDevice?.address == device.address) {
                                 // 저장된 기기가 스캔 결과에 포함된 순간
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,

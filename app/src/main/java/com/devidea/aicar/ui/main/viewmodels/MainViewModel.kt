@@ -4,10 +4,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.aicar.drive.usecase.DashBoardUseCase
+import com.devidea.aicar.drive.usecase.RecodeState
+import com.devidea.aicar.drive.usecase.RecordUseCase
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
+import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +38,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val notificationRepository: NotificationRepository,
+    private val recordUseCase: RecordUseCase,
     private val sppClient: SppClient,
 ) : ViewModel() {
 
@@ -129,6 +134,20 @@ class MainViewModel @Inject constructor(
     }
     fun clearAllNotifications() = viewModelScope.launch {
         notificationRepository.clearAllNotifications()
+    }
+    //endregion
+
+    //region 운전기록 컨트롤
+    private val _isRecording = recordUseCase.recordStateFlow
+    val isRecording: StateFlow<RecodeState> = _isRecording
+        .stateIn(
+            scope = viewModelScope,                           // ViewModel lifecycle
+            started = SharingStarted.WhileSubscribed(5_000), // 구독 중에만 활성화
+            initialValue = RecodeState.UnRecoding            // 초깃값
+        )
+
+    fun toggleRecording(){
+        recordUseCase.setRequestRecode()
     }
     //endregion
 

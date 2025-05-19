@@ -2,6 +2,7 @@ package com.devidea.aicar.drive.usecase
 
 import android.location.Location
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import com.devidea.aicar.LocationProvider
 import com.devidea.aicar.drive.Decoders
 import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
@@ -18,17 +19,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import javax.inject.Inject
+
+sealed class RecodeState {
+    object Recoding : RecodeState()
+    object UnRecoding : RecodeState()
+    object Waiting : RecodeState()
+}
 
 class RecordUseCase @Inject constructor(
     private val locationProvider: LocationProvider,
@@ -41,52 +52,87 @@ class RecordUseCase @Inject constructor(
         const val TAG = "RecordUseCase"
     }
 
-    private val flagFlow: Flow<Boolean> =
-        repository.getDrivingRecodeSetDate()
-            .distinctUntilChanged()
+    // 1) 플래그 플로우: DataStore에서 가져오는 자동 기록 설정
+    private val flagFlow: Flow<Boolean> = repository
+        .getDrivingRecodeSetDate()
+        .distinctUntilChanged()
 
-    private val connectedFlow: Flow<Boolean> =
-        sppClient.connectionEvents
-            .map { it is ConnectionEvent.Connected }
-            .distinctUntilChanged()
+    // 2) 연결 플로우: SPP 클라이언트의 연결 이벤트를 Boolean으로 변환
+    private val connectedFlow: Flow<Boolean> = sppClient.connectionEvents
+        .map { it is ConnectionEvent.Connected }
+        .distinctUntilChanged()
+        .onStart { emit(false) }
 
-    val shouldRecord: Flow<Boolean> = combine(flagFlow, connectedFlow) { flag, connected ->
-        flag && connected
+    // 3) 수동 요청 플로우: MutableStateFlow로 사용자 토글을 받음
+    private val _requestRecode = MutableStateFlow(false)
+    val requestRecode: StateFlow<Boolean> = _requestRecode.asStateFlow()
+
+    fun setRequestRecode() {
+        _requestRecode.value = requestRecode.value != true
+    }
+
+    // 4) 세 플로우를 합쳐서 RecodeState 결정
+    private val _recordStateFlow: Flow<RecodeState> = combine(
+        flagFlow,
+        connectedFlow,
+        _requestRecode
+    ) { autoEnabled, connected, manualRequested ->
+        val shouldRecord = autoEnabled || manualRequested
+        when {
+            !shouldRecord ->
+                RecodeState.UnRecoding
+
+            connected ->
+                RecodeState.Recoding
+
+            else ->
+                RecodeState.Waiting
+        }
     }.distinctUntilChanged()
+
+    val recordStateFlow: Flow<RecodeState> = _recordStateFlow
 
     var sessionId: Long? = null
 
     init {
-        shouldRecord
-            .onEach { enabled ->
-                if (enabled) {
-                    sessionId = drivingRepository.startSession()
-                    if (sessionId != null) start(sessionId!!)
+        _recordStateFlow
+            .onEach { newState ->
+                when (newState) {
+                    is RecodeState.Recoding -> {
+                        sessionId = drivingRepository.startSession()
+                        if (sessionId != null) start(sessionId!!)
 
-                    val now = Instant.now()
-                    notificationRepository.insertNotification(
-                        NotificationEntity(
-                            title = "주행 기록 시작",
-                            body = "세션 $sessionId 이(가) ${now}에 시작되었습니다.",
-                            timestamp = now
+                        val now = Instant.now()
+                        notificationRepository.insertNotification(
+                            NotificationEntity(
+                                title = "주행 기록 시작",
+                                body = "세션 $sessionId 이(가) ${now}에 시작되었습니다.",
+                                timestamp = now
+                            )
                         )
-                    )
-                } else {
-                    if (sessionId != null) drivingRepository.stopSession(sessionId!!)
+                    }
 
-                    val now = Instant.now()
-                    notificationRepository.insertNotification(
-                        NotificationEntity(
-                            title = "주행 기록 종료",
-                            body = "세션 $sessionId 이(가) ${now}에 종료되었습니다.",
-                            timestamp = now
-                        )
-                    )
-                    sessionId = null
-                    stop()
+                    is RecodeState.UnRecoding -> {
+                        if (sessionId != null) {
+                            drivingRepository.stopSession(sessionId!!)
+                            val now = Instant.now()
+                            notificationRepository.insertNotification(
+                                NotificationEntity(
+                                    title = "주행 기록 종료",
+                                    body = "세션 $sessionId 이(가) ${now}에 종료되었습니다.",
+                                    timestamp = now
+                                )
+                            )
+                            sessionId = null
+                            stop()
+                        }
+                    }
+
+                    RecodeState.Waiting -> {
+
+                    }
                 }
-            }
-            .launchIn(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+            }.launchIn(CoroutineScope(SupervisorJob() + Dispatchers.Default))
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
