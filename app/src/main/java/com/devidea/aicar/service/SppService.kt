@@ -283,6 +283,15 @@ class SppService : Service() {
         }
     }
 
+    fun getCurrentConnectedDevice(): ScannedDevice? {
+        val btDevice = socket?.remoteDevice ?: return null
+        return ScannedDevice(
+            name    = btDevice.name.orEmpty(),
+            address = btDevice.address,
+            device  = btDevice
+        )
+    }
+
     @Throws(IOException::class)
     private fun createSocket(device: BluetoothDevice): BluetoothSocket {
         bluetoothAdapter.cancelDiscovery()

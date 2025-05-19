@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -43,20 +44,17 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     //region 블루투스 처리
-    private val _savedDevice = MutableStateFlow<ScannedDevice?>(null)
-
     /** 자동 연결에 사용할 블루투스 기기를 노출합니다.. */
+    private val _savedDevice = MutableStateFlow<ScannedDevice?>(null)
     val savedDevice: StateFlow<ScannedDevice?> = _savedDevice
 
-    private val _devices = MutableLiveData<List<ScannedDevice>>()
-
     /** 검색된 블루투스 기기 목록을 LiveData로 제공합니다. */
+    private val _devices = MutableLiveData<List<ScannedDevice>>()
     val devices: LiveData<List<ScannedDevice>> = _devices
 
-    private val _bluetoothEvent = MutableSharedFlow<ConnectionEvent>()
-
     /** 블루투스 연결/해제/오류 이벤트를 발행합니다. */
-    val bluetoothEvent: SharedFlow<ConnectionEvent> = _bluetoothEvent.asSharedFlow()
+    val _bluetoothState: MutableStateFlow<ConnectionEvent> = MutableStateFlow(ConnectionEvent.Disconnected)
+    val bluetoothState: StateFlow<ConnectionEvent> = _bluetoothState.asStateFlow()
 
     /** 블루투스 기기 스캔을 시작합니다. */
     fun startScan() = viewModelScope.launch { sppClient.requestStartScan() }
@@ -65,14 +63,17 @@ class MainViewModel @Inject constructor(
     fun stopScan() = viewModelScope.launch { sppClient.requestStopScan() }
 
     /** 선택한 블루투스 기기에 연결 요청을 보냅니다. */
-    fun connectTo(device: ScannedDevice) =
-        viewModelScope.launch { sppClient.requestConnect(device) }
+    fun connectTo(device: ScannedDevice) = viewModelScope.launch { sppClient.requestConnect(device) }
 
     /** 현재 블루투스 연결을 해제합니다. */
     fun disconnect() = viewModelScope.launch { sppClient.requestDisconnect() }
 
     /** 현재 블루투스 기기를 저장합니다.. */
-    fun saveDevice(device: ScannedDevice) = viewModelScope.launch { repository.saveDevice(device) }
+    fun saveDevice() = viewModelScope.launch {
+        sppClient.getCurrentConnectedDevice()?.let {
+            repository.saveDevice(it)
+        }
+    }
 
     //endregion
 
@@ -132,6 +133,7 @@ class MainViewModel @Inject constructor(
     fun deleteNotification(id: Long) = viewModelScope.launch {
         notificationRepository.deleteById(id)
     }
+
     fun clearAllNotifications() = viewModelScope.launch {
         notificationRepository.clearAllNotifications()
     }
@@ -146,7 +148,7 @@ class MainViewModel @Inject constructor(
             initialValue = RecodeState.UnRecoding            // 초깃값
         )
 
-    fun toggleRecording(){
+    fun toggleRecording() {
         recordUseCase.setRequestRecode()
     }
     //endregion
@@ -157,7 +159,7 @@ class MainViewModel @Inject constructor(
             // 기기 목록 관찰
             launch { sppClient.deviceList.collect { _devices.postValue(it) } }
             // 연결 이벤트 관찰
-            launch { sppClient.connectionEvents.collect { _bluetoothEvent.emit(it) } }
+            launch { sppClient.connectionEvents.collect { _bluetoothState.value = it } }
             // 마지막 연결 일수 관찰
             launch {
                 repository.getConnectDate().collect { diff ->

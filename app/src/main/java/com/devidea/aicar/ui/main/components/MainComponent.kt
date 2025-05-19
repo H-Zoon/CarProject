@@ -42,7 +42,7 @@ fun HomeScreen(
 ) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
-    val bluetoothState by viewModel.bluetoothEvent.collectAsState(ConnectionEvent.Disconnected)
+    val bluetoothState by viewModel.bluetoothState.collectAsState()
     val lastConnection by viewModel.lastConnectDate.collectAsState()
     val devices by viewModel.devices.observeAsState(emptyList())
 
@@ -74,7 +74,7 @@ fun HomeScreen(
                 onConnect = { viewModel.connectTo(it) },
                 onDisconnect = { viewModel.disconnect() },
                 savedDevice = viewModel.savedDevice.collectAsState().value,
-                onSaveDevice = { viewModel.saveDevice(it) },
+                onSaveDevice = { viewModel.saveDevice() },
                 deviceList = devices
             )
             Spacer(modifier = Modifier.height(24.dp))

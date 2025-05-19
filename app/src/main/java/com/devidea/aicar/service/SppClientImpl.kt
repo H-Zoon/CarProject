@@ -32,6 +32,7 @@ interface SppClient {
     suspend fun requestDisconnect()
     suspend fun requestUpdateNotification(message: String)
     suspend fun requestAutoConnect()
+    suspend fun getCurrentConnectedDevice(): ScannedDevice?
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
     val deviceList: StateFlow<List<ScannedDevice>>
     val connectionEvents: SharedFlow<ConnectionEvent>
@@ -115,6 +116,10 @@ class SppClientImpl @Inject constructor(
         }?: run {
             requestUpdateNotification("저장된 블루투스 기기가 없습니다.")
         }
+    }
+
+    override suspend fun getCurrentConnectedDevice(): ScannedDevice? {
+        return ensureBoundService().getCurrentConnectedDevice()
     }
 
     override suspend fun query(cmd: String, header: String?, timeoutMs: Long): String {

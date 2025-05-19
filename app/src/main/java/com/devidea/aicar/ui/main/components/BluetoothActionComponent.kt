@@ -76,7 +76,7 @@ fun BluetoothControl(
     onStartScan: () -> Unit,
     onConnect: (ScannedDevice) -> Unit,
     onDisconnect: () -> Unit,
-    onSaveDevice: (ScannedDevice) -> Unit,
+    onSaveDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 1) Permissions API 사용 간소화
@@ -93,7 +93,6 @@ fun BluetoothControl(
     var showRationale by rememberSaveable { mutableStateOf(false) }
     var showDeviceList by rememberSaveable { mutableStateOf(false) }
     var showSaveDialog by rememberSaveable { mutableStateOf(false) }
-    var lastConnectedDevice by rememberSaveable { mutableStateOf<ScannedDevice?>(null) }
 
     // 3) 상태 텍스트는 derivedStateOf 로 효율화
     val statusText by remember(bluetoothState) {
@@ -114,7 +113,7 @@ fun BluetoothControl(
     LaunchedEffect(bluetoothState) {
         showDeviceList = bluetoothState == ConnectionEvent.Scanning
 
-        if (bluetoothState == ConnectionEvent.Connected && lastConnectedDevice != null && savedDevice == null) {
+        if (bluetoothState == ConnectionEvent.Connected && savedDevice == null) {
             showSaveDialog = true
         }
     }
@@ -125,7 +124,6 @@ fun BluetoothControl(
             deviceList = deviceList,
             savedDevice = savedDevice,
             requestConnect = {
-                lastConnectedDevice = it
                 onConnect(it)
             },
             onBack = onDisconnect
@@ -134,14 +132,13 @@ fun BluetoothControl(
 
     // 6) 저장 확인 다이얼로그
     if (showSaveDialog) {
-        lastConnectedDevice?.let { device ->
             AlertDialog(
                 onDismissRequest = { showSaveDialog = false },
                 title = { Text("기기 저장") },
-                text = { Text("${device.name}을 다음에 자동 연결 기기로 저장할까요?") },
+                text = { Text("현재 연결된 기기를 다음에 자동 연결 기기로 저장할까요?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        onSaveDevice(device)
+                        onSaveDevice()
                         showSaveDialog = false
                     }) { Text("저장") }
                 },
@@ -149,7 +146,6 @@ fun BluetoothControl(
                     TextButton(onClick = { showSaveDialog = false }) { Text("취소") }
                 }
             )
-        }
     }
 
     // 7) 메인 카드 UI
