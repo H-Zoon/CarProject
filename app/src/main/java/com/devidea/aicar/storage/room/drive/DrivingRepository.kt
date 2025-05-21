@@ -16,8 +16,13 @@ interface DrivingRepository {
     fun getAllSessions(): Flow<List<DrivingSession>>
     fun getSessionData(sessionId: Long): Flow<List<DrivingDataPoint>>
 
+    /**주행기록 저장을 시작하기 위한 sessionId 반환*/
     suspend fun startSession(): Long
+
+    /**sessionId의 저장 종료*/
     suspend fun stopSession(sessionId: Long)
+
+    /**주행데이터 (DrivingDataPoint) 저징*/
     suspend fun saveDataPoint(point: DrivingDataPoint)
 
     /**
@@ -25,17 +30,17 @@ interface DrivingRepository {
      */
     suspend fun syncSession(sessionId: Long)
 
-
     /** 개별 세션 삭제 */
     suspend fun deleteSession(sessionId: Long)
 
     /** 전체 세션 삭제 */
     suspend fun deleteAllSessions()
 
-    // DrivingRepository.kt
+    /** 삭제된 세션을 복원하기 위한 함수*/
     suspend fun insertSession(session: DrivingSession): Long
 
-    fun getSessionsByDate(dateStr: String): Flow<List<DrivingSession>>
+    /**기록이 진행중인 세션 조회*/
+    fun getOngoingSession(): Flow<DrivingSession?>
 
     /** 하루 단위 범위 조회 */
     fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>

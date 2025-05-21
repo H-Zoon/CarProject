@@ -12,6 +12,7 @@ import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingRepository
+import com.devidea.aicar.storage.room.drive.DrivingSession
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +23,17 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -37,8 +42,8 @@ import javax.inject.Inject
 
 sealed class RecordState {
     object Recording : RecordState()
-    object Stopped   : RecordState()
-    object Pending   : RecordState()
+    object Stopped : RecordState()
+    object Pending : RecordState()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -54,6 +59,9 @@ class RecordUseCase @Inject constructor(
         const val TAG = "RecordUseCase"
     }
 
+    // 기록중인 세션이 있는지 확인
+    private val onGoingFlow: Flow<DrivingSession?> = drivingRepository.getOngoingSession()
+
     // 자동 기록 설정
     private val flagFlow: Flow<Boolean> = repository
         .getDrivingRecodeSetDate()
@@ -66,16 +74,18 @@ class RecordUseCase @Inject constructor(
         .onStart { emit(false) }
 
     // 수동 기록 제어
-    private val manualFlow = MutableStateFlow(false)
+    private val manualFlow: Flow<Boolean> = repository
+        .getManualDrivingRecodeSetDate()
+        .distinctUntilChanged()
 
     /** 수동 기록 시작 */
-    fun startManualRecording() {
-        manualFlow.value = true
+    suspend fun startManualRecording() {
+        repository.setManualDrivingRecode(true)
     }
 
     /** 수동 기록 중지 */
-    fun stopManualRecording() {
-        manualFlow.value = false
+    suspend fun stopManualRecording() {
+        repository.setManualDrivingRecode(false)
     }
 
     // 상태 결정: 수동 OR (자동 + 연결)
@@ -84,10 +94,10 @@ class RecordUseCase @Inject constructor(
         flagFlow,
         connectedFlow
     ) { manual, autoEnabled, connected ->
+        val isActive = manual || autoEnabled
         when {
-            manual -> RecordState.Recording
-            autoEnabled && !connected -> RecordState.Pending
-            autoEnabled && connected    -> RecordState.Recording
+            isActive && connected -> RecordState.Recording
+            isActive -> RecordState.Pending
             else -> RecordState.Stopped
         }
     }
@@ -99,10 +109,20 @@ class RecordUseCase @Inject constructor(
         )
 
     // 세션 ID 흐름 및 시작/종료 핸들링
+    // 기존 sessionFlow 선언부를 다음과 같이 교체합니다.
     private val sessionFlow: StateFlow<Long?> = recordState
-        .map { state ->
-            if (state == RecordState.Recording) drivingRepository.startSession()
-            else null
+        .flatMapLatest { state ->
+            flow {
+                val sessionId = if (state == RecordState.Recording) {
+                    // 1) 진행 중 세션 확인
+                    val ongoing = onGoingFlow.first()
+                    // 2) 있으면 재사용, 없으면 새로 생성
+                    ongoing?.sessionId ?: drivingRepository.startSession()
+                } else {
+                    null
+                }
+                emit(sessionId)
+            }
         }
         .distinctUntilChanged()
         .onEach { newSessionId -> handleSessionTransition(newSessionId) }
@@ -150,6 +170,16 @@ class RecordUseCase @Inject constructor(
     }
 
     init {
+        // 자동 기록 설정이 true(활성화)일 때마다 수동 기록 모드를 false 로 변경
+        flagFlow.filter { it }  // true 일 때만
+            .onEach {
+                // 자동 기록이 켜졌으니 수동 기록은 꺼준다
+                scope.launch {
+                    repository.setManualDrivingRecode(false)
+                }
+            }
+            .launchIn(scope)
+
         // 위치 수집: 세션 ID 있을 때만
         sessionFlow
             .filterNotNull()

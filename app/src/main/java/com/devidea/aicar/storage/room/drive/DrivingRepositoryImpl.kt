@@ -15,6 +15,10 @@ class DrivingRepositoryImpl @Inject constructor(
     //private val api: DrivingApi
 ) : DrivingRepository {
 
+    /**현제 기록중인 세션 조회*/
+    override fun getOngoingSession(): Flow<DrivingSession?> =
+        dao.getOngoingSession()
+
     override fun getAllSessions(): Flow<List<DrivingSession>> =
         dao.getAllSessions()
 
@@ -63,8 +67,6 @@ class DrivingRepositoryImpl @Inject constructor(
     override suspend fun insertSession(session: DrivingSession) = withContext(Dispatchers.IO) {
         dao.insertSession(session)
     }
-
-    override fun getSessionsByDate(dateStr: String) = dao.getSessionsByDate(dateStr)
 
     override fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>> =
         dao.getSessionsInRange(startMillis, endMillis)

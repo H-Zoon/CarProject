@@ -21,6 +21,15 @@ interface DrivingDao {
     @Insert
     suspend fun insertDataPoint(point: DrivingDataPoint)
 
+    /** 아직 종료되지 않은(끝난 시간이 없는) 세션을 하나만 가져오기 */
+    @Query("""
+      SELECT * FROM DrivingSession
+      WHERE endTime IS NULL
+      ORDER BY startTime DESC
+      LIMIT 1
+    """)
+    fun getOngoingSession(): Flow<DrivingSession?>
+
     @Query("SELECT * FROM DrivingSession ORDER BY startTime DESC")
     fun getAllSessions(): Flow<List<DrivingSession>>
 

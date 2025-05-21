@@ -48,7 +48,8 @@ class MainViewModel @Inject constructor(
     val devices: LiveData<List<ScannedDevice>> = _devices
 
     /** 블루투스 연결/해제/오류 이벤트를 발행합니다. */
-    val _bluetoothState: MutableStateFlow<ConnectionEvent> = MutableStateFlow(ConnectionEvent.Disconnected)
+    val _bluetoothState: MutableStateFlow<ConnectionEvent> =
+        MutableStateFlow(ConnectionEvent.Disconnected)
     val bluetoothState: StateFlow<ConnectionEvent> = _bluetoothState.asStateFlow()
 
     /** 블루투스 기기 스캔을 시작합니다. */
@@ -58,7 +59,8 @@ class MainViewModel @Inject constructor(
     fun stopScan() = viewModelScope.launch { sppClient.requestStopScan() }
 
     /** 선택한 블루투스 기기에 연결 요청을 보냅니다. */
-    fun connectTo(device: ScannedDevice) = viewModelScope.launch { sppClient.requestConnect(device) }
+    fun connectTo(device: ScannedDevice) =
+        viewModelScope.launch { sppClient.requestConnect(device) }
 
     /** 현재 블루투스 연결을 해제합니다. */
     fun disconnect() = viewModelScope.launch { sppClient.requestDisconnect() }
@@ -135,12 +137,14 @@ class MainViewModel @Inject constructor(
     val recordState: StateFlow<RecordState> = recordUseCase.recordState
 
     fun toggleRecording() {
-        if (recordState.value is RecordState.Recording ||
-            recordState.value is RecordState.Pending
-        ) {
-            recordUseCase.stopManualRecording()
-        } else {
-            recordUseCase.startManualRecording()
+        viewModelScope.launch {
+            if (recordState.value is RecordState.Recording ||
+                recordState.value is RecordState.Pending
+            ) {
+                recordUseCase.stopManualRecording()
+            } else {
+                recordUseCase.startManualRecording()
+            }
         }
     }
     //endregion
