@@ -117,6 +117,7 @@ class SppService : Service() {
 
     // --- Scope & sync ---
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var rawReaderJob: Job? = null
     private val writerMutex = Mutex()
 
     // --- Header cache ---
@@ -277,9 +278,15 @@ class SppService : Service() {
     fun requestDisconnect() {
         Log.d(TAG, "[Disconnect] requestDisconnect called")
         serviceScope.launch {
-            _connectionEvents.emit(ConnectionEvent.Disconnected)
-            reader?.close(); writer?.close(); socket?.close()
+            rawReaderJob?.cancel()
+            rawReaderJob = null
+
+            reader?.close()
+            writer?.close()
+            socket?.close()
             pending.clear()
+
+            _connectionEvents.emit(ConnectionEvent.Disconnected)
         }
     }
 
@@ -334,38 +341,47 @@ class SppService : Service() {
     }
 
     // --- Raw byte reader ---
-    private fun launchRawReader() = serviceScope.launch(Dispatchers.IO) {
-        Log.d(TAG, "[Reader] launchRawReader started")
-        val input = socket!!.inputStream
-        val sbLine = StringBuilder()
-        val buf = ByteArray(1)
-        while (isActive) {
-            val n = input.read(buf)
-            if (n <= 0) break
-            val ch = buf[0].toInt().toChar()
-            when (ch) {
-                '>' -> {
-                    Log.d(TAG, "[Reader] Detected '>' prompt")
-                    promptFlow.tryEmit(Unit)
-                    rawLines.emit(">")
-                    if (sbLine.isNotEmpty()) {
-                        rawLines.emit(sbLine.toString())
-                        sbLine.setLength(0)
+    private fun launchRawReader(): Job {
+        rawReaderJob = serviceScope.launch(Dispatchers.IO) {
+            Log.d(TAG, "[Reader] launchRawReader started")
+            val input = socket?.inputStream ?: return@launch
+            val sbLine = StringBuilder()
+            val buf = ByteArray(1)
+
+            try {
+                while (isActive) {
+                    val n = input.read(buf)
+                    if (n <= 0) break
+
+                    val ch = buf[0].toInt().toChar()
+                    when (ch) {
+                        '>' -> {
+                            Log.d(TAG, "[Reader] Detected '>' prompt")
+                            promptFlow.tryEmit(Unit)
+                            rawLines.emit(">")
+                            if (sbLine.isNotEmpty()) {
+                                rawLines.emit(sbLine.toString())
+                                sbLine.setLength(0)
+                            }
+                        }
+                        '\r', '\n' -> {
+                            if (sbLine.isNotEmpty()) {
+                                rawLines.emit(sbLine.toString())
+                                sbLine.setLength(0)
+                            }
+                        }
+                        else -> sbLine.append(ch)
                     }
                 }
-
-                '\r', '\n' -> {
-                    if (sbLine.isNotEmpty()) {
-                        rawLines.emit(sbLine.toString())
-                        sbLine.setLength(0)
-                    }
-                }
-
-                else -> sbLine.append(ch)
+            } catch (e: IOException) {
+                Log.d(TAG, "[Reader] Stream closed, stopping reader: ${e.localizedMessage}")
+            } finally {
+                Log.d(TAG, "[Reader] launchRawReader ended")
             }
         }
-        Log.d(TAG, "[Reader] launchRawReader ended")
+        return rawReaderJob!!
     }
+
 
     // 수정된 Assembler 코드: 경계 처리 우선 및 불필요 라인 필터 순서 조정
     private fun launchAssembler() = serviceScope.launch {

@@ -93,16 +93,17 @@ fun BluetoothControl(
     var showRationale by rememberSaveable { mutableStateOf(false) }
     var showDeviceList by rememberSaveable { mutableStateOf(false) }
     var showSaveDialog by rememberSaveable { mutableStateOf(false) }
+    var hasPromptedSave by rememberSaveable { mutableStateOf(false) }
 
     // 3) 상태 텍스트는 derivedStateOf 로 효율화
     val statusText by remember(bluetoothState) {
         derivedStateOf {
             when (bluetoothState) {
-                ConnectionEvent.Scanning     -> "검색 중..."
-                ConnectionEvent.Connecting   -> "연결 중..."
-                ConnectionEvent.Connected    -> "연결 완료"
+                ConnectionEvent.Scanning -> "검색 중..."
+                ConnectionEvent.Connecting -> "연결 중..."
+                ConnectionEvent.Connected -> "연결 완료"
                 ConnectionEvent.Disconnected -> "연결 해제됨"
-                ConnectionEvent.Error        -> "연결에 실패하였습니다."
+                ConnectionEvent.Error -> "연결에 실패하였습니다."
             }
         }
     }
@@ -113,8 +114,9 @@ fun BluetoothControl(
     LaunchedEffect(bluetoothState) {
         showDeviceList = bluetoothState == ConnectionEvent.Scanning
 
-        if (bluetoothState == ConnectionEvent.Connected && savedDevice == null) {
+        if (bluetoothState == ConnectionEvent.Connected && savedDevice == null && !hasPromptedSave) {
             showSaveDialog = true
+            hasPromptedSave = true
         }
     }
 
@@ -132,20 +134,26 @@ fun BluetoothControl(
 
     // 6) 저장 확인 다이얼로그
     if (showSaveDialog) {
-            AlertDialog(
-                onDismissRequest = { showSaveDialog = false },
-                title = { Text("기기 저장") },
-                text = { Text("현재 연결된 기기를 다음에 자동 연결 기기로 저장할까요?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        onSaveDevice()
-                        showSaveDialog = false
-                    }) { Text("저장") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showSaveDialog = false }) { Text("취소") }
-                }
-            )
+        AlertDialog(
+            onDismissRequest = {
+                showSaveDialog = false
+                hasPromptedSave = true
+            },
+            title = { Text("기기 저장") },
+            text = { Text("현재 연결된 기기를 다음에 자동 연결 기기로 저장할까요?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSaveDevice()
+                    showSaveDialog = false
+                }) { Text("저장") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showSaveDialog = false
+                    hasPromptedSave = true
+                }) { Text("취소") }
+            }
+        )
     }
 
     // 7) 메인 카드 UI
@@ -164,13 +172,17 @@ fun BluetoothControl(
             Spacer(Modifier.height(16.dp))
             ActionButton(
                 state = bluetoothState,
-                enabled = bluetoothState !in listOf(ConnectionEvent.Scanning, ConnectionEvent.Connecting),
+                enabled = bluetoothState in listOf(
+                    ConnectionEvent.Disconnected,
+                    ConnectionEvent.Connected
+                ),
                 onClick = {
                     when {
                         permissionState.allPermissionsGranted -> {
                             if (bluetoothState == ConnectionEvent.Connected) onDisconnect()
                             else onStartScan()
                         }
+
                         permissionState.shouldShowRationale -> showRationale = true
                         else -> permissionState.launchMultiplePermissionRequest()
                     }
@@ -232,7 +244,7 @@ private fun ConnectionDeviceRow(nameText: String? = null) {
     ) {
         Text("연결된 기기", style = MaterialTheme.typography.bodyLarge)
         Text(
-            nameText?: "연결된 기기가 없습니다.",
+            nameText ?: "연결된 기기가 없습니다.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -270,11 +282,12 @@ private fun ActionButton(
     ) {
         Text(
             when (state) {
-                ConnectionEvent.Connected    -> "연결 해제"
+                ConnectionEvent.Connected -> "연결 해제"
                 ConnectionEvent.Disconnected,
-                ConnectionEvent.Error        -> "기기 검색"
-                ConnectionEvent.Connecting   -> "연결중"
-                ConnectionEvent.Scanning     -> "검색중"
+                ConnectionEvent.Error -> "기기 검색"
+
+                ConnectionEvent.Connecting -> "연결중"
+                ConnectionEvent.Scanning -> "검색중"
             }
         )
     }
