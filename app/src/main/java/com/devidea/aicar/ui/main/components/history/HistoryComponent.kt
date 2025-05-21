@@ -23,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
@@ -41,7 +43,6 @@ fun SessionOverviewScreen(
     sessionId: Long,
     onBack: () -> Unit
 ) {
-    // 탭 상태: 0 = Summary, 1 = Detail
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("요약", "상세")
 
@@ -58,7 +59,6 @@ fun SessionOverviewScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(top = padding.calculateTopPadding())) {
-            // 1) 탭바
             TabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -69,13 +69,9 @@ fun SessionOverviewScreen(
                 }
             }
 
-            // 2) 탭 컨텐츠
             when (selectedTab) {
                 0 -> SessionSummaryScreen(sessionId)
-                1 -> SessionDetailScreen(
-                    sessionId = sessionId,
-                    onBack = { /* 사용 안 함, 뒤로는 위상단백 버튼으로 */ }
-                )
+                1 -> SessionDetailScreen(sessionId = sessionId, onBack = { /* not used */ })
             }
         }
     }
@@ -87,169 +83,226 @@ fun SessionListScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onSessionClick: (Long) -> Unit
 ) {
-    // State flows
     val selectedDate by viewModel.selectedDate.collectAsState(initial = LocalDate.now())
-    //val selectedDate by viewModel.selectedDate.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
+
+    val titleFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+    val dateTimeFormatter = DateTimeFormatter
+        .ofLocalizedDateTime(FormatStyle.SHORT)
+        .withZone(ZoneId.systemDefault())
+
+    var showCalendar by remember { mutableStateOf(false) }
     val month by viewModel.month.collectAsState()
     val markedDates by viewModel.markedDates.collectAsState()
-    var showCalendar by remember { mutableStateOf(false) }
-
-    // Snackbar & dialog states
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var targetSession by remember { mutableStateOf<DrivingSession?>(null) }
-    var showDeleteAllDialog by remember { mutableStateOf(false) }
-    var recentlyDeletedSession by remember { mutableStateOf<DrivingSession?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    val selectedSessions = remember { mutableStateListOf<Long>() }
     var recentlyDeletedSessions by remember { mutableStateOf<List<DrivingSession>>(emptyList()) }
-
-    // Date formatters
-    val titleFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
-    val dateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
-        .withZone(ZoneId.systemDefault())
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = if (selectionMode) {
+                    @Composable {
+                        IconButton(onClick = {
+                            selectedSessions.clear()
+                            selectionMode = false
+                        }) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Cancel selection"
+                            )
+                        }
+                    }
+                } else ({}),
                 title = {
-                    Text(stringResource(R.string.title_history)) },
+                    Text(
+                        text = if (selectionMode)
+                            "${selectedSessions.size} selected"
+                        else stringResource(R.string.title_history),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 actions = {
-                    IconButton(onClick = { showDeleteAllDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete all sessions"
-                        )
+                    IconButton(onClick = { selectionMode = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete sessions")
                     }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { paddingValues ->
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            if (selectionMode) {
+                FloatingActionButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            // 선택된 세션을 삭제 전 백업
+                            recentlyDeletedSessions =
+                                sessions.filter { selectedSessions.contains(it.sessionId) }
+                            // 삭제 실행
+                            selectedSessions.forEach { viewModel.deleteSession(it) }
+                            val count = recentlyDeletedSessions.size
+                            // 상태 초기화
+                            selectedSessions.clear()
+                            selectionMode = false
+
+                            // 스낵바로 복원 옵션 제공
+                            val result = snackbarHostState.showSnackbar(
+                                message = "$count sessions deleted",
+                                actionLabel = "Undo"
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                // 복원 처리
+                                viewModel.restoreAllSessions(recentlyDeletedSessions)
+                            }
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.error
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Confirm delete")
+                }
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding()),
+                .padding(top = padding.calculateTopPadding()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = selectedDate?.format(titleFormatter)
-                    ?: LocalDate.now().format(titleFormatter),
+                text = selectedDate.format(titleFormatter),
                 style = MaterialTheme.typography.headlineLarge,
                 modifier = Modifier
                     .height(50.dp)
                     .clickable { showCalendar = true }
             )
 
-            LazyColumn(modifier = Modifier) {
+            LazyColumn {
+                if (selectionMode) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val allIds = sessions.map { it.sessionId }
+                                    if (selectedSessions.size < sessions.size) {
+                                        selectedSessions.clear()
+                                        selectedSessions.addAll(allIds)
+                                    } else {
+                                        selectedSessions.clear()
+                                    }
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (selectedSessions.size < sessions.size)
+                                    "Select All" else "Deselect All",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        Divider()
+                    }
+                }
+
                 items(sessions, key = { it.sessionId }) { session ->
-                    val start = dateTimeFormatter.format(session.startTime)
-                    val end = session.endTime?.let { dateTimeFormatter.format(it) } ?: "--"
-                    ListItem(
-                        headlineContent = { Text("Session #${session.sessionId}") },
-                        supportingContent = { Text("$start ~ $end") },
-                        trailingContent = {
-                            IconButton(onClick = {
-                                targetSession = session
-                                showDeleteDialog = true
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete session"
-                                )
-                            }
+                    SelectableSessionCard(
+                        session = session,
+                        dateTimeFormatter = dateTimeFormatter,
+                        selecting = selectionMode,
+                        isSelected = selectedSessions.contains(session.sessionId),
+                        onSelect = { checked ->
+                            if (checked) selectedSessions.add(session.sessionId)
+                            else selectedSessions.remove(session.sessionId)
                         },
-                        modifier = Modifier
-                            .clickable { onSessionClick(session.sessionId) }
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                        onClick = {
+                            if (!selectionMode) {
+                                onSessionClick(session.sessionId)
+                            } else {
+                                if (selectedSessions.contains(session.sessionId))
+                                    selectedSessions.remove(session.sessionId)
+                                else
+                                    selectedSessions.add(session.sessionId)
+                            }
+                        }
                     )
                     Divider()
                 }
             }
         }
-    }
-    // Single delete dialog
-    if (showDeleteDialog && targetSession != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Session") },
-            text = { Text("Are you sure you want to delete session #${targetSession!!.sessionId}? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    recentlyDeletedSession = targetSession
-                    viewModel.deleteSession(targetSession!!.sessionId)
-                    showDeleteDialog = false
-                    coroutineScope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "삭제되었습니다.",
-                            actionLabel = "복구하기"
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            recentlyDeletedSession?.let { viewModel.restoreSession(it) }
-                        }
-                    }
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
 
-    // Delete all dialog
-    if (showDeleteAllDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteAllDialog = false },
-            title = { Text("Delete All Sessions") },
-            text = { Text("Are you sure you want to delete all sessions? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    recentlyDeletedSessions = sessions
-                    viewModel.deleteAllSessions()
-                    showDeleteAllDialog = false
-                    coroutineScope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "모두 삭제되었습니다.",
-                            actionLabel = "복구하기"
+        if (showCalendar) {
+            Dialog(onDismissRequest = { showCalendar = false }) {
+                Card(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            IconButton(onClick = { viewModel.changeMonth(-1) }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Previous month")
+                            }
+                            Text(text = "${month.year}.${month.monthValue}")
+                            IconButton(onClick = { viewModel.changeMonth(1) }) {
+                                Icon(Icons.Default.ArrowForward, contentDescription = "Next month")
+                            }
+                        }
+                        CalendarGrid(
+                            month = month,
+                            selectedDate = selectedDate!!,
+                            markedDates = markedDates,
+                            onDateClick = { date ->
+                                viewModel.selectDate(date)
+                                showCalendar = false
+                            }
                         )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            viewModel.restoreAllSessions(recentlyDeletedSessions)
-                        }
                     }
-                }) { Text("Delete All") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAllDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    if (showCalendar) {
-        Dialog(onDismissRequest = { showCalendar = false }) {
-            Card(modifier = Modifier.padding(16.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        IconButton(onClick = { viewModel.changeMonth(-1) }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Previous month")
-                        }
-                        Text(text = "${month.year}.${month.monthValue}")
-                        IconButton(onClick = { viewModel.changeMonth(1) }) {
-                            Icon(Icons.Default.ArrowForward, contentDescription = "Next month")
-                        }
-                    }
-                    CalendarGrid(
-                        month = month,
-                        selectedDate = selectedDate!!,
-                        markedDates = markedDates,
-                        onDateClick = { date ->
-                            viewModel.selectDate(date)
-                            showCalendar = false
-                        }
-                    )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectableSessionCard(
+    session: DrivingSession,
+    dateTimeFormatter: DateTimeFormatter,
+    selecting: Boolean,
+    isSelected: Boolean,
+    onSelect: (Boolean) -> Unit,
+    onClick: () -> Unit
+) {
+    val start = dateTimeFormatter.format(session.startTime)
+    val end = session.endTime?.let { dateTimeFormatter.format(it) } ?: "--"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (!selecting) Modifier.clickable(onClick = onClick)
+                else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (selecting) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = onSelect,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Session #${session.sessionId}", style = MaterialTheme.typography.titleMedium)
+            Text("$start ~ $end", style = MaterialTheme.typography.bodyMedium)
+        }
+
+        if (!selecting) {
+            IconButton(onClick = onClick) {
+                Icon(Icons.Default.ChevronRight, contentDescription = "Go to detail")
             }
         }
     }
@@ -267,7 +320,6 @@ fun CalendarGrid(
     val totalCells = startOffset + month.lengthOfMonth()
     val rows = (totalCells + 6) / 7
 
-    // Weekday headers
     Row(modifier = Modifier.fillMaxWidth()) {
         listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
             Text(
@@ -277,7 +329,6 @@ fun CalendarGrid(
             )
         }
     }
-    // Dates grid
     for (row in 0 until rows) {
         Row(modifier = Modifier.fillMaxWidth()) {
             for (col in 0..6) {
@@ -290,7 +341,6 @@ fun CalendarGrid(
                             .weight(1f)
                             .aspectRatio(1f)
                             .clickable { onDateClick(date) }
-                            // Highlight selected date
                             .then(
                                 if (date == selectedDate)
                                     Modifier
@@ -304,7 +354,6 @@ fun CalendarGrid(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = day.toString())
-                        // Show hint for dates with data
                         if (markedDates.contains(date)) {
                             Box(
                                 modifier = Modifier
