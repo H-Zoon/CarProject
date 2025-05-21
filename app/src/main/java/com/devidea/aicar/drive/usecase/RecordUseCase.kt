@@ -2,11 +2,11 @@ package com.devidea.aicar.drive.usecase
 
 import android.location.Location
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import com.devidea.aicar.LocationProvider
 import com.devidea.aicar.drive.Decoders
 import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
 import com.devidea.aicar.drive.PIDs
+import com.devidea.aicar.module.AppModule
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
@@ -15,145 +15,149 @@ import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import javax.inject.Inject
 
-sealed class RecodeState {
-    object Recoding : RecodeState()
-    object UnRecoding : RecodeState()
-    object Waiting : RecodeState()
+sealed class RecordState {
+    object Recording : RecordState()
+    object Stopped   : RecordState()
+    object Pending   : RecordState()
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RecordUseCase @Inject constructor(
     private val locationProvider: LocationProvider,
     private val drivingRepository: DrivingRepository,
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
     private val notificationRepository: NotificationRepository,
+    @AppModule.ApplicationScope private val scope: CoroutineScope
 ) {
     companion object {
         const val TAG = "RecordUseCase"
     }
 
-    // 1) 플래그 플로우: DataStore에서 가져오는 자동 기록 설정
+    // 자동 기록 설정
     private val flagFlow: Flow<Boolean> = repository
         .getDrivingRecodeSetDate()
         .distinctUntilChanged()
 
-    // 2) 연결 플로우: SPP 클라이언트의 연결 이벤트를 Boolean으로 변환
+    // 장치 연결 상태
     private val connectedFlow: Flow<Boolean> = sppClient.connectionEvents
         .map { it is ConnectionEvent.Connected }
         .distinctUntilChanged()
         .onStart { emit(false) }
 
-    // 3) 수동 요청 플로우: MutableStateFlow로 사용자 토글을 받음
-    private val _requestRecode = MutableStateFlow(false)
-    val requestRecode: StateFlow<Boolean> = _requestRecode.asStateFlow()
+    // 수동 기록 제어
+    private val manualFlow = MutableStateFlow(false)
 
-    fun setRequestRecode() {
-        _requestRecode.value = requestRecode.value != true
+    /** 수동 기록 시작 */
+    fun startManualRecording() {
+        manualFlow.value = true
     }
 
-    // 4) 세 플로우를 합쳐서 RecodeState 결정
-    private val _recordStateFlow: Flow<RecodeState> = combine(
+    /** 수동 기록 중지 */
+    fun stopManualRecording() {
+        manualFlow.value = false
+    }
+
+    // 상태 결정: 수동 OR (자동 + 연결)
+    val recordState: StateFlow<RecordState> = combine(
+        manualFlow,
         flagFlow,
-        connectedFlow,
-        _requestRecode
-    ) { autoEnabled, connected, manualRequested ->
-        val shouldRecord = autoEnabled || manualRequested
+        connectedFlow
+    ) { manual, autoEnabled, connected ->
         when {
-            !shouldRecord ->
-                RecodeState.UnRecoding
-
-            connected ->
-                RecodeState.Recoding
-
-            else ->
-                RecodeState.Waiting
+            manual -> RecordState.Recording
+            autoEnabled && !connected -> RecordState.Pending
+            autoEnabled && connected    -> RecordState.Recording
+            else -> RecordState.Stopped
         }
-    }.distinctUntilChanged()
+    }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = RecordState.Stopped
+        )
 
-    val recordStateFlow: Flow<RecodeState> = _recordStateFlow
+    // 세션 ID 흐름 및 시작/종료 핸들링
+    private val sessionFlow: StateFlow<Long?> = recordState
+        .map { state ->
+            if (state == RecordState.Recording) drivingRepository.startSession()
+            else null
+        }
+        .distinctUntilChanged()
+        .onEach { newSessionId -> handleSessionTransition(newSessionId) }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
 
-    var sessionId: Long? = null
+    private var currentSessionId: Long? = null
+
+    private suspend fun handleSessionTransition(newSessionId: Long?) {
+        val previous = currentSessionId
+        if (previous == null && newSessionId != null) {
+            // 세션 시작
+            startSession(newSessionId)
+        } else if (previous != null && newSessionId == null) {
+            // 세션 종료
+            stopSession(previous)
+        }
+        currentSessionId = newSessionId
+    }
+
+    private suspend fun startSession(sessionId: Long) {
+        val now = Instant.now()
+        notificationRepository.insertNotification(
+            NotificationEntity(
+                title = "주행 기록 시작",
+                body = "세션 $sessionId 이(가) $now 에 시작되었습니다.",
+                timestamp = now
+            )
+        )
+    }
+
+    private suspend fun stopSession(sessionId: Long) {
+        drivingRepository.stopSession(sessionId)
+        val now = Instant.now()
+        notificationRepository.insertNotification(
+            NotificationEntity(
+                title = "주행 기록 종료",
+                body = "세션 $sessionId 이(가) $now 에 종료되었습니다.",
+                timestamp = now
+            )
+        )
+    }
 
     init {
-        _recordStateFlow
-            .onEach { newState ->
-                when (newState) {
-                    is RecodeState.Recoding -> {
-                        sessionId = drivingRepository.startSession()
-                        if (sessionId != null) start(sessionId!!)
-
-                        val now = Instant.now()
-                        notificationRepository.insertNotification(
-                            NotificationEntity(
-                                title = "주행 기록 시작",
-                                body = "세션 $sessionId 이(가) ${now}에 시작되었습니다.",
-                                timestamp = now
-                            )
-                        )
-                    }
-
-                    is RecodeState.UnRecoding -> {
-                        if (sessionId != null) {
-                            drivingRepository.stopSession(sessionId!!)
-                            val now = Instant.now()
-                            notificationRepository.insertNotification(
-                                NotificationEntity(
-                                    title = "주행 기록 종료",
-                                    body = "세션 $sessionId 이(가) ${now}에 종료되었습니다.",
-                                    timestamp = now
-                                )
-                            )
-                            sessionId = null
-                            stop()
-                        }
-                    }
-
-                    RecodeState.Waiting -> {
-
-                    }
-                }
-            }.launchIn(CoroutineScope(SupervisorJob() + Dispatchers.Default))
-    }
-
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var collectJob: Job? = null
-
-    fun start(sessionId: Long) {
-        if (collectJob?.isActive == true) return
-
-        collectJob = scope.launch {
-            locationProvider.locationUpdates()
-                .collect { location ->
-                    launch {
-                        recordDataPoint(sessionId, location)
-                    }
-                }
-        }
-    }
-
-    fun stop() {
-        collectJob?.cancel()
-        collectJob = null
+        // 위치 수집: 세션 ID 있을 때만
+        sessionFlow
+            .filterNotNull()
+            .flatMapLatest { id ->
+                locationProvider.locationUpdates()
+                    .onEach { loc -> recordDataPoint(id, loc) }
+            }
+            .launchIn(scope)
     }
 
     private suspend fun recordDataPoint(

@@ -4,23 +4,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.aicar.drive.usecase.DashBoardUseCase
-import com.devidea.aicar.drive.usecase.RecodeState
 import com.devidea.aicar.drive.usecase.RecordUseCase
+import com.devidea.aicar.drive.usecase.RecordState
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
-import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -79,19 +74,16 @@ class MainViewModel @Inject constructor(
 
     //region 마지막 연결 및 주행 거리 데이터
 
-    private val _lastConnectDate = MutableStateFlow<String>("")
-
     /** 마지막 블루투스 연결 이후 경과 일수, 알 수 없으면 "-"로 표시합니다. */
+    private val _lastConnectDate = MutableStateFlow<String>("")
     val lastConnectDate: StateFlow<String> = _lastConnectDate
 
-    private val _recentMileage = MutableStateFlow<String>("")
-
     /** 마지막 기록된 주행 거리(Km), 없으면 "-"로 표시합니다. */
+    private val _recentMileage = MutableStateFlow<String>("")
     val recentMileage: StateFlow<String> = _recentMileage
 
-    private val _driveHistoryEnable = MutableStateFlow(false)
-
     /** 주행 기록 저장 여부 플래그를 나타냅니다. */
+    private val _driveHistoryEnable = MutableStateFlow(false)
     val driveHistoryEnable: StateFlow<Boolean> = _driveHistoryEnable
 
     /** 오늘 날짜를 DataStore에 마지막 연결 일자로 저장합니다. */
@@ -140,16 +132,16 @@ class MainViewModel @Inject constructor(
     //endregion
 
     //region 운전기록 컨트롤
-    private val _isRecording = recordUseCase.recordStateFlow
-    val isRecording: StateFlow<RecodeState> = _isRecording
-        .stateIn(
-            scope = viewModelScope,                           // ViewModel lifecycle
-            started = SharingStarted.WhileSubscribed(5_000), // 구독 중에만 활성화
-            initialValue = RecodeState.UnRecoding            // 초깃값
-        )
+    val recordState: StateFlow<RecordState> = recordUseCase.recordState
 
     fun toggleRecording() {
-        recordUseCase.setRequestRecode()
+        if (recordState.value is RecordState.Recording ||
+            recordState.value is RecordState.Pending
+        ) {
+            recordUseCase.stopManualRecording()
+        } else {
+            recordUseCase.startManualRecording()
+        }
     }
     //endregion
 

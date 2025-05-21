@@ -46,7 +46,8 @@ class DataStoreRepository @Inject constructor(
 
     private val CONNECT_DATE_KEY = stringPreferencesKey("connect_date")
     private val RECENT_MILEAGE_KEY = intPreferencesKey("recent_mileage")
-    private val DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
+    private val AUTO_DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
+    private val MANUAL_DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_manual_enabled")
 
     private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
     private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
@@ -183,16 +184,30 @@ class DataStoreRepository @Inject constructor(
 
     suspend fun setDrivingRecode(value: Boolean) {
         dataStore.edit { preferences ->
-            preferences[DRIVING_RECORD_ENABLED] = value
+            preferences[AUTO_DRIVING_RECORD_ENABLED] = value
         }
     }
 
     fun getDrivingRecodeSetDate(): Flow<Boolean> {
         return dataStore.data
             .map { preferences ->
-                preferences[DRIVING_RECORD_ENABLED] == true
+                preferences[AUTO_DRIVING_RECORD_ENABLED] == true
             }
     }
+
+    suspend fun setManualDrivingRecode(value: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[MANUAL_DRIVING_RECORD_ENABLED] = value
+        }
+    }
+
+    fun getManualDrivingRecodeSetDate(): Flow<Boolean> {
+        return dataStore.data
+            .map { preferences ->
+                preferences[MANUAL_DRIVING_RECORD_ENABLED] == true
+            }
+    }
+
 
     /**
      * 검색어를 히스토리에 추가합니다.

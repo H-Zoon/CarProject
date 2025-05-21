@@ -1,9 +1,5 @@
 package com.devidea.aicar.ui.main.components
 
-import android.Manifest
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,24 +8,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.aicar.drive.usecase.RecodeState
-import com.devidea.aicar.service.ConnectionEvent
-import com.devidea.aicar.service.ScannedDevice
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devidea.aicar.drive.usecase.RecordState
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 const val TAG = "MainViewComponent"
 
@@ -41,9 +29,9 @@ fun HomeScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val driveHistoryEnable by viewModel.driveHistoryEnable.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState()
-    val bluetoothState by viewModel.bluetoothState.collectAsState()
-    val lastConnection by viewModel.lastConnectDate.collectAsState()
+    val recordState by viewModel.recordState.collectAsStateWithLifecycle(initialValue = RecordState.Stopped)
+    val bluetoothState by viewModel.bluetoothState.collectAsStateWithLifecycle()
+    val lastConnection by viewModel.lastConnectDate.collectAsStateWithLifecycle()
     val devices by viewModel.devices.observeAsState(emptyList())
 
     Scaffold(
@@ -79,7 +67,7 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
             DrivingRecordControl(
-                isRecording = isRecording,
+                recordState = recordState,
                 onRecordToggle = { viewModel.toggleRecording() },
                 isAutoRecordEnabled = driveHistoryEnable,
                 onAutoRecordToggle = { viewModel.setDrivingHistory(it) }
@@ -90,7 +78,7 @@ fun HomeScreen(
 
 @Composable
 fun DrivingRecordControl(
-    isRecording: RecodeState,
+    recordState: RecordState,
     onRecordToggle: () -> Unit,
     isAutoRecordEnabled: Boolean,
     onAutoRecordToggle: (Boolean) -> Unit,
@@ -125,16 +113,16 @@ fun DrivingRecordControl(
                         modifier = Modifier
                             .size(12.dp)
                             .background(
-                                color = if (isRecording == RecodeState.Recoding) Color.Red else Color.Gray,
+                                color = if (recordState == RecordState.Recording) Color.Red else Color.Gray,
                                 shape = CircleShape
                             )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = when (isRecording) {
-                            is RecodeState.Recoding -> "주행 기록중"
-                            is RecodeState.Waiting -> "기록 대기중"
-                            is RecodeState.UnRecoding -> "주행 기록 취소"
+                        text = when (recordState) {
+                            is RecordState.Recording -> "주행 기록중"
+                            is RecordState.Pending -> "기록 대기중"
+                            is RecordState.Stopped -> "주행 기록 취소"
                         },
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -172,7 +160,12 @@ fun DrivingRecordControl(
                 enabled = !isAutoRecordEnabled,
                 onClick = onRecordToggle
             ) {
-                Text(text = if (isRecording == RecodeState.Recoding || isRecording == RecodeState.Waiting) "수동기록 중지" else "수동기록 시작")
+                Text(text =
+                    when (recordState){
+                        is RecordState.Recording,  is RecordState.Pending -> "수동기록 중지"
+                        else -> "수동기록 시작"
+                    }
+                )
             }
         }
     }
