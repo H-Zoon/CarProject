@@ -5,6 +5,7 @@ import android.util.Log
 import com.devidea.aicar.LocationProvider
 import com.devidea.aicar.drive.Decoders
 import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
+import com.devidea.aicar.drive.ObdPollingManager
 import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.module.AppModule
 import com.devidea.aicar.service.ConnectionEvent
@@ -53,6 +54,7 @@ class RecordUseCase @Inject constructor(
     private val drivingRepository: DrivingRepository,
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
+    private val obdPollingManager: ObdPollingManager,
     private val notificationRepository: NotificationRepository,
     @AppModule.ApplicationScope private val scope: CoroutineScope
 ) {
@@ -165,6 +167,7 @@ class RecordUseCase @Inject constructor(
                             currentSessionId = onGoingFlow.value?.sessionId!!
                         }
                         Log.e("sesstion start", currentSessionId.toString())
+                        obdPollingManager.startPall()
                         locationJob = scope.launch {
                             locationProvider.locationUpdates()
                                 .collect { loc -> recordDataPoint(currentSessionId!!, loc) }
@@ -172,6 +175,7 @@ class RecordUseCase @Inject constructor(
                     }
                     is RecordState.Stopped ->{
                         locationJob?.cancel()
+                        obdPollingManager.stopAll()
                         if(currentSessionId != null){
                             stopSession(currentSessionId!!)
                         } else {
@@ -194,18 +198,26 @@ class RecordUseCase @Inject constructor(
         sessionId: Long,
         location: Location
     ) {
-        val maf = safeQuery(PIDs.MAF)?.toFloat() ?: 0f
+        /*val maf = safeQuery(PIDs.MAF)?.toFloat() ?: 0f
         val rpm = safeQuery(PIDs.RPM)?.toInt() ?: 0
         val ect = safeQuery(PIDs.ECT)?.toInt() ?: 0
         val speed = safeQuery(PIDs.SPEED)?.toInt() ?: 0
         val stft = safeQuery(PIDs.S_FUEL_TRIM)?.toFloat() ?: 0f
-        val ltft = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f
+        val ltft = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f*/
+        val maf = obdPollingManager.maf
+        val rpm = obdPollingManager.rpm
+        val ect = obdPollingManager.ect
+        val speed = obdPollingManager.speed
+        val stft = obdPollingManager.sFuelTrim
+        val ltft = obdPollingManager.lFuelTrim
+
+        Log.e("rpm", rpm.value.toString())
 
         val instantKPL = calculateInstantFuelEconomy(
-            maf = maf,
-            speedKmh = speed,
-            stft = stft,
-            ltft = ltft
+            maf = maf.value,
+            speedKmh = speed.value,
+            stft = stft.value,
+            ltft = ltft.value
         )
 
         val dataPoint = DrivingDataPoint(
@@ -213,9 +225,9 @@ class RecordUseCase @Inject constructor(
             timestamp = Instant.now(),
             latitude = location.latitude,
             longitude = location.longitude,
-            rpm = rpm,
-            speed = speed,
-            engineTemp = ect,
+            rpm = rpm.value,
+            speed = speed.value,
+            engineTemp = ect.value,
             instantKPL = instantKPL
         )
 

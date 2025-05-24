@@ -2,6 +2,7 @@ package com.devidea.aicar.ui.main.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devidea.aicar.drive.ObdPollingManager
 import com.devidea.aicar.drive.usecase.DashBoardUseCase
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.ui.main.components.GaugeItem
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DashBoardViewModel @Inject constructor(
     private val repository: DataStoreRepository,
-    private val pidManager: DashBoardUseCase
+    //private val pidManager: DashBoardUseCase,
+    private val pidManager: ObdPollingManager
 ) : ViewModel() {
 
     //region 엔진 파라미터 스트림
@@ -32,7 +34,7 @@ class DashBoardViewModel @Inject constructor(
 
     val maf: SharedFlow<Float> = pidManager.maf
     val batt: SharedFlow<Float> = pidManager.batt
-    val fuelRate: SharedFlow<Float> = pidManager.fuelRate
+    val fuelRate: SharedFlow<Float> = pidManager.fuelLevel
 
     val currentGear: SharedFlow<Int> = pidManager.currentGear
     val oilPressure: SharedFlow<Float> = pidManager.oilPressure

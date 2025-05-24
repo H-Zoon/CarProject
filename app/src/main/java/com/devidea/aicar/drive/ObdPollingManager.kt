@@ -15,7 +15,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
+import javax.inject.Singleton
 
+
+@Singleton
 class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
 
     companion object {
@@ -24,7 +27,7 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var pollJob: Job? = null
-    private var pollPeriodMs = 100L
+    private var pollPeriodMs = 500L
 
 
     // — 백잉 프로퍼티 선언 —
@@ -89,17 +92,22 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
         PIDs.AMBIENT_AIR_TEMP to _ambientAirTemp,
         PIDs.CATALYST_TEMP_BANK1 to _catalystTemp,
         PIDs.COMMANDED_EQUIVALENCE_RATIO to _equivalence,
-        PIDs.FUEL_LEVEL to _fuelLevel,
         PIDs.INTAKE_PRESSURE to _intakePressure,
-        PIDs.CURRENT_GEAR to _currentGear,
         PIDs.OIL_PRESSURE to _oilPressure,
         PIDs.OIL_TEMP to _oilTemp,
-        PIDs.TRANS_FLUID_TEMP to _transFluidTemp
+        PIDs.TRANS_FLUID_TEMP to _transFluidTemp,
+        PIDs.FUEL_LEVEL to _fuelLevel,
+        PIDs.CURRENT_GEAR to _currentGear,
     )
 
     private fun startPolling(pidSet: Set<PIDs>) {
-        pollJob?.cancel()
+        // 이미 폴링 중이면 무시
+        if (pollJob?.isActive == true) {
+            Log.d(TAG, "[poll] already polling, ignore startPolling()")
+            return
+        }
         if (pidSet.isEmpty()) return
+
         pollJob = scope.launch {
             while (isActive) {
                 pidSet.forEach { pid ->
@@ -132,7 +140,9 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
 
     suspend fun safeQuery(pid: PIDs): Number? =
         queryMutex.withLock {
-            val resp = sppClient.query(pid.code, header = pid.header)
-            Decoders.parsers[pid]?.invoke(resp)
+            val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = pollPeriodMs)
+            val result = Decoders.parsers[pid]?.invoke(resp)
+            Log.e("result", "$result")
+            result
         }
 }
