@@ -17,6 +17,7 @@ import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,8 +60,17 @@ class RecordUseCase @Inject constructor(
         const val TAG = "RecordUseCase"
     }
 
+    private var locationJob: Job? = null
+
     // 기록중인 세션이 있는지 확인
-    private val onGoingFlow: Flow<DrivingSession?> = drivingRepository.getOngoingSession()
+    private val onGoingFlow: StateFlow<DrivingSession?> =
+        drivingRepository.getOngoingSession()
+            .stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = null
+            )
+
 
     // 자동 기록 설정
     private val flagFlow: Flow<Boolean> = repository
@@ -108,43 +118,7 @@ class RecordUseCase @Inject constructor(
             initialValue = RecordState.Stopped
         )
 
-    // 세션 ID 흐름 및 시작/종료 핸들링
-    // 기존 sessionFlow 선언부를 다음과 같이 교체합니다.
-    private val sessionFlow: StateFlow<Long?> = recordState
-        .flatMapLatest { state ->
-            flow {
-                val sessionId = if (state == RecordState.Recording) {
-                    // 1) 진행 중 세션 확인
-                    val ongoing = onGoingFlow.first()
-                    // 2) 있으면 재사용, 없으면 새로 생성
-                    ongoing?.sessionId ?: drivingRepository.startSession()
-                } else {
-                    null
-                }
-                emit(sessionId)
-            }
-        }
-        .distinctUntilChanged()
-        .onEach { newSessionId -> handleSessionTransition(newSessionId) }
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = null
-        )
-
     private var currentSessionId: Long? = null
-
-    private suspend fun handleSessionTransition(newSessionId: Long?) {
-        val previous = currentSessionId
-        if (previous == null && newSessionId != null) {
-            // 세션 시작
-            startSession(newSessionId)
-        } else if (previous != null && newSessionId == null) {
-            // 세션 종료
-            stopSession(previous)
-        }
-        currentSessionId = newSessionId
-    }
 
     private suspend fun startSession(sessionId: Long) {
         val now = Instant.now()
@@ -180,14 +154,40 @@ class RecordUseCase @Inject constructor(
             }
             .launchIn(scope)
 
-        // 위치 수집: 세션 ID 있을 때만
-        sessionFlow
-            .filterNotNull()
-            .flatMapLatest { id ->
-                locationProvider.locationUpdates()
-                    .onEach { loc -> recordDataPoint(id, loc) }
+        scope.launch {
+            recordState.collect { state ->
+                when(state){
+                    is RecordState.Recording -> {
+                        if(onGoingFlow.value?.sessionId == null){
+                            currentSessionId = drivingRepository.startSession()
+                            startSession(currentSessionId!!)
+                        } else {
+                            currentSessionId = onGoingFlow.value?.sessionId!!
+                        }
+                        Log.e("sesstion start", currentSessionId.toString())
+                        locationJob = scope.launch {
+                            locationProvider.locationUpdates()
+                                .collect { loc -> recordDataPoint(currentSessionId!!, loc) }
+                        }
+                    }
+                    is RecordState.Stopped ->{
+                        locationJob?.cancel()
+                        if(currentSessionId != null){
+                            stopSession(currentSessionId!!)
+                        } else {
+                            onGoingFlow.value?.sessionId?.let {
+                                stopSession(it)
+                            }
+                        }
+                        currentSessionId = null
+                    }
+
+                    RecordState.Pending -> {
+
+                    }
+                }
             }
-            .launchIn(scope)
+        }
     }
 
     private suspend fun recordDataPoint(

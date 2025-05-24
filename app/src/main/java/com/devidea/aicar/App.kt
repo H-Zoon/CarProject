@@ -18,12 +18,9 @@ class App : Application() {
         lateinit var instance: App
     }
 
-    @Inject
-    lateinit var recordUseCase: RecordUseCase
-
     override fun onCreate() {
         super.onCreate()
         instance = this
-        Log.d("MyApp", "RecordUseCase initialized: $recordUseCase")
+        //Log.d("MyApp", "RecordUseCase initialized: $recordUseCase")
     }
 }
