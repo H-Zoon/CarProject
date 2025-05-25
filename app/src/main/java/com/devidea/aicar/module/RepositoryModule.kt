@@ -3,8 +3,6 @@ package com.devidea.aicar.module
 import android.content.Context
 import androidx.room.Room
 import com.devidea.aicar.storage.room.AppDatabase
-import com.devidea.aicar.storage.room.document.DocumentDao
-import com.devidea.aicar.storage.room.document.DocumentRepository
 import com.devidea.aicar.storage.room.drive.DrivingDao
 import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.drive.DrivingRepositoryImpl
@@ -30,18 +28,6 @@ class RepositoryModule {
             "app_database"
         )
             .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideDocumentDao(database: AppDatabase): DocumentDao {
-        return database.documentDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideDocumentRepository(dao: DocumentDao): DocumentRepository {
-        return DocumentRepository(dao)
     }
 
     @Provides
