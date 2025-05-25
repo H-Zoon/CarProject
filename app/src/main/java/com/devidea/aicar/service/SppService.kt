@@ -137,8 +137,9 @@ class SppService : Service() {
     private val frames = MutableSharedFlow<String>(extraBufferCapacity = 256)
 
     private val promptFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     // 동시 요청에 대한 구조 변경
-    private val pending = ConcurrentHashMap<String, MutableList<CompletableDeferred<String>>>()
+    private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
 
     // --- Discovery receiver ---
     private val discoveryReceiver = object : BroadcastReceiver() {
@@ -210,7 +211,7 @@ class SppService : Service() {
         }
     }
 
-     fun updateNotification(message : String) {
+    fun updateNotification(message: String) {
         val updated = notifBuilder
             .setContentText(message)
             .build()
@@ -293,9 +294,9 @@ class SppService : Service() {
     fun getCurrentConnectedDevice(): ScannedDevice? {
         val btDevice = socket?.remoteDevice ?: return null
         return ScannedDevice(
-            name    = btDevice.name.orEmpty(),
+            name = btDevice.name.orEmpty(),
             address = btDevice.address,
-            device  = btDevice
+            device = btDevice
         )
     }
 
@@ -370,12 +371,14 @@ class SppService : Service() {
                                 sbLine.setLength(0)
                             }
                         }
+
                         '\r', '\n' -> {
                             if (sbLine.isNotEmpty()) {
                                 rawLines.emit(sbLine.toString())
                                 sbLine.setLength(0)
                             }
                         }
+
                         else -> sbLine.append(ch)
                     }
                 }
@@ -391,30 +394,39 @@ class SppService : Service() {
 
     // 수정된 Assembler 코드: 경계 처리 우선 및 불필요 라인 필터 순서 조정
     private fun launchAssembler() = serviceScope.launch {
-        Log.d(TAG, "[Assembler] started")
         val sb = StringBuilder()
         rawLines.collect { raw ->
-            Log.d(TAG, "[Assembler] rawLine='$raw'")
             val trimmed = raw.trim()
-
-            // 1) 경계(프레임 완성) 먼저 처리
+            // 1) 프레임 경계
+            /*if (trimmed == ">") {
+                val frame = sb.toString().replace("\\s".toRegex(), "").uppercase(Locale.US)
+                frames.emit(frame)
+                sb.clear()
+                return@collect
+            }*/
             if (trimmed == ">") {
                 val frame = sb.toString()
                     .replace("\\s".toRegex(), "")
                     .uppercase(Locale.US)
-                Log.d(TAG, "[Assembler] Emitting frame='$frame'")
-                frames.emit(frame)
+                // 최소 길이(4 hex chars) 이상일 때에만 emit
+                if (frame.length >= 4) {
+                    frames.emit(frame)
+                }
                 sb.clear()
                 return@collect
             }
-
-            // 2) 그 외 불필요한 라인 필터
-            if (trimmed.isBlank() || trimmed.startsWith("SEARCHING") || trimmed == "OK") {
+            // 2) 불필요 라인 필터
+            if (trimmed.isBlank() || trimmed.startsWith("SEARCHING") || trimmed == "OK") return@collect
+            // 3) PCI(header)만 버리기: 1~3 hex chars + optional ':'
+            if (trimmed.matches(Regex("^[0-9A-Fa-f]{1,3}:?$$"))) {
                 return@collect
             }
-
-            // 3) 데이터 누적
-            sb.append(trimmed)
+            // 4) 데이터 라인 처리: ':' 있으면 뒤, 없으면 전체
+            val payloadHex = trimmed
+                .substringAfter(':', trimmed)
+                .replace("\\s+".toRegex(), "")
+                .uppercase(Locale.US)
+            sb.append(payloadHex)
         }
     }
 
@@ -422,20 +434,22 @@ class SppService : Service() {
     private fun launchRouter() = serviceScope.launch {
         Log.d(TAG, "[Router] started")
         frames.collect { f ->
+            if (f.length < 4) return@collect
             val key = extractCmdKey(f)
-            pending.remove(key)?.forEach { it.complete(f) }
+            Log.d(TAG, "[Router] frame=$f key=$key")
+            pending.remove(key)?.complete(f)
         }
     }
 
     // --- Query API ---
     suspend fun query(header: String? = null, cmd: String, timeoutMs: Long = 1000): String =
         coroutineScope {
-            val key = cmd.lowercase()
+            val normalized = cmd.replace("\\s".toRegex(), "").lowercase()
+            val key = normalized.substring(0, 4)
+            //val key = cmd.lowercase()
             Log.d(TAG, "[Query] start ▶ key=$key, header=$header, cmd=$cmd, timeout=${timeoutMs}ms")
             val promise = CompletableDeferred<String>()
-            pending.compute(key) { _, list ->
-                (list ?: mutableListOf()).apply { add(promise) }
-            }
+            pending[key] = promise
             if (header != null && header != currentHeader) {
                 Log.d(TAG, "[Query] send new header ATSH$header")
                 sendRawSync("ATSH$header")
@@ -456,7 +470,7 @@ class SppService : Service() {
         }
 
     // --- Key extraction ---
-    private fun extractCmdKey(raw: String): String {
+    /*private fun extractCmdKey(raw: String): String {
         val f = raw.replace("\\s".toRegex(), "")
         return when {
             f.startsWith("41") -> "01" + f.substring(2, 4)
@@ -464,5 +478,22 @@ class SppService : Service() {
             f.startsWith("43") -> "03"
             else -> f.take(6)
         }.lowercase()
+    }*/
+
+    private fun extractCmdKey(raw: String): String {
+        // 헤더(“0:”, “1:”) 제거, 공백 제거
+        /*val compact = raw.replace(Regex("^\\d:"), "")
+            .replace("\\s".toRegex(), "")
+            .lowercase()
+        // 실제 응답(41, 62, 43) 부분만 찾아서 key로 사용
+        val payload = compact.dropWhile { it != '4' && it != '6' && it != '3' }*/
+
+        val f = raw.replace("\\s".toRegex(), "").lowercase()
+        return when {
+            f.startsWith("41") -> "01" + f.substring(2, 4)
+            f.startsWith("62") -> "22" + f.substring(2, 4)
+            f.startsWith("43") -> "03"
+            else -> f.take(6)
+        }
     }
 }

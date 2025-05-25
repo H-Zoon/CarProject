@@ -41,6 +41,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import javax.inject.Inject
+import javax.inject.Singleton
 
 sealed class RecordState {
     object Recording : RecordState()
@@ -48,6 +49,7 @@ sealed class RecordState {
     object Pending : RecordState()
 }
 
+@Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordUseCase @Inject constructor(
     private val locationProvider: LocationProvider,
@@ -198,12 +200,6 @@ class RecordUseCase @Inject constructor(
         sessionId: Long,
         location: Location
     ) {
-        /*val maf = safeQuery(PIDs.MAF)?.toFloat() ?: 0f
-        val rpm = safeQuery(PIDs.RPM)?.toInt() ?: 0
-        val ect = safeQuery(PIDs.ECT)?.toInt() ?: 0
-        val speed = safeQuery(PIDs.SPEED)?.toInt() ?: 0
-        val stft = safeQuery(PIDs.S_FUEL_TRIM)?.toFloat() ?: 0f
-        val ltft = safeQuery(PIDs.L_FUEL_TRIM)?.toFloat() ?: 0f*/
         val maf = obdPollingManager.maf
         val rpm = obdPollingManager.rpm
         val ect = obdPollingManager.ect
@@ -237,14 +233,4 @@ class RecordUseCase @Inject constructor(
             Log.e("RecordUseCase", "saveDataPoint error", e)
         }
     }
-
-    private val queryMutex = Mutex()
-
-    suspend fun safeQuery(pid: PIDs): Number? =
-        withTimeoutOrNull(1500) {
-            queryMutex.withLock {
-                val resp = sppClient.query(pid.code, header = pid.header)
-                Decoders.parsers[pid]?.invoke(resp)
-            }
-        }
 }

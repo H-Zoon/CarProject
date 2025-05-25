@@ -3,7 +3,6 @@ package com.devidea.aicar.ui.main.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.aicar.drive.ObdPollingManager
-import com.devidea.aicar.drive.usecase.DashBoardUseCase
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.ui.main.components.GaugeItem
 import com.devidea.aicar.ui.main.components.gaugeItems

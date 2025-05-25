@@ -60,6 +60,6 @@ class LocationProvider @Inject constructor(
             fusedLocationClient.removeLocationUpdates(callback)
         }
     }
-        .conflate()                // 최신 위치만 유지
-        .flowOn(Dispatchers.Main)  // FusedLocationProvider는 MainLooper에서 동작
+        .conflate()
+        .flowOn(Dispatchers.Default)
 }

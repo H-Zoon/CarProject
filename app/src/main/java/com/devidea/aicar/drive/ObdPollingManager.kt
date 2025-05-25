@@ -27,7 +27,7 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var pollJob: Job? = null
-    private var pollPeriodMs = 500L
+    private var pollPeriodMs = 1000L
 
 
     // — 백잉 프로퍼티 선언 —
@@ -78,7 +78,7 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
 
     // — PID ↔ MutableStateFlow 매핑 —
     @Suppress("UNCHECKED_CAST")
-    private val pidToFlow: Map<PIDs, MutableStateFlow<out Number>> = mapOf(
+    private val defaultPidFlow: Map<PIDs, MutableStateFlow<out Number>> = mapOf(
         PIDs.S_FUEL_TRIM to _sFuelTrim,
         PIDs.L_FUEL_TRIM to _lFuelTrim,
         PIDs.ECT to _ect,
@@ -93,40 +93,73 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
         PIDs.CATALYST_TEMP_BANK1 to _catalystTemp,
         PIDs.COMMANDED_EQUIVALENCE_RATIO to _equivalence,
         PIDs.INTAKE_PRESSURE to _intakePressure,
+        PIDs.FUEL_LEVEL to _fuelLevel,
+    )
+    private val extendPidFlow: Map<PIDs, MutableStateFlow<out Number>> = mapOf(
         PIDs.OIL_PRESSURE to _oilPressure,
         PIDs.OIL_TEMP to _oilTemp,
         PIDs.TRANS_FLUID_TEMP to _transFluidTemp,
-        PIDs.FUEL_LEVEL to _fuelLevel,
-        PIDs.CURRENT_GEAR to _currentGear,
+        PIDs.CURRENT_GEAR to _currentGear
     )
 
-    private fun startPolling(pidSet: Set<PIDs>) {
+
+    private fun startPolling() {
         // 이미 폴링 중이면 무시
         if (pollJob?.isActive == true) {
             Log.d(TAG, "[poll] already polling, ignore startPolling()")
             return
         }
-        if (pidSet.isEmpty()) return
+
+        val chunks = defaultPidFlow.keys.chunked(MultiPidUtils.MAX_PIDS)
+        val extChunks = extendPidFlow.keys.chunked(ExtendedPidUtils.MAX_PIDS)
 
         pollJob = scope.launch {
             while (isActive) {
-                pidSet.forEach { pid ->
+                for (chunk in chunks) {
                     try {
-                        safeQuery(pid)?.let { value ->
-                            (pidToFlow[pid] as? MutableStateFlow<Number>)?.value = value
+                        // Multi-PID 명령어 생성
+                        val command = MultiPidUtils.buildCommand(chunk)
+                        // 헤더는 같은 그룹 내 첫 PID의 header 사용
+                        val header = chunk.first().header
+                        // 요청 및 응답 수신
+                        val response = sppClient.query(command, header = header, timeoutMs = pollPeriodMs)
+                        // 응답 파싱
+                        val values = MultiPidUtils.parseResponse(response)
+                        // Flow 업데이트
+                        values.forEach { (pid, value) ->
+                            (defaultPidFlow[pid] as? MutableStateFlow<Number>)?.value = value
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "[poll] PID $pid error: ${e.message}")
+                        Log.e(TAG, "[poll] Multi-PID chunk $chunk error: ${e.message}")
                     }
-                    delay(pollPeriodMs)
                 }
+
+                for (chunk in extChunks) {
+                    try {
+                        val cmd = ExtendedPidUtils.buildCommand(chunk)
+                        val header = chunk.first().header
+                        val resp =
+                            sppClient.query(cmd, header = header, timeoutMs = pollPeriodMs)
+                        val vals = ExtendedPidUtils.parseResponse(resp)
+                        vals.forEach { (pid, v) ->
+                            // exFlow 맵에서 바로 꺼내서 업데이트
+                            (extendPidFlow[pid] as MutableStateFlow<Number>).value = v
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[poll] ext chunk $chunk err", e)
+                    }
+                }
+
+                // 전체 사이클 후 딜레이
+                delay(pollPeriodMs)
+
             }
         }
     }
 
 
     fun startPall() {
-        startPolling(pidToFlow.keys)
+        startPolling()
         Log.d(TAG, "[obs] observers started")
     }
 
@@ -135,14 +168,4 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
         pollJob = null
         Log.d(TAG, "[obs] observers stopped")
     }
-
-    private val queryMutex = Mutex()
-
-    suspend fun safeQuery(pid: PIDs): Number? =
-        queryMutex.withLock {
-            val resp = sppClient.query(pid.code, header = pid.header, timeoutMs = pollPeriodMs)
-            val result = Decoders.parsers[pid]?.invoke(resp)
-            Log.e("result", "$result")
-            result
-        }
 }

@@ -41,7 +41,7 @@ enum class PIDs(val code: String, val header: String) {
 
     // 제조사 확장 PID
     /** Current Gear: 현재 변속 기어 */
-    CURRENT_GEAR("22199A", "7E0"),
+    CURRENT_GEAR("22199A", "7E2"),
     /** Oil Pressure: 오일 압력 (kPa) */
     OIL_PRESSURE("22115C", "7E0"),
     /** Oil Temperature: 오일 온도 (°C) */
