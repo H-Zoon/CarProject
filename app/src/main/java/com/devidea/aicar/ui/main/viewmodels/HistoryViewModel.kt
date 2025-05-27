@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.launchIn
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,6 +29,12 @@ class HistoryViewModel @Inject constructor(
 ) : ViewModel() {
 
 //region 주행 세션 캘린더 및 기록
+
+    // 1) 내부에서 업데이트할 MutableStateFlow
+    private val _ongoingSession = MutableStateFlow<DrivingSession?>(null)
+
+    // 2) 외부에 노출할 읽기 전용 StateFlow
+    val ongoingSession: StateFlow<DrivingSession?> = _ongoingSession.asStateFlow()
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
 
@@ -91,6 +100,10 @@ class HistoryViewModel @Inject constructor(
     fun getSessionData(sessionId: Long): Flow<List<DrivingDataPoint>> =
         drivingRepository.getSessionData(sessionId)
 
+    fun markAsRead(id: Long) = viewModelScope.launch {
+        drivingRepository.markAsRead(id)
+    }
+
     //endregion
 
     //region 재생 컨트롤
@@ -121,4 +134,13 @@ class HistoryViewModel @Inject constructor(
     }
 
     //endregion
+
+    init {
+        viewModelScope.launch {
+            drivingRepository.getOngoingSession()
+                .onEach { session ->
+                    _ongoingSession.value = session
+                }
+        }
+    }
 }

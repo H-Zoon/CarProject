@@ -62,6 +62,9 @@ interface DrivingDao {
     @Query("SELECT * FROM DrivingDataPoint WHERE sessionOwnerId = :sessionId ORDER BY timestamp")
     suspend fun getDataPointsOnce(sessionId: Long): List<DrivingDataPoint>
 
+    /** 기록 확인여부 */
+    @Query("UPDATE DrivingSession SET isRead = 1 WHERE sessionId = :sessionId")
+    suspend fun markAsRead(sessionId: Long)
     /**
      * Mark a session as synced with the remote server.
      * Requires DrivingSession.isSynced column in the entity.
@@ -77,7 +80,6 @@ interface DrivingDao {
     @Query("DELETE FROM DrivingSession")
     suspend fun deleteAllSessions()
 
-    // 1) DAO에 하루 범위 쿼리 추가 (DrivingDao.kt)
     @Query("""
   SELECT * FROM DrivingSession
   WHERE startTime BETWEEN :startMillis AND :endMillis

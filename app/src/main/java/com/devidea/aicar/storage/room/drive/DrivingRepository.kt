@@ -25,6 +25,9 @@ interface DrivingRepository {
     /**주행데이터 (DrivingDataPoint) 저징*/
     suspend fun saveDataPoint(point: DrivingDataPoint)
 
+    /**세션 확인여부 저장*/
+    suspend fun markAsRead(id: Long)
+
     /**
      * Uploads a completed session and its data to the remote server.
      */

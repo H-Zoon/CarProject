@@ -12,7 +12,8 @@ data class DrivingSession(
     @PrimaryKey(autoGenerate = true) val sessionId: Long = 0,
     val startTime: Instant,
     val endTime: Instant? = null,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val isRead: Boolean = false
 )
 
 @Entity(

@@ -11,11 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -85,6 +80,7 @@ fun SessionListScreen(
 ) {
     val selectedDate by viewModel.selectedDate.collectAsState(initial = LocalDate.now())
     val sessions by viewModel.sessions.collectAsState()
+    //val isRecoding by viewModel.ongoingSession.collectAsState()
 
     val titleFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
     val dateTimeFormatter = DateTimeFormatter
@@ -219,6 +215,7 @@ fun SessionListScreen(
                         },
                         onClick = {
                             if (!selectionMode) {
+                                viewModel.markAsRead(session.sessionId)
                                 onSessionClick(session.sessionId)
                             } else {
                                 if (selectedSessions.contains(session.sessionId))
@@ -298,6 +295,18 @@ fun SelectableSessionCard(
         Column(modifier = Modifier.weight(1f)) {
             Text("Session #${session.sessionId}", style = MaterialTheme.typography.titleMedium)
             Text("$start ~ $end", style = MaterialTheme.typography.bodyMedium)
+        }
+
+        if (!session.isRead && !selecting && session.endTime != null) {
+            Badge(modifier = Modifier.padding(start = 8.dp)) {
+                Text("New")
+            }
+        }
+
+        if (!selecting && session.endTime == null) {
+            Badge(modifier = Modifier.padding(start = 8.dp)) {
+                Text("Recoding...")
+            }
         }
 
         if (!selecting) {

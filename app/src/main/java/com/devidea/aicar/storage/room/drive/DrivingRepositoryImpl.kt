@@ -12,7 +12,6 @@ import javax.inject.Inject
  */
 class DrivingRepositoryImpl @Inject constructor(
     private val dao: DrivingDao,
-    //private val api: DrivingApi
 ) : DrivingRepository {
 
     /**현제 기록중인 세션 조회*/
@@ -39,6 +38,10 @@ class DrivingRepositoryImpl @Inject constructor(
 
     override suspend fun saveDataPoint(point: DrivingDataPoint) = withContext(Dispatchers.IO) {
         dao.insertDataPoint(point)
+    }
+
+    override suspend fun markAsRead(id: Long) {
+        dao.markAsRead(id)
     }
 
     override suspend fun syncSession(sessionId: Long) = withContext(Dispatchers.IO) {

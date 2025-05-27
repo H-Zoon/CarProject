@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,10 @@ fun HomeScreen(
     val bluetoothState by viewModel.bluetoothState.collectAsStateWithLifecycle()
     val lastConnection by viewModel.lastConnectDate.collectAsStateWithLifecycle()
     val devices by viewModel.devices.observeAsState(emptyList())
+
+    LaunchedEffect(bluetoothState) {
+        if(bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
+    }
 
     Scaffold(
         modifier = modifier,
