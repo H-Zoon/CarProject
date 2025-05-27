@@ -30,7 +30,6 @@ interface SppClient {
     suspend fun requestStopScan()
     suspend fun requestConnect(device: ScannedDevice)
     suspend fun requestDisconnect()
-    //suspend fun requestUpdateNotification(message: String)
     suspend fun requestAutoConnect()
     suspend fun getCurrentConnectedDevice(): ScannedDevice?
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
@@ -97,7 +96,7 @@ class SppClientImpl @Inject constructor(
 
     fun serviceCreate() {
         val intent = Intent(context, SppService::class.java)
-        ContextCompat.startForegroundService(context, intent)
+        //ContextCompat.startForegroundService(context, intent)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
@@ -129,7 +128,7 @@ class SppClientImpl @Inject constructor(
     suspend fun ensureBoundService(): SppService {
         if (!serviceReady.isCompleted) {
             val intent = Intent(context, SppService::class.java)
-            ContextCompat.startForegroundService(context, intent)
+            //ContextCompat.startForegroundService(context, intent)
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
         // 바인딩이 완료될 때까지 대기

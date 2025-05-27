@@ -1,8 +1,5 @@
 package com.devidea.aicar.service
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -80,7 +77,6 @@ class SppService : Service() {
 
     private val promptFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    // 동시 요청에 대한 구조 변경
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
 
     // --- Discovery receiver ---
@@ -89,6 +85,9 @@ class SppService : Service() {
             if (intent.action == BluetoothDevice.ACTION_FOUND) {
                 intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     ?.let { bt ->
+                        val name = bt.name
+                        if (name.isNullOrEmpty()) return
+
                         Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
                         _scannedList.update { list ->
                             if (list.any { it.address == bt.address }) list else list + ScannedDevice(
@@ -185,15 +184,28 @@ class SppService : Service() {
     fun requestDisconnect() {
         Log.d(TAG, "[Disconnect] requestDisconnect called")
         serviceScope.launch {
-            rawReaderJob?.cancel()
-            rawReaderJob = null
+            try {
+                rawReaderJob?.cancel()
+                rawReaderJob = null
 
-            reader?.close()
-            writer?.close()
-            socket?.close()
-            pending.clear()
+                reader?.close()
+                writer?.close()
+                socket?.close()
 
-            _connectionEvents.emit(ConnectionEvent.Disconnected)
+                reader = null
+                writer = null
+                socket = null
+            } catch (e: Exception) {
+                Log.w(TAG, "[Disconnect] 리소스 정리 중 오류 발생", e)
+            } finally {
+                pending.values.forEach {
+                    it.completeExceptionally(CancellationException("Disconnected"))
+                }
+                pending.clear()
+
+                _connectionEvents.emit(ConnectionEvent.Disconnected)
+                Log.d(TAG, "[Disconnect] 연결 종료 처리 완료")
+            }
         }
     }
 
@@ -277,21 +289,23 @@ class SppService : Service() {
                                 sbLine.setLength(0)
                             }
                         }
-
                         '\r', '\n' -> {
                             if (sbLine.isNotEmpty()) {
                                 rawLines.emit(sbLine.toString())
                                 sbLine.setLength(0)
                             }
                         }
-
                         else -> sbLine.append(ch)
                     }
                 }
             } catch (e: IOException) {
-                Log.d(TAG, "[Reader] Stream closed, stopping reader: ${e.localizedMessage}")
+                Log.w(TAG, "[Reader] Stream closed with exception: ${e.message}")
             } finally {
-                Log.d(TAG, "[Reader] launchRawReader ended")
+                Log.d(TAG, "[Reader] launchRawReader ended — forcing disconnect")
+                //연결 끊어짐 감지
+                withContext(Dispatchers.Main.immediate) {
+                    requestDisconnect()
+                }
             }
         }
         return rawReaderJob!!

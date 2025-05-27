@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.aicar.App
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.RecordState
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
@@ -77,14 +75,10 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(24.dp))
             DrivingRecordControl(
                 recordState = recordState,
-                onRecordToggle = {  },
+                onRecordToggle = { viewModel.setManualDrivingRecordToggle() },
                 isAutoRecordEnabled = driveHistoryEnable,
-                onAutoRecordToggle = {
-                    viewModel.setDrivingHistory(it)
-                    if(it){
-                        viewModel.startAutoRecordingService(App.instance)
-                    }
-                }
+                onAutoRecordToggle = {viewModel.setAutoDrivingRecordEnable(it)},
+                bluetoothState = bluetoothState
             )
         }
     }
@@ -97,7 +91,8 @@ fun DrivingRecordControl(
     onRecordToggle: () -> Unit,
     isAutoRecordEnabled: Boolean,
     onAutoRecordToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bluetoothState: ConnectionEvent
 ) {
     val permissionState = rememberMultiplePermissionsState(
         permissions = listOf(Manifest.permission.POST_NOTIFICATIONS)
@@ -209,7 +204,7 @@ fun DrivingRecordControl(
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isAutoRecordEnabled,
+                enabled = !isAutoRecordEnabled && bluetoothState == ConnectionEvent.Connected,
                 onClick = {
                     when {
                         // 권한이 있을 때만 토글

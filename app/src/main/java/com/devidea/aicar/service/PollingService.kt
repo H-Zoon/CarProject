@@ -97,19 +97,25 @@ class PollingService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForegroundService()
-        monitorRecordingConditions()
+        //monitorRecordingConditions()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val mode = intent?.getStringExtra(PollingServiceCommand.EXTRA_MODE)
-
+        startForegroundService()
         when (mode) {
             PollingServiceCommand.MODE_MANUAL_START -> {
-                serviceScope.launch { startRecording() }
+                serviceScope.launch {
+                    recordStateHolder.update(RecordState.Recording)
+                    startRecording()
+                }
             }
 
             PollingServiceCommand.MODE_MANUAL_STOP -> {
-                serviceScope.launch { stopRecording() }
+                serviceScope.launch {
+                    recordStateHolder.update(RecordState.Stopped)
+                    stopRecording()
+                }
             }
 
             PollingServiceCommand.MODE_AUTO, null -> {
@@ -150,7 +156,11 @@ class PollingService : Service() {
 
                     when (newState) {
                         is RecordState.Recording -> startRecording()
-                        is RecordState.Stopped -> stopRecording()
+                        is RecordState.Stopped -> {
+                            stopRecording()
+                            stopSelf() // 서비스 종료
+                        }
+
                         is RecordState.Pending -> {
                             // 대기 중 → 기록은 하지 않음
                             stopRecording() // 필요 시 안전하게 정지

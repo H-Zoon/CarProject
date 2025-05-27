@@ -18,6 +18,7 @@ import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,8 @@ class MainViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
     recordStateHolder: RecordStateHolder,
     private val sppClient: SppClient,
+    @ApplicationContext
+    private val context: Context,
 ) : ViewModel() {
 
     //region 블루투스 처리
@@ -89,24 +92,53 @@ class MainViewModel @Inject constructor(
     private val _recentMileage = MutableStateFlow<String>("")
     val recentMileage: StateFlow<String> = _recentMileage
 
-    /** 주행 기록 저장 여부 플래그를 나타냅니다. */
-    private val _driveHistoryEnable = MutableStateFlow(false)
-    val driveHistoryEnable: StateFlow<Boolean> = _driveHistoryEnable
-
     /** 오늘 날짜를 DataStore에 마지막 연결 일자로 저장합니다. */
     fun setConnectTime() {
         val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
         viewModelScope.launch { repository.saveConnectData(today) }
     }
 
-    /** 주행 기록 저장 기능을 활성화/비활성화합니다. */
-    fun setDrivingHistory(enabled: Boolean) = viewModelScope.launch {
+    /** 주행 기록상태 관찰 */
+    val recordState: MutableStateFlow<RecordState> = MutableStateFlow<RecordState>(RecordState.Stopped)
+
+    /** 주행 기록 저장 여부 플래그를 나타냅니다. */
+    private val _driveHistoryEnable = MutableStateFlow(false)
+    val driveHistoryEnable: StateFlow<Boolean> = _driveHistoryEnable
+
+    /** 자동 주행 기록 저장 기능을 활성화/비활성화합니다. */
+    fun setAutoDrivingRecordEnable(enabled: Boolean) = viewModelScope.launch {
         repository.setDrivingRecode(enabled)
     }
 
-    fun startAutoRecordingService(context: Context) {
+    /** 수동 주행 기록 저장 기능을 활성화/비활성화합니다. */
+    fun setManualDrivingRecordToggle() = viewModelScope.launch {
+        if (recordState.value == RecordState.Stopped) {
+            startManualRecordingService()
+        } else {
+            stopManualRecordingService()
+        }
+    }
+
+    //자동 기록이 설정된 경우 서비스 시작
+    fun startAutoRecordingService() {
         val intent = Intent(context, PollingService::class.java).apply {
             putExtra(PollingServiceCommand.EXTRA_MODE, PollingServiceCommand.MODE_AUTO)
+        }
+        ContextCompat.startForegroundService(context, intent)
+    }
+
+    //수동 기록이 시작된 경우 서비스 시작
+    fun startManualRecordingService() {
+        val intent = Intent(context, PollingService::class.java).apply {
+            putExtra(PollingServiceCommand.EXTRA_MODE, PollingServiceCommand.MODE_MANUAL_START)
+        }
+        ContextCompat.startForegroundService(context, intent)
+    }
+
+    //수동 기록이 종료된 경우 서비스 종료
+    fun stopManualRecordingService() {
+        val intent = Intent(context, PollingService::class.java).apply {
+            putExtra(PollingServiceCommand.EXTRA_MODE, PollingServiceCommand.MODE_MANUAL_STOP)
         }
         ContextCompat.startForegroundService(context, intent)
     }
@@ -145,11 +177,10 @@ class MainViewModel @Inject constructor(
     }
     //endregion
 
-    val recordState: StateFlow<RecordState> = recordStateHolder.recordState
-
-
     init {
         viewModelScope.launch {
+            launch { recordStateHolder.recordState.collect { recordState.value = it } }
+
             launch { repository.getDevice.collect { _savedDevice.value = it } }
             // 기기 목록 관찰
             launch { sppClient.deviceList.collect { _devices.postValue(it) } }
@@ -171,6 +202,8 @@ class MainViewModel @Inject constructor(
             launch {
                 repository.getDrivingRecodeSetDate().collect { enabled ->
                     _driveHistoryEnable.value = enabled
+
+                    if (enabled) startAutoRecordingService()
                 }
             }
         }
