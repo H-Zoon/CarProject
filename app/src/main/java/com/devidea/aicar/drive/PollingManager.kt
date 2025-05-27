@@ -12,14 +12,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 
 @Singleton
-class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
+class PollingManager @Inject constructor(private val sppClient: SppClient) {
 
     companion object {
         private const val TAG = "PIDManager"
@@ -122,7 +120,8 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
                         // 헤더는 같은 그룹 내 첫 PID의 header 사용
                         val header = chunk.first().header
                         // 요청 및 응답 수신
-                        val response = sppClient.query(command, header = header, timeoutMs = pollPeriodMs)
+                        val response =
+                            sppClient.query(command, header = header, timeoutMs = pollPeriodMs)
                         // 응답 파싱
                         val values = MultiPidUtils.parseResponse(response)
                         // Flow 업데이트
@@ -167,5 +166,12 @@ class ObdPollingManager @Inject constructor(private val sppClient: SppClient) {
         pollJob?.cancel()
         pollJob = null
         Log.d(TAG, "[obs] observers stopped")
+    }
+
+    suspend fun querySingle(pid: PIDs): Number {
+        val command = pid.code
+        val header = pid.header
+        val resp = sppClient.query(command, header = header)
+        return Decoders.parsers[pid]!!.invoke(resp)
     }
 }

@@ -1,12 +1,11 @@
+/*
 package com.devidea.aicar.drive.usecase
 
 import android.location.Location
 import android.util.Log
 import com.devidea.aicar.LocationProvider
-import com.devidea.aicar.drive.Decoders
 import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
-import com.devidea.aicar.drive.ObdPollingManager
-import com.devidea.aicar.drive.PIDs
+import com.devidea.aicar.drive.PollingManager
 import com.devidea.aicar.module.AppModule
 import com.devidea.aicar.service.ConnectionEvent
 import com.devidea.aicar.service.SppClient
@@ -20,25 +19,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -56,7 +47,7 @@ class RecordUseCase @Inject constructor(
     private val drivingRepository: DrivingRepository,
     private val repository: DataStoreRepository,
     private val sppClient: SppClient,
-    private val obdPollingManager: ObdPollingManager,
+    private val obdPollingManager: PollingManager,
     private val notificationRepository: NotificationRepository,
     @AppModule.ApplicationScope private val scope: CoroutineScope
 ) {
@@ -92,12 +83,16 @@ class RecordUseCase @Inject constructor(
         .getManualDrivingRecodeSetDate()
         .distinctUntilChanged()
 
-    /** 수동 기록 시작 */
+    */
+/** 수동 기록 시작 *//*
+
     suspend fun startManualRecording() {
         repository.setManualDrivingRecode(true)
     }
 
-    /** 수동 기록 중지 */
+    */
+/** 수동 기록 중지 *//*
+
     suspend fun stopManualRecording() {
         repository.setManualDrivingRecode(false)
     }
@@ -233,4 +228,4 @@ class RecordUseCase @Inject constructor(
             Log.e("RecordUseCase", "saveDataPoint error", e)
         }
     }
-}
+}*/

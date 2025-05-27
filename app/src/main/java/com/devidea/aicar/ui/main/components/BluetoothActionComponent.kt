@@ -79,12 +79,10 @@ fun BluetoothControl(
     onSaveDevice: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 1) Permissions API 사용 간소화
     val permissionState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.ACCESS_FINE_LOCATION
         )
     )

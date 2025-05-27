@@ -59,11 +59,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- 내비게이션 Activity. exported=false: 외부 인텐트로 실행 불가(보안상 안전) -->
-        <activity
-            android:name=".ui.navi.KNaviActivity"
-            android:exported="false" />
-        <!-- 앱 메인 Activity. exported=true: 런처/외부 인텐트 실행 허용 -->
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true">
@@ -74,11 +69,13 @@
             </intent-filter>
         </activity>
 
-        <!-- SPP(Serial Port Profile) 등 블루투스 연결을 담당하는 포그라운드 서비스.
-             enabled=true: 서비스 활성화, exported=false: 외부에서 서비스 시작 불가(보안)
-             foregroundServiceType="location|connectedDevice": 알림 + 위치/기기 연결 권한 필요 -->
         <service
             android:name=".service.SppService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <service
+            android:name=".service.PollingService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location|connectedDevice" />

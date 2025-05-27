@@ -30,7 +30,7 @@ interface SppClient {
     suspend fun requestStopScan()
     suspend fun requestConnect(device: ScannedDevice)
     suspend fun requestDisconnect()
-    suspend fun requestUpdateNotification(message: String)
+    //suspend fun requestUpdateNotification(message: String)
     suspend fun requestAutoConnect()
     suspend fun getCurrentConnectedDevice(): ScannedDevice?
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
@@ -81,7 +81,7 @@ class SppClientImpl @Inject constructor(
                         ConnectionEvent.Disconnected -> "연결이 해제되었습니다"
                         ConnectionEvent.Error -> "오류가 발생하였습니다"
                     }
-                    requestUpdateNotification(message)
+                    //requestUpdateNotification(message)
                 }
                 .launchIn(clientScope)
         }
@@ -107,14 +107,14 @@ class SppClientImpl @Inject constructor(
 
     override suspend fun requestConnect(device: ScannedDevice) { ensureBoundService().requestConnect(device) }
     override suspend fun requestDisconnect() { ensureBoundService().requestDisconnect() }
-    override suspend fun requestUpdateNotification(message: String) { ensureBoundService().updateNotification(message) }
+    //override suspend fun requestUpdateNotification(message: String) { ensureBoundService().updateNotification(message) }
 
     override suspend fun requestAutoConnect() {
         repository.getDevice.firstOrNull()?.let {
             val btDevice = bluetoothAdapter.getRemoteDevice(it.address)
             ensureBoundService().requestConnect(ScannedDevice(it.name, it.address, btDevice))
         }?: run {
-            requestUpdateNotification("저장된 블루투스 기기가 없습니다.")
+            //requestUpdateNotification("저장된 블루투스 기기가 없습니다.")
         }
     }
 

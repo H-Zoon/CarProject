@@ -1,5 +1,6 @@
 package com.devidea.aicar.ui.main.components
 
+import android.Manifest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -9,19 +10,27 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devidea.aicar.drive.usecase.RecordState
+import com.devidea.aicar.App
+import com.devidea.aicar.service.ConnectionEvent
+import com.devidea.aicar.service.RecordState
 import com.devidea.aicar.ui.main.viewmodels.MainViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 const val TAG = "MainViewComponent"
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -68,14 +77,20 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(24.dp))
             DrivingRecordControl(
                 recordState = recordState,
-                onRecordToggle = { viewModel.toggleRecording() },
+                onRecordToggle = {  },
                 isAutoRecordEnabled = driveHistoryEnable,
-                onAutoRecordToggle = { viewModel.setDrivingHistory(it) }
+                onAutoRecordToggle = {
+                    viewModel.setDrivingHistory(it)
+                    if(it){
+                        viewModel.startAutoRecordingService(App.instance)
+                    }
+                }
             )
         }
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DrivingRecordControl(
     recordState: RecordState,
@@ -84,6 +99,28 @@ fun DrivingRecordControl(
     onAutoRecordToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val permissionState = rememberMultiplePermissionsState(
+        permissions = listOf(Manifest.permission.POST_NOTIFICATIONS)
+    )
+    var showRationale by rememberSaveable { mutableStateOf(false) }
+
+    if (showRationale) {
+        AlertDialog(
+            onDismissRequest = { showRationale = false },
+            title = { Text("권한 필요") },
+            text = { Text("포그라운드 알림을 보내기 위해 알림 권한이 필요합니다.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRationale = false
+                    permissionState.launchMultiplePermissionRequest()
+                }) { Text("권한 요청") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRationale = false }) { Text("취소") }
+            }
+        )
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -149,7 +186,22 @@ fun DrivingRecordControl(
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = isAutoRecordEnabled,
-                    onCheckedChange = onAutoRecordToggle
+                    onCheckedChange = { newValue ->
+                        when {
+                            // 권한이 이미 있을 때만 실제 토글 호출
+                            permissionState.allPermissionsGranted -> {
+                                onAutoRecordToggle(newValue)
+                            }
+                            // 이전에 거부된 적이 있어 설명이 필요하면 다이얼로그 표시
+                            permissionState.shouldShowRationale -> {
+                                showRationale = true
+                            }
+                            // 그 외(최초 요청 혹은 권한 설정 화면에서 '다시 묻지 않음' 미선택 상태)
+                            else -> {
+                                permissionState.launchMultiplePermissionRequest()
+                            }
+                        }
+                    }
                 )
             }
 
@@ -158,7 +210,22 @@ fun DrivingRecordControl(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isAutoRecordEnabled,
-                onClick = onRecordToggle
+                onClick = {
+                    when {
+                        // 권한이 있을 때만 토글
+                        permissionState.allPermissionsGranted -> {
+                            onRecordToggle()
+                        }
+                        // 설명이 필요하면 다이얼로그
+                        permissionState.shouldShowRationale -> {
+                            showRationale = true
+                        }
+                        // 권한 요청
+                        else -> {
+                            permissionState.launchMultiplePermissionRequest()
+                        }
+                    }
+                }
             ) {
                 Text(text =
                     when (recordState){

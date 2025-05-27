@@ -2,7 +2,7 @@ package com.devidea.aicar.ui.main.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.aicar.drive.ObdPollingManager
+import com.devidea.aicar.drive.PollingManager
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.ui.main.components.GaugeItem
 import com.devidea.aicar.ui.main.components.gaugeItems
@@ -19,7 +19,7 @@ import javax.inject.Inject
 class DashBoardViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     //private val pidManager: DashBoardUseCase,
-    private val pidManager: ObdPollingManager
+    private val pidManager: PollingManager
 ) : ViewModel() {
 
     //region 엔진 파라미터 스트림

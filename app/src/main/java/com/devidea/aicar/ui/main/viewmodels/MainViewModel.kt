@@ -1,12 +1,17 @@
 package com.devidea.aicar.ui.main.viewmodels
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devidea.aicar.drive.usecase.RecordUseCase
-import com.devidea.aicar.drive.usecase.RecordState
 import com.devidea.aicar.service.ConnectionEvent
+import com.devidea.aicar.service.PollingService
+import com.devidea.aicar.service.PollingServiceCommand
+import com.devidea.aicar.service.RecordState
+import com.devidea.aicar.service.RecordStateHolder
 import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
@@ -34,7 +39,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val repository: DataStoreRepository,
     private val notificationRepository: NotificationRepository,
-    private val recordUseCase: RecordUseCase,
+    recordStateHolder: RecordStateHolder,
     private val sppClient: SppClient,
 ) : ViewModel() {
 
@@ -99,6 +104,13 @@ class MainViewModel @Inject constructor(
         repository.setDrivingRecode(enabled)
     }
 
+    fun startAutoRecordingService(context: Context) {
+        val intent = Intent(context, PollingService::class.java).apply {
+            putExtra(PollingServiceCommand.EXTRA_MODE, PollingServiceCommand.MODE_AUTO)
+        }
+        ContextCompat.startForegroundService(context, intent)
+    }
+
     //endregion
 
     //region 알림 관련 데이터
@@ -133,21 +145,8 @@ class MainViewModel @Inject constructor(
     }
     //endregion
 
-    //region 운전기록 컨트롤
-    val recordState: StateFlow<RecordState> = recordUseCase.recordState
+    val recordState: StateFlow<RecordState> = recordStateHolder.recordState
 
-    fun toggleRecording() {
-        viewModelScope.launch {
-            if (recordState.value is RecordState.Recording ||
-                recordState.value is RecordState.Pending
-            ) {
-                recordUseCase.stopManualRecording()
-            } else {
-                recordUseCase.startManualRecording()
-            }
-        }
-    }
-    //endregion
 
     init {
         viewModelScope.launch {

@@ -11,18 +11,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import com.devidea.aicar.App.Companion.ACTION_AUTO_CONNECT
-import com.devidea.aicar.App.Companion.FOREGROUND_CHANNEL_ID
-import com.devidea.aicar.App.Companion.FOREGROUND_CHANNEL_NAME
-import com.devidea.aicar.App.Companion.NOTIFICATION_BODY
-import com.devidea.aicar.App.Companion.NOTIFICATION_TITLE
-import com.devidea.aicar.ui.main.MainActivity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -36,19 +27,11 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-// ——————————————————————————————————————————————————————————————————————————
-// Helper data classes & constants (placeholders — implement as needed)
-// ——————————————————————————————————————————————————————————————————————————
-
 data class ScannedDevice(
     val name: String,
     val address: String,
     val device: BluetoothDevice? = null
 )
-
-// ——————————————————————————————————————————————————————————————————————————
-// Service
-// ——————————————————————————————————————————————————————————————————————————
 
 sealed class ConnectionEvent {
     object Scanning : ConnectionEvent()
@@ -63,52 +46,11 @@ class SppService : Service() {
         private const val TAG = "SppService"
         private const val DISCOVERY_TIMEOUT_MS = 10_000L
         private val BT_SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
-        private const val NOTIF_ID = 1
-
-        // OBD 포그라운드 채널
-        // 주행 기록 알림 채널
-        private const val RECORD_CHANNEL_ID = "record_channel"
-        private const val RECORD_CHANNEL_NAME = "주행 기록 알림"
-        private const val RECORD_CHANNEL_DESC = "주행 기록 시작/종료 알림"
     }
 
     // --- Bluetooth adapter & streams ---
     private val bluetoothAdapter by lazy {
         (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-    }
-
-    private val notificationManager: NotificationManager by lazy {
-        getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-    }
-
-    private val notifBuilder by lazy {
-        val mainPI = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val autoPI = PendingIntent.getBroadcast(
-            this, 2,
-            Intent(this, AutoConnectReceiver::class.java).apply {
-                action = ACTION_AUTO_CONNECT
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setContentTitle(NOTIFICATION_TITLE)
-            .setContentText(NOTIFICATION_BODY)
-            .setContentIntent(mainPI)
-            .setOngoing(true)
-            .addAction(
-                android.R.drawable.stat_sys_data_bluetooth,
-                "자동 연결",
-                autoPI
-            )
     }
 
     private var socket: BluetoothSocket? = null
@@ -174,49 +116,13 @@ class SppService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "[Service] onCreate - Starting foreground")
-        startForegroundService()
+        Log.d(TAG, "[Service] onCreate - Starting")
     }
 
     override fun onDestroy() {
         Log.d(TAG, "[Service] onDestroy - Cancelling scope")
         serviceScope.cancel()
         super.onDestroy()
-    }
-
-    // --- Foreground notification ---
-    private fun startForegroundService() {
-        Log.d(TAG, "[Service] startForegroundService called")
-        val channel = NotificationChannel(
-            FOREGROUND_CHANNEL_ID,
-            FOREGROUND_CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply {
-            description = "백그라운드 OBD 블루투스 연결 서비스 알림 채널"
-        }
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .createNotificationChannel(channel)
-
-        // 4) 포그라운드 서비스 시작
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            startForeground(
-                1,
-                notifBuilder.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            )
-        } else {
-            // 이전 버전은 기존 방식
-            startForeground(1, notifBuilder.build())
-        }
-    }
-
-    fun updateNotification(message: String) {
-        val updated = notifBuilder
-            .setContentText(message)
-            .build()
-
-        notificationManager.notify(NOTIF_ID, updated)
     }
 
     // --- Scan / Stop ---
@@ -398,12 +304,6 @@ class SppService : Service() {
         rawLines.collect { raw ->
             val trimmed = raw.trim()
             // 1) 프레임 경계
-            /*if (trimmed == ">") {
-                val frame = sb.toString().replace("\\s".toRegex(), "").uppercase(Locale.US)
-                frames.emit(frame)
-                sb.clear()
-                return@collect
-            }*/
             if (trimmed == ">") {
                 val frame = sb.toString()
                     .replace("\\s".toRegex(), "")
@@ -469,25 +369,8 @@ class SppService : Service() {
             }
         }
 
-    // --- Key extraction ---
-    /*private fun extractCmdKey(raw: String): String {
-        val f = raw.replace("\\s".toRegex(), "")
-        return when {
-            f.startsWith("41") -> "01" + f.substring(2, 4)
-            f.startsWith("62") -> "22" + f.substring(2, 6)
-            f.startsWith("43") -> "03"
-            else -> f.take(6)
-        }.lowercase()
-    }*/
 
     private fun extractCmdKey(raw: String): String {
-        // 헤더(“0:”, “1:”) 제거, 공백 제거
-        /*val compact = raw.replace(Regex("^\\d:"), "")
-            .replace("\\s".toRegex(), "")
-            .lowercase()
-        // 실제 응답(41, 62, 43) 부분만 찾아서 key로 사용
-        val payload = compact.dropWhile { it != '4' && it != '6' && it != '3' }*/
-
         val f = raw.replace("\\s".toRegex(), "").lowercase()
         return when {
             f.startsWith("41") -> "01" + f.substring(2, 4)
