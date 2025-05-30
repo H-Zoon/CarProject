@@ -112,9 +112,8 @@ fun BluetoothControl(
     LaunchedEffect(bluetoothState) {
         showDeviceList = bluetoothState == ConnectionEvent.Scanning
 
-        if (bluetoothState == ConnectionEvent.Connected && savedDevice == null && !hasPromptedSave) {
-            showSaveDialog = true
-            hasPromptedSave = true
+        if (bluetoothState == ConnectionEvent.Connected) {
+            onSaveDevice()
         }
     }
 
@@ -131,7 +130,7 @@ fun BluetoothControl(
     }
 
     // 6) 저장 확인 다이얼로그
-    if (showSaveDialog) {
+    /*if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = {
                 showSaveDialog = false
@@ -152,7 +151,7 @@ fun BluetoothControl(
                 }) { Text("취소") }
             }
         )
-    }
+    }*/
 
     // 7) 메인 카드 UI
     Card(
@@ -164,7 +163,7 @@ fun BluetoothControl(
         Column(Modifier.padding(16.dp)) {
             ConnectionStatusRow(state = bluetoothState, statusText = statusText)
             Spacer(Modifier.height(8.dp))
-            ConnectionDeviceRow()
+            ConnectionDeviceRow(savedDevice?.name)
             Spacer(Modifier.height(8.dp))
             LastConnectionTimeRow(timeText = lastConnectionTime)
             Spacer(Modifier.height(16.dp))
@@ -240,7 +239,7 @@ private fun ConnectionDeviceRow(nameText: String? = null) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("연결된 기기", style = MaterialTheme.typography.bodyLarge)
+        Text("마지막 연결된 기기", style = MaterialTheme.typography.bodyLarge)
         Text(
             nameText ?: "연결된 기기가 없습니다.",
             style = MaterialTheme.typography.bodyMedium,

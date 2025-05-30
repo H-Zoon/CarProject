@@ -37,19 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Wallet
+import com.devidea.aicar.drive.FuelEconomyUtil.calculateSessionSummary
 
 /** 요약 결과를 담는 DTO */
 data class SessionSummary(
-    val distanceKm: Float,
+    val distance: Float,
     val avgSpeed: Float,
     val avgKPL: Float,
     val fuelPrice: Int,
-    val hardAccel: Int,
-    val hardBrake: Int
+    val accelEvent: Int,
+    val brakeEvent: Int
 )
 
 data class SummaryItem(
@@ -76,9 +76,9 @@ fun SessionSummaryScreen(
     val drivingFeedback = remember(summary) {
         getDrivingFeedback(
             avgKPL = summary.avgKPL,
-            hardAccel = summary.hardAccel,
-            hardBrake = summary.hardBrake,
-            distanceKm = summary.distanceKm
+            hardAccel = summary.accelEvent,
+            hardBrake = summary.brakeEvent,
+            distanceKm = summary.distance
         )
     }
 
@@ -86,7 +86,7 @@ fun SessionSummaryScreen(
         SummaryItem(
             icon = Icons.Default.DirectionsCar,
             title = "운행 거리",
-            value = String.format("%.2f km", summary.distanceKm)
+            value = String.format("%.2f km", summary.distance)
         ),
         SummaryItem(
             icon = Icons.Default.Speed,
@@ -106,12 +106,12 @@ fun SessionSummaryScreen(
         SummaryItem(
             icon = Icons.Default.Timeline,
             title = "급가속",
-            value = "${summary.hardAccel} 회"
+            value = "${summary.accelEvent} 회"
         ),
         SummaryItem(
             icon = Icons.Default.TrendingDown,
             title = "급감속",
-            value = "${summary.hardBrake} 회"
+            value = "${summary.brakeEvent} 회"
         )
     )
 
@@ -156,32 +156,7 @@ fun SessionSummaryScreen(
 /**
  * 세션 요약 데이터 계산
  */
-private fun calculateSessionSummary(dataPoints: List<DrivingDataPoint>): SessionSummary {
-    val dtSec = 1.0
-    val distance = dataPoints
-        .zipWithNext()
-        .sumOf { (p1, p2) -> ((p1.speed + p2.speed) / 2.0) / 3600.0 * dtSec }
-        .toFloat()
-    var accel = 0
-    var brake = 0
-    dataPoints.zipWithNext().forEach { (p1, p2) ->
-        val dvMs = (p2.speed - p1.speed) * (1000.0 / 3600.0)
-        val a = dvMs / dtSec
-        if (a > 2.5) accel++
-        if (a < -2.5) brake++
-    }
-    val avgSpeed = dataPoints.map { it.speed }.average().toFloat()
-    val totalFuel = dataPoints.sumOf { dp ->
-        if (dp.instantKPL > 0f) (dp.speed / 3600.0) / dp.instantKPL else 0.0
-    }
-    val avgKPL = if (totalFuel > 0) (distance / totalFuel).toFloat() else 0f
 
-    val fuelUsed = distance / avgKPL
-    // 총 유류비 계산
-    val fuelPrice = (fuelUsed * 1500).toInt()
-
-    return SessionSummary(distance, avgSpeed, avgKPL, fuelPrice, accel, brake)
-}
 
 @Composable
 fun SummaryCard(

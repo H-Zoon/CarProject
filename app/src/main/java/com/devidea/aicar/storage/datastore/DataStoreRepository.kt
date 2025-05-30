@@ -49,7 +49,6 @@ class DataStoreRepository @Inject constructor(
     private val AUTO_DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_enabled")
     private val MANUAL_DRIVING_RECORD_ENABLED = booleanPreferencesKey("driving_record_manual_enabled")
 
-    private val SEARCH_HISTORY_KEY = stringPreferencesKey("search_history")
     private val GAUGE_ORDER_KEY = stringPreferencesKey("gauge_order")
 
     private val gaugeIdPool = gaugeItems.map { it.id }.toSet()  // 허용 ID
@@ -193,75 +192,5 @@ class DataStoreRepository @Inject constructor(
             .map { preferences ->
                 preferences[AUTO_DRIVING_RECORD_ENABLED] == true
             }
-    }
-
-    suspend fun setManualDrivingRecode(value: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[MANUAL_DRIVING_RECORD_ENABLED] = value
-        }
-    }
-
-    fun getManualDrivingRecodeSetDate(): Flow<Boolean> {
-        return dataStore.data
-            .map { preferences ->
-                preferences[MANUAL_DRIVING_RECORD_ENABLED] == true
-            }
-    }
-
-
-    /**
-     * 검색어를 히스토리에 추가합니다.
-     * 중복된 검색어는 제거되고, 최신 검색어가 맨 앞에 위치합니다.
-     * 최대 히스토리 수를 초과하면 가장 오래된 검색어가 제거됩니다.
-     */
-    suspend fun addSearchQuery(query: String) {
-        dataStore.edit { preferences ->
-            val currentHistory =
-                preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
-            // 중복 제거
-            currentHistory.remove(query)
-            // 최신 검색어 추가
-            currentHistory.add(0, query)
-            // 최대 히스토리 수 유지
-            /*if (currentHistory.size > MAX_HISTORY_SIZE) {
-                currentHistory.removeAt(currentHistory.size - 1)
-            }*/
-            // 쉼표로 구분된 문자열로 저장
-            preferences[SEARCH_HISTORY_KEY] = currentHistory.joinToString(",")
-        }
-    }
-
-    /**
-     * 저장된 검색 히스토리를 Flow<List<String>> 형태로 반환합니다.
-     */
-    fun getSearchHistory(): Flow<List<String>> {
-        return dataStore.data
-            .map { preferences ->
-                preferences[SEARCH_HISTORY_KEY]
-                    ?.split(",")
-                    ?.filter { it.isNotEmpty() }
-                    ?: emptyList()
-            }
-    }
-
-    /**
-     * 검색 히스토리를 전체 삭제합니다.
-     */
-    suspend fun clearSearchHistory() {
-        dataStore.edit { preferences ->
-            preferences.remove(SEARCH_HISTORY_KEY)
-        }
-    }
-
-    /**
-     * 특정 검색어를 히스토리에서 제거합니다.
-     */
-    suspend fun removeSearchQuery(query: String) {
-        dataStore.edit { preferences ->
-            val currentHistory =
-                preferences[SEARCH_HISTORY_KEY]?.split(",")?.toMutableList() ?: mutableListOf()
-            currentHistory.remove(query)
-            preferences[SEARCH_HISTORY_KEY] = currentHistory.joinToString(",")
-        }
     }
 }

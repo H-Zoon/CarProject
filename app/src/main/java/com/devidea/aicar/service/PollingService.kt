@@ -3,6 +3,8 @@ package com.devidea.aicar.service
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.IBinder
@@ -28,10 +30,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.time.Instant
+import android.content.IntentFilter
+import com.devidea.aicar.drive.PollingManager.PollingSource
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.sample
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -89,7 +96,26 @@ class PollingService : Service() {
     @Inject
     lateinit var recordStateHolder: RecordStateHolder
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val powerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
+            Log.d(TAG, "[PowerReceiver] Received action=$action")
+
+            if (action == Intent.ACTION_POWER_CONNECTED) {
+                serviceScope.launch {
+                    val isAutoConnect = repository.isAutoConnectOnCharge.first()
+                    if (isAutoConnect) {
+                        Log.d(TAG, "[PowerReceiver] Auto connect 조건 충족, 연결 시도")
+                        sppClient.requestAutoConnect()
+                    } else {
+                        Log.d(TAG, "[PowerReceiver] 자동 연결 설정이 꺼져 있음")
+                    }
+                }
+            }
+        }
+    }
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var locationJob: Job? = null
     private var sessionId: Long? = null
@@ -97,7 +123,15 @@ class PollingService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForegroundService()
-        //monitorRecordingConditions()
+        registerPowerReceiver()
+    }
+
+    private fun registerPowerReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+        }
+        registerReceiver(powerReceiver, filter)
+        Log.d(TAG, "[PollingService] PowerReceiver registered")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -128,6 +162,7 @@ class PollingService : Service() {
 
     override fun onDestroy() {
         stopRecording()
+        unregisterReceiver(powerReceiver)
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -170,6 +205,7 @@ class PollingService : Service() {
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun startRecording() {
         if (sessionId != null) return // 이미 기록 중이면 무시
 
@@ -180,22 +216,19 @@ class PollingService : Service() {
             notify("주행 기록 시작", "세션 $sessionId 이 시작되었습니다.")
 
             // OBD 수집 시작
-            pollingManager.startPall()
+            pollingManager.startPall(PollingSource.SERVICE)
 
             // 위치 수집 시작
-            locationJob = launch {
-                locationProvider.locationUpdates()
-                    .collect { loc -> sessionId?.let { saveDataPoint(it, loc) } }
-            }
+            locationProvider.locationUpdates
+                .sample(1_000L)
+                .collect { loc -> sessionId?.let { saveDataPoint(it, loc) } }
         }
     }
 
     private fun stopRecording() {
         serviceScope.launch {
-            locationJob?.cancel()
-            locationJob = null
-
-            pollingManager.stopAll()
+            locationProvider.stopLocationUpdates()
+            pollingManager.stopAll(PollingSource.SERVICE)
 
             sessionId?.let {
                 Log.d(TAG, "[Record] 세션 종료: ID = $it")

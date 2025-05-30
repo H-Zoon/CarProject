@@ -15,6 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
@@ -26,40 +29,45 @@ class LocationProvider @Inject constructor(
     private val fusedLocationClient =
         LocationServices.getFusedLocationProviderClient(context)
 
-    /**
-     * 지속적으로 위치를 방출하며, 호출한 측에서 collect를 취소할 때까지 유지됩니다.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
+    // 내부에서 위치를 emit 할 SharedFlow (최근 1개를 replay)
+    private val _locationUpdates = MutableSharedFlow<Location>(replay = 1)
+    // 외부에 공개하는 읽기 전용 SharedFlow
+    val locationUpdates: SharedFlow<Location> = _locationUpdates.asSharedFlow()
+
+    // LocationCallback 을 클래스 레벨로 정의해서 start/stop 시 재사용
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            result.lastLocation?.let { loc ->
+                _locationUpdates.tryEmit(loc)
+            }
+        }
+    }
+
+    init {
+        startLocationUpdates()
+    }
+
     @SuppressLint("MissingPermission")
-    fun locationUpdates(
+    private fun startLocationUpdates(
         intervalMs: Long = 1_000L,
         fastestMs: Long = 500L,
         priority: Int = Priority.PRIORITY_HIGH_ACCURACY
-    ): Flow<Location> = callbackFlow {
+    ) {
         val request = LocationRequest.Builder(priority, intervalMs)
             .setMinUpdateIntervalMillis(fastestMs)
             .build()
 
-        val callback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { loc ->
-                    trySend(loc).isSuccess
-                }
-            }
-        }
-
-        // 위치 업데이트 시작
         fusedLocationClient.requestLocationUpdates(
             request,
-            callback,
+            locationCallback,
             Looper.getMainLooper()
         )
-
-        // 호출 측이 Flow를 취소할 때 실행되어 콜백 해제
-        awaitClose {
-            fusedLocationClient.removeLocationUpdates(callback)
-        }
     }
-        .conflate()
-        .flowOn(Dispatchers.Default)
+
+    /**
+     * 필요할 때 호출해서 위치 업데이트를 중단할 수 있습니다.
+     */
+    fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
 }

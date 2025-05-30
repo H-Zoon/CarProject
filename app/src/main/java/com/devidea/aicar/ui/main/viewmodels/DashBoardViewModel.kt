@@ -3,6 +3,7 @@ package com.devidea.aicar.ui.main.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devidea.aicar.drive.PollingManager
+import com.devidea.aicar.drive.PollingManager.PollingSource
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.ui.main.components.GaugeItem
 import com.devidea.aicar.ui.main.components.gaugeItems
@@ -18,7 +19,6 @@ import javax.inject.Inject
 @HiltViewModel
 class DashBoardViewModel @Inject constructor(
     private val repository: DataStoreRepository,
-    //private val pidManager: DashBoardUseCase,
     private val pidManager: PollingManager
 ) : ViewModel() {
 
@@ -42,10 +42,16 @@ class DashBoardViewModel @Inject constructor(
 
 
     /** 연속 PID 데이터 폴링을 시작합니다. */
-    fun startPalling() = pidManager.startPall()
+    fun startPalling(){
+        viewModelScope.launch {
+            pidManager.startPall(PollingSource.VIEWMODEL)
+        }
+    }
 
     /** PID 데이터 폴링을 중지합니다. */
-    fun stopPalling() = pidManager.stopAll()
+    fun stopPalling() {
+        pidManager.stopAll(PollingSource.VIEWMODEL)
+    }
 
     //endregion
 

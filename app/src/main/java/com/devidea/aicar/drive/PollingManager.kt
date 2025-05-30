@@ -1,6 +1,7 @@
 package com.devidea.aicar.drive
 
 import android.util.Log
+import com.devidea.aicar.module.AppModule
 import com.devidea.aicar.service.SppClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,15 +18,20 @@ import javax.inject.Singleton
 
 
 @Singleton
-class PollingManager @Inject constructor(private val sppClient: SppClient) {
+class PollingManager @Inject constructor(
+    private val sppClient: SppClient,
+    @AppModule.ApplicationScope private val appScope: CoroutineScope
+) {
 
     companion object {
         private const val TAG = "PIDManager"
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    enum class PollingSource { SERVICE, ACTIVITY, VIEWMODEL }
+
+    private val activeSources = mutableSetOf<PollingSource>()
     private var pollJob: Job? = null
-    private var pollPeriodMs = 1000L
+    private var pollPeriodMs = 500L
 
 
     // — 백잉 프로퍼티 선언 —
@@ -111,7 +117,7 @@ class PollingManager @Inject constructor(private val sppClient: SppClient) {
         val chunks = defaultPidFlow.keys.chunked(MultiPidUtils.MAX_PIDS)
         val extChunks = extendPidFlow.keys.chunked(ExtendedPidUtils.MAX_PIDS)
 
-        pollJob = scope.launch {
+        pollJob = appScope.launch {
             while (isActive) {
                 for (chunk in chunks) {
                     try {
@@ -157,15 +163,28 @@ class PollingManager @Inject constructor(private val sppClient: SppClient) {
     }
 
 
-    fun startPall() {
-        startPolling()
-        Log.d(TAG, "[obs] observers started")
+    fun startPall(source: PollingSource) {
+        synchronized(activeSources) {
+            // 신규 소스가 추가되고, 아직 폴링이 돌고 있지 않다면 폴링 시작
+            if (activeSources.add(source) && pollJob?.isActive != true) {
+                startPolling()
+            }
+        }
+        Log.d(TAG, "[obs] added source=$source, active=$activeSources")
     }
 
-    fun stopAll() {
-        pollJob?.cancel()
-        pollJob = null
-        Log.d(TAG, "[obs] observers stopped")
+    fun stopAll(source: PollingSource) {
+        synchronized(activeSources) {
+            // 소스 제거 후, 더 이상 구독 주체가 없으면 폴링 중단
+            if (activeSources.remove(source)) {
+                Log.d(TAG, "[obs] removed source=$source, active=$activeSources")
+                if (activeSources.isEmpty()) {
+                    pollJob?.cancel()
+                    pollJob = null
+                    Log.d(TAG, "[obs] polling stopped")
+                }
+            }
+        }
     }
 
     suspend fun querySingle(pid: PIDs): Number {
