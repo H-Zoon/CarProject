@@ -256,7 +256,7 @@ class SppService : Service() {
         val lastEvent = connectionEvents.replayCache.firstOrNull()
         if (lastEvent != ConnectionEvent.Connected) {
             Log.w(TAG, "[Writer] sendRawSync 호출 시 상태 불일치: lastEvent=$lastEvent, cmd=$cmd")
-            throw IllegalStateException("Bluetooth not connected")
+            //throw IllegalStateException("Bluetooth not connected")
         }
 
         writerMutex.withLock {

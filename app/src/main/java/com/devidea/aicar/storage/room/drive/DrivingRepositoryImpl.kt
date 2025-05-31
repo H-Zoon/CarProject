@@ -15,7 +15,7 @@ class DrivingRepositoryImpl @Inject constructor(
 ) : DrivingRepository {
 
     /**현제 기록중인 세션 조회*/
-    override fun getOngoingSession(): Flow<DrivingSession?> =
+    override fun getOngoingSession(): DrivingSession? =
         dao.getOngoingSession()
 
     override fun getAllSessions(): Flow<List<DrivingSession>> =
@@ -73,4 +73,36 @@ class DrivingRepositoryImpl @Inject constructor(
 
     override fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>> =
         dao.getSessionsInRange(startMillis, endMillis)
+
+    override suspend fun saveSessionSummary(summary: DrivingSessionSummary) {
+        dao.insertSessionSummary(summary)
+    }
+
+    override suspend fun getSessionSummaryOnce(sessionId: Long): DrivingSessionSummary? =
+        dao.getSessionSummaryOnce(sessionId)
+
+
+    override fun getSessionSummaryFlow(sessionId: Long): Flow<DrivingSessionSummary?> =
+        dao.getSessionSummaryFlow(sessionId)
+
+
+    override fun getSessionSummariesInRange(
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<List<DrivingSessionSummary>> =
+        dao.getSummariesInRange(startMillis, endMillis)
+
+    /**
+     * 특정 달 (YearMonth) 기준으로 한 달치 통계를 Flow로 반환
+     */
+/*    fun getMonthlyStats(yearMonth: YearMonth): Flow<MonthlyStats> {
+        val zone = ZoneId.systemDefault()
+        val start = yearMonth.atDay(1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val end   = yearMonth.plusMonths(1).atDay(1)
+            .atStartOfDay(zone).toInstant().toEpochMilli() - 1
+
+        return dao.getMonthlyStats(start, end)
+    }*/
+
 }

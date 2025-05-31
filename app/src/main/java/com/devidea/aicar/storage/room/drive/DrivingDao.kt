@@ -2,6 +2,7 @@ package com.devidea.aicar.storage.room.drive
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +29,7 @@ interface DrivingDao {
       ORDER BY startTime DESC
       LIMIT 1
     """)
-    fun getOngoingSession(): Flow<DrivingSession?>
+    fun getOngoingSession(): DrivingSession?
 
     @Query("SELECT * FROM DrivingSession ORDER BY startTime DESC")
     fun getAllSessions(): Flow<List<DrivingSession>>
@@ -86,4 +87,63 @@ interface DrivingDao {
   ORDER BY startTime DESC
 """)
     fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
+
+    // --- DrivingSessionSummary 관련 메서드 추가 ---
+
+    /** 요약 정보 삽입 또는 업데이트 */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSessionSummary(summary: DrivingSessionSummary)
+
+    /** 특정 세션의 요약 정보 조회 (일회성) */
+    @Query("SELECT * FROM DrivingSessionSummary WHERE sessionId = :sessionId")
+    suspend fun getSessionSummaryOnce(sessionId: Long): DrivingSessionSummary?
+
+    /**
+     * startTime이 startMillis와 endMillis 사이인 세션들의 DrivingSessionSummary들을 Flow로 가져오기
+     */
+    @Query("""
+        SELECT summary.*
+        FROM DrivingSessionSummary AS summary
+        INNER JOIN DrivingSession AS session
+          ON summary.sessionId = session.sessionId
+        WHERE session.startTime BETWEEN :startMillis AND :endMillis
+        ORDER BY session.startTime DESC
+    """)
+    fun getSummariesInRange(
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<List<DrivingSessionSummary>>
+
+    // 월별 집계용 DTO
+    data class MonthlyStats(
+        val totalDistanceKm: Float,    // 누적 주행거리
+        val averageKPL: Float,         // 평균 연비 (세션별 평균 연비의 단순 평균)
+        val totalFuelCost: Int         // 누적 유류비
+    )
+
+
+    /**
+     * startTime이 startMillis~endMillis 사이인 세션들의
+     * 요약 데이터를 집계하여 반환
+     */
+    @Query("""
+        SELECT
+          IFNULL(SUM(s.totalDistanceKm), 0)   AS totalDistanceKm,
+          IFNULL(AVG(s.averageKPL), 0)        AS averageKPL,
+          IFNULL(SUM(s.fuelCost), 0)          AS totalFuelCost
+        FROM DrivingSessionSummary AS s
+        INNER JOIN DrivingSession   AS session
+          ON s.sessionId = session.sessionId
+        WHERE session.startTime BETWEEN :startMillis AND :endMillis
+    """)
+    fun getMonthlyStats(
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<MonthlyStats>
+
+    /**
+     * 특정 세션의 요약 정보를 Flow로 가져오기
+     */
+    @Query("SELECT * FROM DrivingSessionSummary WHERE sessionId = :sessionId")
+    fun getSessionSummaryFlow(sessionId: Long): Flow<DrivingSessionSummary?>
 }

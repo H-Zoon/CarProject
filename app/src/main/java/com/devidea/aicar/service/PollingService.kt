@@ -22,6 +22,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +38,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import android.content.IntentFilter
 import com.devidea.aicar.drive.PollingManager.PollingSource
+import com.devidea.aicar.drive.SessionSummaryAccumulator
+import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.sample
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,6 +78,9 @@ class PollingService : Service() {
         private const val NOTIF_ID = 101
         private const val CHANNEL_ID = "record_channel"
     }
+
+    private var summaryAccumulator: SessionSummaryAccumulator? = null
+    private var locationJob: Job? = null
 
     @Inject
     lateinit var sppClient: SppClient
@@ -116,8 +123,6 @@ class PollingService : Service() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    private var locationJob: Job? = null
     private var sessionId: Long? = null
 
     override fun onCreate() {
@@ -210,24 +215,35 @@ class PollingService : Service() {
         if (sessionId != null) return // 이미 기록 중이면 무시
 
         serviceScope.launch {
-            sessionId = drivingRepository.startSession()
+            sessionId = if (drivingRepository.getOngoingSession() != null) {
+                drivingRepository.getOngoingSession()!!.sessionId
+            } else {
+                drivingRepository.startSession()
+            }
             Log.d(TAG, "[Record] 세션 시작: ID = $sessionId")
 
             notify("주행 기록 시작", "세션 $sessionId 이 시작되었습니다.")
 
+            summaryAccumulator = SessionSummaryAccumulator()
+
             // OBD 수집 시작
             pollingManager.startPall(PollingSource.SERVICE)
 
+            locationProvider.startLocationUpdates()
             // 위치 수집 시작
-            locationProvider.locationUpdates
+            locationJob = locationProvider.locationUpdates
                 .sample(1_000L)
-                .collect { loc -> sessionId?.let { saveDataPoint(it, loc) } }
+                .onEach { loc -> sessionId?.let { saveDataPoint(it, loc) } }
+                .launchIn(serviceScope)  // ← serviceScope를 직접 넘김
+
         }
     }
 
     private fun stopRecording() {
         serviceScope.launch {
             locationProvider.stopLocationUpdates()
+            locationJob?.cancel()
+            locationJob = null
             pollingManager.stopAll(PollingSource.SERVICE)
 
             sessionId?.let {
@@ -241,25 +257,41 @@ class PollingService : Service() {
     }
 
     private suspend fun saveDataPoint(sessionId: Long, location: Location) {
-        val dataPoint = DrivingDataPoint(
-            sessionOwnerId = sessionId,
-            timestamp = Instant.now(),
-            latitude = location.latitude,
-            longitude = location.longitude,
-            rpm = pollingManager.rpm.value,
-            speed = pollingManager.speed.value,
-            engineTemp = pollingManager.ect.value,
-            instantKPL = calculateInstantFuelEconomy(
-                maf = pollingManager.maf.value,
-                speedKmh = pollingManager.speed.value,
-                stft = pollingManager.sFuelTrim.value,
-                ltft = pollingManager.lFuelTrim.value
-            )
-        )
-
         try {
+            val dataPoint = DrivingDataPoint(
+                sessionOwnerId = sessionId,
+                timestamp = Instant.now(),
+                latitude = location.latitude,
+                longitude = location.longitude,
+                rpm = pollingManager.rpm.value,
+                speed = pollingManager.speed.value,
+                engineTemp = pollingManager.ect.value,
+                instantKPL = calculateInstantFuelEconomy(
+                    maf = pollingManager.maf.value,
+                    speedKmh = pollingManager.speed.value,
+                    stft = pollingManager.sFuelTrim.value,
+                    ltft = pollingManager.lFuelTrim.value
+                )
+            )
+
             drivingRepository.saveDataPoint(dataPoint)
             Log.d(TAG, "[Record] 데이터 저장: $dataPoint")
+
+            summaryAccumulator?.let { acc ->
+                val summary = acc.add(dataPoint)
+                drivingRepository.saveSessionSummary(
+                    DrivingSessionSummary(
+                        sessionId = sessionId,
+                        totalDistanceKm = summary.distance,
+                        averageSpeedKmh = summary.avgSpeed,
+                        averageKPL = summary.avgKPL,
+                        fuelCost = summary.fuelPrice,
+                        accelEvent = summary.accelEvent,
+                        brakeEvent = summary.brakeEvent
+                    )
+                )
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "[Record] 데이터 저장 실패", e)
         }

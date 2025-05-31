@@ -6,11 +6,12 @@ import androidx.room.TypeConverters
 import com.devidea.aicar.storage.room.drive.DrivingDao
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingSession
+import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
 import com.devidea.aicar.storage.room.notification.NotificationDao
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 
 @Database(
-    entities = [DrivingSession::class, DrivingDataPoint::class, NotificationEntity::class ],
+    entities = [DrivingSession::class, DrivingDataPoint::class, DrivingSessionSummary::class, NotificationEntity::class ],
     version = 1,
     exportSchema = false
 )

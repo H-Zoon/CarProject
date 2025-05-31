@@ -43,7 +43,7 @@ interface DrivingRepository {
     suspend fun insertSession(session: DrivingSession): Long
 
     /**기록이 진행중인 세션 조회*/
-    fun getOngoingSession(): Flow<DrivingSession?>
+    fun getOngoingSession(): DrivingSession?
 
     /** 하루 단위 범위 조회 */
     fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
@@ -57,4 +57,20 @@ interface DrivingRepository {
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant().toEpochMilli() - 1
         )
+
+
+    /** 세션 요약 정보 저장 또는 업데이트 */
+    suspend fun saveSessionSummary(summary: DrivingSessionSummary)
+
+    /** 특정 세션의 요약 정보를 일회성으로 조회 */
+    suspend fun getSessionSummaryOnce(sessionId: Long): DrivingSessionSummary?
+
+    /** 특정 세션의 요약 정보를 Flow로 구독 */
+    fun getSessionSummaryFlow(sessionId: Long): Flow<DrivingSessionSummary?>
+
+    /** startTime이 startMillis ~ endMillis 사이인 요약 리스트를 Flow로 구독 */
+    fun getSessionSummariesInRange(
+        startMillis: Long,
+        endMillis: Long
+    ): Flow<List<DrivingSessionSummary>>
 }

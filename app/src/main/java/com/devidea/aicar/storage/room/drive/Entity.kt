@@ -39,3 +39,22 @@ data class DrivingDataPoint(
     val engineTemp: Int,
     val instantKPL: Float
 )
+
+@Entity(
+    foreignKeys = [ForeignKey(
+        entity = DrivingSession::class,
+        parentColumns = ["sessionId"],
+        childColumns = ["sessionId"],
+        onDelete = CASCADE
+    )],
+    indices = [Index("sessionId")]
+)
+data class DrivingSessionSummary(
+    @PrimaryKey val sessionId: Long,       // DrivingSession.sessionId 와 동일
+    val totalDistanceKm: Float,            // 총 주행 거리
+    val averageSpeedKmh: Float,            // 평균 속도
+    val averageKPL: Float,                 // 평균 연비
+    val fuelCost: Int,                     // 유류비
+    val accelEvent: Int,                    //급가속 이벤트
+    val brakeEvent: Int                     //급감속 이벤트
+)

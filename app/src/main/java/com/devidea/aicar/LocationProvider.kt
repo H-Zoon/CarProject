@@ -43,12 +43,8 @@ class LocationProvider @Inject constructor(
         }
     }
 
-    init {
-        startLocationUpdates()
-    }
-
     @SuppressLint("MissingPermission")
-    private fun startLocationUpdates(
+     fun startLocationUpdates(
         intervalMs: Long = 1_000L,
         fastestMs: Long = 500L,
         priority: Int = Priority.PRIORITY_HIGH_ACCURACY

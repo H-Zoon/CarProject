@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.drive.DrivingSession
+import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
+import com.devidea.aicar.ui.main.components.history.SessionSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -29,13 +31,6 @@ class HistoryViewModel @Inject constructor(
 ) : ViewModel() {
 
 //region 주행 세션 캘린더 및 기록
-
-    // 1) 내부에서 업데이트할 MutableStateFlow
-    private val _ongoingSession = MutableStateFlow<DrivingSession?>(null)
-
-    // 2) 외부에 노출할 읽기 전용 StateFlow
-    val ongoingSession: StateFlow<DrivingSession?> = _ongoingSession.asStateFlow()
-
     private val _selectedDate = MutableStateFlow(LocalDate.now())
 
     /** 세션 조회를 위한 현재 선택된 날짜입니다. */
@@ -96,6 +91,10 @@ class HistoryViewModel @Inject constructor(
         sessions.forEach { drivingRepository.insertSession(it) }
     }
 
+    /** 특정 세션의 요약 데이터를 가져옵니다. */
+    fun getSessionSummery(sessionId: Long): Flow<DrivingSessionSummary?> =
+        drivingRepository.getSessionSummaryFlow(sessionId)
+
     /** 특정 세션의 상세 데이터 포인트를 가져옵니다. */
     fun getSessionData(sessionId: Long): Flow<List<DrivingDataPoint>> =
         drivingRepository.getSessionData(sessionId)
@@ -131,16 +130,5 @@ class HistoryViewModel @Inject constructor(
     /** 캘린더에서 특정 날짜를 선택합니다. */
     fun selectDate(date: LocalDate?) {
         _selectedDate.value = date ?: LocalDate.now()
-    }
-
-    //endregion
-
-    init {
-        viewModelScope.launch {
-            drivingRepository.getOngoingSession()
-                .onEach { session ->
-                    _ongoingSession.value = session
-                }
-        }
     }
 }

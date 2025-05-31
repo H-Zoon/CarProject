@@ -68,17 +68,17 @@ fun SessionSummaryScreen(
     val dataPoints by viewModel.getSessionData(sessionId)
         .collectAsState(initial = emptyList())
 
-    val summary = remember(dataPoints) {
-        calculateSessionSummary(dataPoints)
-    }
+    val summary by viewModel
+        .getSessionSummery(sessionId)
+        .collectAsState(initial = null)
 
     // 주행 점수 계산 (효율성 50%, 부드러움 50%)
     val drivingFeedback = remember(summary) {
         getDrivingFeedback(
-            avgKPL = summary.avgKPL,
-            hardAccel = summary.accelEvent,
-            hardBrake = summary.brakeEvent,
-            distanceKm = summary.distance
+            avgKPL = summary?.averageKPL,
+            hardAccel = summary?.accelEvent,
+            hardBrake = summary?.brakeEvent,
+            distanceKm = summary?.totalDistanceKm
         )
     }
 
@@ -86,32 +86,32 @@ fun SessionSummaryScreen(
         SummaryItem(
             icon = Icons.Default.DirectionsCar,
             title = "운행 거리",
-            value = String.format("%.2f km", summary.distance)
+            value = String.format("%.2f km", summary?.totalDistanceKm)
         ),
         SummaryItem(
             icon = Icons.Default.Speed,
             title = "평균 속도",
-            value = String.format("%.1f km/h", summary.avgSpeed)
+            value = String.format("%.1f km/h", summary?.averageSpeedKmh)
         ),
         SummaryItem(
             icon = Icons.Default.LocalGasStation,
             title = "평균 연비",
-            value = String.format("%.2f km/L", summary.avgKPL)
+            value = String.format("%.2f km/L", summary?.averageKPL)
         ),
         SummaryItem(
             icon = Icons.Default.Wallet,
             title = "유류비",
-            value = "${summary.fuelPrice} 원"
+            value = "${summary?.fuelCost} 원"
         ),
         SummaryItem(
             icon = Icons.Default.Timeline,
             title = "급가속",
-            value = "${summary.accelEvent} 회"
+            value = "${summary?.accelEvent} 회"
         ),
         SummaryItem(
             icon = Icons.Default.TrendingDown,
             title = "급감속",
-            value = "${summary.brakeEvent} 회"
+            value = "${summary?.brakeEvent} 회"
         )
     )
 
@@ -251,34 +251,38 @@ data class DrivingFeedback(
 )
 
 fun getDrivingFeedback(
-    avgKPL: Float,
-    hardAccel: Int,
-    hardBrake: Int,
-    distanceKm: Float
+    avgKPL: Float?,
+    hardAccel: Int?,
+    hardBrake: Int?,
+    distanceKm: Float?
 ): DrivingFeedback {
-    // 1) 효율성(Efficiency) 평가
-    val kplMin = 5f
-    val kplMax = 30f
-    val eNorm = ((avgKPL - kplMin) / (kplMax - kplMin)).coerceIn(0f, 1f)
-    val efficiencyMsg = when {
-        eNorm >= 0.8f -> "안정적인 속도 유지가 효과적이었네요."
-        eNorm >= 0.5f -> "급가속·급감속을 줄이면 더 좋아집니다."
-        else -> "급출발·급정지를 피하고 일정 속도 주행을 권장합니다."
+    if (avgKPL == null || hardAccel == null || hardBrake == null || distanceKm == null){
+        return DrivingFeedback(100, "주행 기록이 필요합니다.", "주행 기록이 필요합니다.")
+    } else {
+        // 1) 효율성(Efficiency) 평가
+        val kplMin = 5f
+        val kplMax = 30f
+        val eNorm = ((avgKPL - kplMin) / (kplMax - kplMin)).coerceIn(0f, 1f)
+        val efficiencyMsg = when {
+            eNorm >= 0.8f -> "안정적인 속도 유지가 효과적이었네요."
+            eNorm >= 0.5f -> "급가속·급감속을 줄이면 더 좋아집니다."
+            else -> "급출발·급정지를 피하고 일정 속도 주행을 권장합니다."
+        }
+
+        // 2) 부드러움(Smoothness) 평가
+        val events = (hardAccel + hardBrake).toFloat()
+        // km당 1회 이벤트 기준
+        val sNorm = (1f - (events / distanceKm)).coerceIn(0f, 1f)
+        val smoothnessMsg = when {
+            sNorm >= 0.8f -> "급격한 속도 변화가 거의 없었습니다."
+            sNorm >= 0.5f -> "급가속·급감속을 조금만 줄여 보세요."
+            else -> "가속과 제동을 신경쓰면 점수가 크게 올라갑니다."
+        }
+
+        val driveScore = ((eNorm * 0.5f + sNorm * 0.5f) * 100).toInt()
+
+        return DrivingFeedback(driveScore, efficiencyMsg, smoothnessMsg)
     }
-
-    // 2) 부드러움(Smoothness) 평가
-    val events = (hardAccel + hardBrake).toFloat()
-    // km당 1회 이벤트 기준
-    val sNorm = (1f - (events / distanceKm)).coerceIn(0f, 1f)
-    val smoothnessMsg = when {
-        sNorm >= 0.8f -> "급격한 속도 변화가 거의 없었습니다."
-        sNorm >= 0.5f -> "급가속·급감속을 조금만 줄여 보세요."
-        else -> "가속과 제동을 신경쓰면 점수가 크게 올라갑니다."
-    }
-
-    val driveScore = ((eNorm * 0.5f + sNorm * 0.5f) * 100).toInt()
-
-    return DrivingFeedback(driveScore, efficiencyMsg, smoothnessMsg)
 }
 
 @Composable
