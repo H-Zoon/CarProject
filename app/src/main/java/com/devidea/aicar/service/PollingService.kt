@@ -125,13 +125,14 @@ class PollingService : Service() {
         }
     }
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serviceScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionId: Long? = null
 
     override fun onCreate() {
         super.onCreate()
         startForegroundService()
         registerPowerReceiver()
+        monitorRecordingConditions()
         serviceScope.launch {
             dataStoreRepository.fuelCostFlow.collect { cost ->
                 fuelPricePerLiter = cost

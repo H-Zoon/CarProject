@@ -127,9 +127,11 @@ class MainViewModel @Inject constructor(
 
     //자동 기록이 설정된 경우 서비스 시작
     fun startAutoRecordingService() {
-        val intent = Intent(context, PollingService::class.java).apply {
+        /*val intent = Intent(context, PollingService::class.java).apply {
             putExtra(PollingServiceCommand.EXTRA_MODE, PollingServiceCommand.MODE_AUTO)
         }
+        ContextCompat.startForegroundService(context, intent)*/
+        val intent = Intent(context, PollingService::class.java)
         ContextCompat.startForegroundService(context, intent)
     }
 

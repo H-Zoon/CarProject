@@ -145,8 +145,9 @@ fun SessionListScreen(
 
                             // 스낵바로 복원 옵션 제공
                             val result = snackbarHostState.showSnackbar(
-                                message = "$count sessions deleted",
-                                actionLabel = "Undo"
+                                message = "$count 개 기록을 삭제했습니다.",
+                                actionLabel = "복구",
+                                duration = SnackbarDuration.Short
                             )
                             if (result == SnackbarResult.ActionPerformed) {
                                 // 복원 처리
