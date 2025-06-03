@@ -13,13 +13,14 @@
     <uses-permission
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- BLE 스캔(주변 탐색), Android 12(API 31) 이상에서 필수 -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <!-- BLE, 클래식 장치와 연결, Android 12+에서 필수 -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- BLE 스캔/페어링 등에서 위치 권한이 필요함 (Android 6.0+ 필수) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- 포그라운드 서비스(알림 표시 필수) 권한, Android 9+에서 필요 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- "연결된 기기" 타입의 포그라운드 서비스(특정 BLE/BT 연동 시) -->
@@ -50,14 +51,14 @@
         <!-- 충전 연결/앱 커스텀 브로드캐스트를 수신하는 리시버.
              exported=true: 외부에서 브로드캐스트 수신 가능(시스템 ACTION_POWER_CONNECTED 포함)
              ACTION_AUTO_CONNECT는 앱 내에서 사용 권장 -->
-        <receiver
+        <!--<receiver
             android:name=".service.AutoConnectReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
                 <action android:name="com.example.myapp.ACTION_AUTO_CONNECT" />
             </intent-filter>
-        </receiver>
+        </receiver>-->
 
         <activity
             android:name=".ui.main.MainActivity"

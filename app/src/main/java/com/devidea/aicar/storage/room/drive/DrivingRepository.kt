@@ -1,5 +1,6 @@
 package com.devidea.aicar.storage.room.drive
 
+import com.devidea.aicar.storage.room.drive.DrivingDao.MonthlyStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -72,5 +73,5 @@ interface DrivingRepository {
     fun getSessionSummariesInRange(
         startMillis: Long,
         endMillis: Long
-    ): Flow<List<DrivingSessionSummary>>
+    ): Flow<MonthlyStats>
 }

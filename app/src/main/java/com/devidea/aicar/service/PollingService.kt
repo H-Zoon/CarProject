@@ -106,9 +106,10 @@ class PollingService : Service() {
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return
+            val currentState = sppClient.connectionEvents.value
             Log.d(TAG, "[PowerReceiver] Received action=$action")
 
-            if (action == Intent.ACTION_POWER_CONNECTED) {
+            if (action == Intent.ACTION_POWER_CONNECTED && currentState == ConnectionEvent.Idle) {
                 serviceScope.launch {
                     val isAutoConnect = repository.isAutoConnectOnCharge.first()
                     if (isAutoConnect) {

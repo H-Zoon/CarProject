@@ -7,11 +7,9 @@ import java.time.Duration
 class SessionSummaryAccumulator() {
 
     companion object {
-        private const val STOICH_AFR = 14.7f                // 가솔린 스토이키 AFR
-        private const val FUEL_DENSITY = 720.0f            // 연료 밀도 (g/L)
-        private const val FUEL_PRICE = 1500            // 연료 밀도 (g/L)
-        private const val accelThreshold: Double = 3.0      // 3 m/s² 이상을 급가속
-        private const val decelThreshold: Double = -3.0      // -3 m/s² 이하를 급감속
+        private const val FUEL_PRICE = 1500
+        private const val accelThreshold: Double = 3.0
+        private const val decelThreshold: Double = -3.0
     }
 
     private var prevPoint: DrivingDataPoint? = null

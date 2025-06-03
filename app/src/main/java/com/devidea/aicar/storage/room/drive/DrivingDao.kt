@@ -121,7 +121,6 @@ interface DrivingDao {
         val totalFuelCost: Int         // 누적 유류비
     )
 
-
     /**
      * startTime이 startMillis~endMillis 사이인 세션들의
      * 요약 데이터를 집계하여 반환

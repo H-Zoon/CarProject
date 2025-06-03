@@ -40,7 +40,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Wallet
-import com.devidea.aicar.drive.FuelEconomyUtil.calculateSessionSummary
 
 /** 요약 결과를 담는 DTO */
 data class SessionSummary(

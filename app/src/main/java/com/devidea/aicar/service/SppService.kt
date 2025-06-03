@@ -1,6 +1,7 @@
 package com.devidea.aicar.service
 
 import android.app.Service
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -23,6 +24,7 @@ import java.io.OutputStreamWriter
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class ScannedDevice(
     val name: String,
@@ -31,10 +33,10 @@ data class ScannedDevice(
 )
 
 sealed class ConnectionEvent {
+    object Idle : ConnectionEvent()
     object Scanning : ConnectionEvent()
     object Connecting : ConnectionEvent()
     object Connected : ConnectionEvent()
-    object Disconnected : ConnectionEvent()
     object Error : ConnectionEvent()
 }
 
@@ -55,9 +57,10 @@ class SppService : Service() {
     private var writer: BufferedWriter? = null
 
     // --- Scope & sync ---
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var rawReaderJob: Job? = null
     private val writerMutex = Mutex()
+    private var isConnecting = AtomicBoolean(false)
 
     // --- Header cache ---
     private var currentHeader: String? = null
@@ -82,21 +85,34 @@ class SppService : Service() {
     // --- Discovery receiver ---
     private val discoveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-            if (intent.action == BluetoothDevice.ACTION_FOUND) {
-                intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                    ?.let { bt ->
-                        val name = bt.name
-                        if (name.isNullOrEmpty()) return
+            when (intent.action) {
+                BluetoothDevice.ACTION_FOUND -> {
+                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                        ?.let { bt ->
+                            val name = bt.name
+                            if (name.isNullOrEmpty()) return
 
-                        Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
-                        _scannedList.update { list ->
-                            if (list.any { it.address == bt.address }) list else list + ScannedDevice(
-                                bt.name.orEmpty(),
-                                bt.address,
-                                bt
-                            )
+                            Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
+                            _scannedList.update { list ->
+                                if (list.any { it.address == bt.address }) list else list + ScannedDevice(
+                                    bt.name.orEmpty(),
+                                    bt.address,
+                                    bt
+                                )
+                            }
                         }
+                }
+
+                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                    // 스캔이 완료된 시점
+                    if (isReceiverRegistered) {
+                        unregisterReceiver(this)
+                        isReceiverRegistered = false
                     }
+                    serviceScope.launch {
+                        _connectionEvents.emit(ConnectionEvent.Idle)
+                    }
+                }
             }
         }
     }
@@ -121,6 +137,12 @@ class SppService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "[Service] onDestroy - Cancelling scope")
         serviceScope.cancel()
+
+        if (isReceiverRegistered) {
+            unregisterReceiver(discoveryReceiver)
+            isReceiverRegistered = false
+        }
+
         super.onDestroy()
     }
 
@@ -130,15 +152,27 @@ class SppService : Service() {
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Scanning)
             _scannedList.value = emptyList()
-            registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
-            isReceiverRegistered = true
+            if (!isReceiverRegistered) {
+                registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
+                isReceiverRegistered = true
+            }
             bluetoothAdapter.startDiscovery()
+
+            delay(DISCOVERY_TIMEOUT_MS)
+            if (bluetoothAdapter.isDiscovering) {
+                bluetoothAdapter.cancelDiscovery()
+                if (isReceiverRegistered) {
+                    unregisterReceiver(discoveryReceiver)
+                    isReceiverRegistered = false
+                }
+                _connectionEvents.emit(ConnectionEvent.Idle)
+            }
         }
     }
 
     fun requestStop() {
         serviceScope.launch {
-            _connectionEvents.emit(ConnectionEvent.Disconnected)
+            _connectionEvents.emit(ConnectionEvent.Idle)
             _scannedList.value = emptyList()
             Log.d(TAG, "[Scan] requestStop called")
             if (bluetoothAdapter.isDiscovering) bluetoothAdapter.cancelDiscovery()
@@ -151,38 +185,43 @@ class SppService : Service() {
 
     // --- Connect / Disconnect ---
     fun requestConnect(device: ScannedDevice) {
+        if (isConnecting.getAndSet(true)) return
+
         Log.d(TAG, "[Connect] requestConnect to ${device.address}")
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Connecting)
-
             try {
-                withContext(Dispatchers.IO) {
-                    // device.device가 null이라면 에러 처리
-                    val btDevice = device.device ?: run {
-                        Log.e(TAG, "[Connect] BluetoothDevice 인스턴스가 없습니다.")
-                        _connectionEvents.emit(ConnectionEvent.Error)
-                        return@withContext
-                    }
-
-                    // 실제 연결
-                    socket = createSocket(btDevice).apply { connect() }
-                    Log.d(TAG, "[Connect] Socket connected")
-                    _connectionEvents.emit(ConnectionEvent.Connected)
-                    Log.d(TAG, "[Connect] Connected event emitted")
-                    setupStreams()
-                    initializeElm327()
+                val btDevice = device.device ?: run {
+                    Log.e(TAG, "[Connect] BluetoothDevice 인스턴스가 없습니다.")
+                    _connectionEvents.emit(ConnectionEvent.Error)
+                    return@launch
                 }
+
+                // 실제 연결
+                socket = createSocket(btDevice).apply { connect() }
+                Log.d(TAG, "[Connect] Socket connected")
+                setupStreams()
+                initializeElm327()
+
             } catch (e: Exception) {
                 Log.e(TAG, "[Connect] Error: ${e.localizedMessage}", e)
                 _connectionEvents.emit(ConnectionEvent.Error)
                 // 연결에 실패했으면 깨끗이 정리
                 requestDisconnect()
+            } finally {
+                isConnecting.set(false)
             }
         }
     }
 
     fun requestDisconnect() {
         Log.d(TAG, "[Disconnect] requestDisconnect called")
+        if (isReceiverRegistered) {
+            bluetoothAdapter.cancelDiscovery()
+            unregisterReceiver(discoveryReceiver)
+            isReceiverRegistered = false
+        }
+
         serviceScope.launch {
             try {
                 rawReaderJob?.cancel()
@@ -203,7 +242,7 @@ class SppService : Service() {
                 }
                 pending.clear()
 
-                _connectionEvents.emit(ConnectionEvent.Disconnected)
+                _connectionEvents.emit(ConnectionEvent.Idle)
                 Log.d(TAG, "[Disconnect] 연결 종료 처리 완료")
             }
         }
@@ -249,6 +288,8 @@ class SppService : Service() {
             delay(50)
         }
         Log.d(TAG, "[Init] initializeElm327 completed")
+        _connectionEvents.emit(ConnectionEvent.Connected)
+        Log.d(TAG, "[Connect] Connected event emitted")
     }
 
     // --- sendRawSync ---
@@ -289,12 +330,14 @@ class SppService : Service() {
                                 sbLine.setLength(0)
                             }
                         }
+
                         '\r', '\n' -> {
                             if (sbLine.isNotEmpty()) {
                                 rawLines.emit(sbLine.toString())
                                 sbLine.setLength(0)
                             }
                         }
+
                         else -> sbLine.append(ch)
                     }
                 }

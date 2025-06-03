@@ -6,18 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import androidx.core.content.ContextCompat
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
@@ -34,7 +31,7 @@ interface SppClient {
     suspend fun getCurrentConnectedDevice(): ScannedDevice?
     suspend fun query(cmd: String, header: String? = null, timeoutMs: Long = 1_000): String
     val deviceList: StateFlow<List<ScannedDevice>>
-    val connectionEvents: SharedFlow<ConnectionEvent>
+    val connectionEvents: StateFlow<ConnectionEvent>
 }
 
 @Singleton
@@ -50,8 +47,8 @@ class SppClientImpl @Inject constructor(
     private val _deviceList = MutableStateFlow<List<ScannedDevice>>(emptyList())
     override val deviceList: StateFlow<List<ScannedDevice>> = _deviceList.asStateFlow()
 
-    private val _connectionEvents = MutableSharedFlow<ConnectionEvent>(replay = 1)
-    override val connectionEvents: SharedFlow<ConnectionEvent> = _connectionEvents.asSharedFlow()
+    private val _connectionEvents = MutableStateFlow<ConnectionEvent>(ConnectionEvent.Idle)
+    override val connectionEvents: StateFlow<ConnectionEvent> = _connectionEvents.asStateFlow()
 
     private val clientScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -71,19 +68,10 @@ class SppClientImpl @Inject constructor(
                 .launchIn(clientScope)
 
             svc.connectionEvents
-                .onEach {
-                    _connectionEvents.tryEmit(it)
-                    val message = when (it) {
-                        ConnectionEvent.Scanning -> "기기 검색중입니다"
-                        ConnectionEvent.Connecting -> "기기가 연결중입니다."
-                        ConnectionEvent.Connected -> "기기가 연결되였습니다"
-                        ConnectionEvent.Disconnected -> "연결이 해제되었습니다"
-                        ConnectionEvent.Error -> "오류가 발생하였습니다"
-                    }
-                    //requestUpdateNotification(message)
-                }
+                .onEach { _connectionEvents.tryEmit(it) }
                 .launchIn(clientScope)
         }
+
         override fun onServiceDisconnected(name: ComponentName) {
             //service = null; bound = false
             if (!serviceReady.isCompleted) {
@@ -101,18 +89,28 @@ class SppClientImpl @Inject constructor(
     }
 
     // ——— Control wrappers ———
-    override suspend fun requestStartScan() { ensureBoundService().requestScan() }
-    override suspend fun requestStopScan() { ensureBoundService().requestStop()}
+    override suspend fun requestStartScan() {
+        ensureBoundService().requestScan()
+    }
 
-    override suspend fun requestConnect(device: ScannedDevice) { ensureBoundService().requestConnect(device) }
-    override suspend fun requestDisconnect() { ensureBoundService().requestDisconnect() }
+    override suspend fun requestStopScan() {
+        ensureBoundService().requestStop()
+    }
+
+    override suspend fun requestConnect(device: ScannedDevice) {
+        ensureBoundService().requestConnect(device)
+    }
+
+    override suspend fun requestDisconnect() {
+        ensureBoundService().requestDisconnect()
+    }
     //override suspend fun requestUpdateNotification(message: String) { ensureBoundService().updateNotification(message) }
 
     override suspend fun requestAutoConnect() {
         repository.getDevice.firstOrNull()?.let {
             val btDevice = bluetoothAdapter.getRemoteDevice(it.address)
             ensureBoundService().requestConnect(ScannedDevice(it.name, it.address, btDevice))
-        }?: run {
+        } ?: run {
             //requestUpdateNotification("저장된 블루투스 기기가 없습니다.")
         }
     }

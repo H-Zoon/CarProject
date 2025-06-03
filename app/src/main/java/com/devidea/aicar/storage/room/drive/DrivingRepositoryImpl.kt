@@ -1,5 +1,6 @@
 package com.devidea.aicar.storage.room.drive
 
+import com.devidea.aicar.storage.room.drive.DrivingDao.MonthlyStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -86,23 +87,17 @@ class DrivingRepositoryImpl @Inject constructor(
         dao.getSessionSummaryFlow(sessionId)
 
 
-    override fun getSessionSummariesInRange(
+    /*override fun getSessionSummariesInRange(
         startMillis: Long,
         endMillis: Long
     ): Flow<List<DrivingSessionSummary>> =
         dao.getSummariesInRange(startMillis, endMillis)
-
+*/
     /**
      * 특정 달 (YearMonth) 기준으로 한 달치 통계를 Flow로 반환
      */
-/*    fun getMonthlyStats(yearMonth: YearMonth): Flow<MonthlyStats> {
-        val zone = ZoneId.systemDefault()
-        val start = yearMonth.atDay(1)
-            .atStartOfDay(zone).toInstant().toEpochMilli()
-        val end   = yearMonth.plusMonths(1).atDay(1)
-            .atStartOfDay(zone).toInstant().toEpochMilli() - 1
-
-        return dao.getMonthlyStats(start, end)
-    }*/
+    override fun getSessionSummariesInRange(startMillis: Long, endMillis: Long): Flow<MonthlyStats> {
+        return dao.getMonthlyStats(startMillis, endMillis)
+    }
 
 }

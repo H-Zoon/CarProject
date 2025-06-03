@@ -30,7 +30,7 @@ class DataStoreModule {
     fun provideDataStoreRepository(
         @ApplicationContext context: Context,
         dataStore: DataStore<Preferences>,
-        @AppModule.ApplicationScope appScope: CoroutineScope    // ← 이 줄을 추가!
+        @AppModule.ApplicationScope appScope: CoroutineScope
     ): DataStoreRepository {
         return DataStoreRepository(context, dataStore, appScope)
     }

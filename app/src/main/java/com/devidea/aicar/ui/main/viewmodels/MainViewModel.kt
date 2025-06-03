@@ -15,6 +15,8 @@ import com.devidea.aicar.service.RecordStateHolder
 import com.devidea.aicar.service.ScannedDevice
 import com.devidea.aicar.service.SppClient
 import com.devidea.aicar.storage.datastore.DataStoreRepository
+import com.devidea.aicar.storage.room.drive.DrivingDao.MonthlyStats
+import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +29,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 
 /**
@@ -42,6 +47,7 @@ class MainViewModel @Inject constructor(
     private val notificationRepository: NotificationRepository,
     recordStateHolder: RecordStateHolder,
     private val sppClient: SppClient,
+    private val drivingRepository: DrivingRepository,
     @ApplicationContext
     private val context: Context,
 ) : ViewModel() {
@@ -57,7 +63,7 @@ class MainViewModel @Inject constructor(
 
     /** 블루투스 연결/해제/오류 이벤트를 발행합니다. */
     val _bluetoothState: MutableStateFlow<ConnectionEvent> =
-        MutableStateFlow(ConnectionEvent.Disconnected)
+        MutableStateFlow(ConnectionEvent.Idle)
     val bluetoothState: StateFlow<ConnectionEvent> = _bluetoothState.asStateFlow()
 
     /** 블루투스 기기 스캔을 시작합니다. */
@@ -176,6 +182,45 @@ class MainViewModel @Inject constructor(
         notificationRepository.clearAllNotifications()
     }
     //endregion
+
+    //region 특정 달의 주행 요약 데이터
+
+    private val monthRange: Pair<Long, Long> = run {
+        val cal = Calendar.getInstance(TimeZone.getDefault(), Locale.getDefault())
+
+        // 이번 달 1일 00:00:00.000
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val startMillis = cal.timeInMillis
+
+        // 이번 달 마지막 날 23:59:59.999
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        val endMillis = cal.timeInMillis
+
+        Pair(startMillis, endMillis)
+    }
+
+    // 3) Flow→StateFlow로 ViewModelScope 내에서 관리하는 예시
+    private val _monthlyStatsFlow: StateFlow<MonthlyStats> =
+        drivingRepository.getSessionSummariesInRange(monthRange.first, monthRange.second)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = MonthlyStats(
+                    totalDistanceKm = 0.0f,
+                    averageKPL = 0.0f,
+                    totalFuelCost = 0
+                )
+            )
+
+    val monthlyStats: StateFlow<MonthlyStats> = _monthlyStatsFlow
 
     init {
         viewModelScope.launch {
