@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,10 +28,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeviceThermostat
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.GasMeter
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
@@ -67,9 +70,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.devidea.aicar.R
 import com.devidea.aicar.drive.PIDs
 import com.devidea.aicar.ui.main.viewmodels.DashBoardViewModel
@@ -273,23 +278,72 @@ typealias GaugeComposable = @Composable () -> Unit
 
 data class GaugeItem(
     val id: String,
-    val content: GaugeComposable
-)
+    val icon: ImageVector,
+    val content: GaugeComposable,
+
+    )
 
 val gaugeItems: List<GaugeItem> = listOf(
-    GaugeItem(PIDs.RPM.name) { RpmGauge() },
-    GaugeItem(PIDs.SPEED.name) { SpeedGauge() },
-    GaugeItem(PIDs.ECT.name) { EctGauge() },
-    GaugeItem(PIDs.THROTTLE.name) { ThrottleGauge() },
-    GaugeItem(PIDs.ENGIN_LOAD.name) { LoadGauge() },
-    GaugeItem(PIDs.INTAKE_TEMP.name) { IATGauge() },
-    GaugeItem(PIDs.MAF.name) { MAFGauge() },
-    GaugeItem(PIDs.BATT.name) { BatteryGauge() },
-    //GaugeItem(PIDs.FUEL_RATE.name) { FuelRateGauge() },
-    GaugeItem(PIDs.CURRENT_GEAR.name) { CurrentGearGauge() },
-    GaugeItem(PIDs.OIL_PRESSURE.name) { OilPressureGauge() },
-    GaugeItem(PIDs.OIL_TEMP.name) { OilTempGauge() },
-    GaugeItem(PIDs.TRANS_FLUID_TEMP.name) { TransFluidTempGauge() }
+    GaugeItem(
+        id = PIDs.RPM.name,
+        icon = Icons.Filled.Speed,     // RPM용 예시 아이콘
+        content = { RpmGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.SPEED.name,
+        icon = Icons.Filled.Speed,     // Speed용 아이콘 (원한다면 다른 아이콘으로 교체)
+        content = { SpeedGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.ECT.name,
+        icon = Icons.Filled.Thermostat, // ECT(엔진 냉각수 온도)용 예시 아이콘
+        content = { EctGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.THROTTLE.name,
+        icon = Icons.Filled.GasMeter,  // 스로틀 위치용 아이콘
+        content = { ThrottleGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.ENGIN_LOAD.name,
+        icon = Icons.Filled.Speed,     // Engine Load용 아이콘 (원한다면 로드 아이콘으로 교체)
+        content = { LoadGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.INTAKE_TEMP.name,
+        icon = Icons.Filled.Thermostat, // IAT(Intake Air Temp)용 아이콘
+        content = { IATGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.MAF.name,
+        icon = Icons.Filled.Speed,     // MAF용 아이콘 (예시)
+        content = { MAFGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.BATT.name,
+        icon = Icons.Filled.BatteryChargingFull, // 배터리 전압용 아이콘
+        content = { BatteryGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.CURRENT_GEAR.name,
+        icon = Icons.Filled.Speed,     // 기어 표시용 아이콘 (원한다면 기어 아이콘으로 교체)
+        content = { CurrentGearGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.OIL_PRESSURE.name,
+        icon = Icons.Filled.Speed,     // 오일 압력용 아이콘 (예시)
+        content = { OilPressureGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.OIL_TEMP.name,
+        icon = Icons.Filled.Thermostat, // 오일 온도용 아이콘
+        content = { OilTempGauge() }
+    ),
+    GaugeItem(
+        id = PIDs.TRANS_FLUID_TEMP.name,
+        icon = Icons.Filled.Thermostat, // 변속기 오일 온도용 아이콘
+        content = { TransFluidTempGauge() }
+    )
 )
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -310,7 +364,7 @@ fun DashboardScreen(
     var list by remember(gauges) { mutableStateOf(gauges) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // 윈도우 좌표 기준 마지막 포인터 위치
+    // 윈도우 좌표 기준 마지막 포인터 위치 (로컬 y → 윈도우 y로 변환해줄 예정)
     var lastPointer by remember { mutableStateOf(Offset.Zero) }
     // 윈도우 좌표 기준 삭제 영역 Rect
     val deleteZoneRect = remember { mutableStateOf<Rect?>(null) }
@@ -330,21 +384,36 @@ fun DashboardScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.title_manage), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.title_manage),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
     ) { paddingValues ->
+        // 1) 툴바 높이만큼의 top padding을 기억해 둡니다.
+        val topBarPaddingPx = with(LocalDensity.current) {
+            paddingValues.calculateTopPadding().toPx()
+        }
+
         Box(
             modifier = modifier
+                .fillMaxSize()
+                // 툴바 높이만큼 아래로 내려놓음
                 .padding(top = paddingValues.calculateTopPadding())
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
-                            lastPointer = event.changes.first().position
+                            // 2) event.changes.first().position 은 Box 내부 로컬 좌표
+                            //    이를 윈도우 좌표로 바꾸려면 y에 topBarPaddingPx를 더해주면 된다.
+                            val local = event.changes.first().position
+                            lastPointer = Offset(local.x, local.y + topBarPaddingPx)
                         }
                     }
                 }
@@ -352,12 +421,12 @@ fun DashboardScreen(
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 state = gridState,
-                modifier = modifier,
+                modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     top = 16.dp,
                     end = 16.dp,
-                    // 하단에 삭제 영역 높이(100.dp)를 포함한 고정 패딩
+                    // 하단에 삭제 영역 높이(100.dp) + 16.dp 패딩 포함
                     bottom = 16.dp + 100.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -372,13 +441,12 @@ fun DashboardScreen(
                                     .longPressDraggableHandle(
                                         onDragStarted = { /*...*/ },
                                         onDragStopped = {
+                                            // deleteZoneRect와 비교할 때, lastPointer는 이미 윈도우 좌표가 됨
                                             deleteZoneRect.value
                                                 ?.takeIf { it.contains(lastPointer) }
                                                 ?.let { viewModel.onGaugeToggle(gauge.id) }
                                         }
                                     )
-                                    .background(Color.White)
-                                    .fillMaxSize()
                             ) {
                                 gauge.content()
                             }
@@ -405,9 +473,12 @@ fun DashboardScreen(
                         .fillMaxWidth()
                         .height(100.dp)
                         .background(
-                            Color.Red.copy(alpha = if (deleteZoneRect.value?.contains(lastPointer) == true) 0.8f else 0.4f)
+                            Color.Red.copy(
+                                alpha = if (deleteZoneRect.value?.contains(lastPointer) == true) 0.8f else 0.4f
+                            )
                         )
                         .onGloballyPositioned { coords ->
+                            // 3) 여기는 윈도우 좌표로 저장됨
                             deleteZoneRect.value = coords.boundsInWindow()
                         },
                     contentAlignment = Alignment.Center
@@ -446,13 +517,19 @@ fun AddGaugeDialog(
     onAdd: (GaugeItem) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // 1) 선택되지 않은 것들만
     val available = remember(allItems, selectedIds) {
         allItems.filter { it.id !in selectedIds }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        // 플랫폼 기본 너비 제한 해제
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        // 외부 modifier는 여기만 사용
+        modifier = modifier
+            .widthIn(min = 300.dp, max = 360.dp)
+            .padding(horizontal = 24.dp),
+
         title = {
             Text(
                 text = "Add Gauge",
@@ -460,36 +537,43 @@ fun AddGaugeDialog(
             )
         },
         text = {
-            // 2) 상단에 가로 스크롤 LazyRow
+            // ➌ 내부 전용 Modifier는 항상 새로 생성
             LazyRow(
-                modifier = modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 content = {
-                    items(available.size, key = { available[it].id }) { gauge ->
+                    items(
+                        count = available.size,
+                        key = { index -> available[index].id }
+                    ) { idx ->
+                        val item = available[idx]
                         Card(
-                            modifier = modifier
-                                .size(100.dp)
+                            modifier = Modifier
+                                .size(120.dp)
                                 .clickable {
-                                    onAdd(available[gauge])
+                                    onAdd(item)
                                     onDismiss()
                                 },
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
                             Column(
-                                modifier = modifier
+                                modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(8.dp),
+                                    .padding(4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Box(modifier = modifier.size(48.dp)) {
-                                    available[gauge].content()
-                                }
-                                Spacer(modifier = modifier.height(4.dp))
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = "${item.id} icon",
+                                    modifier = Modifier.size(30.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = available[gauge].id.uppercase(),
+                                    text = item.id.uppercase(),
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             }
@@ -503,10 +587,6 @@ fun AddGaugeDialog(
                 Text("Cancel")
             }
         },
-        // 필요시 배경 모서리나 크기 조정
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+        shape = RoundedCornerShape(12.dp)
     )
 }
