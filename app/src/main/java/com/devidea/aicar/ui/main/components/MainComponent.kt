@@ -87,7 +87,11 @@ fun HomeScreen(
                 .verticalScroll(scrollState)
                 .padding(top = paddingValues.calculateTopPadding())
         ) {
-            DrivingStatsContent(stats = stats)
+            DrivingStatsContent(stats = stats,
+                recordState = recordState,
+                isAutoRecordEnabled = driveHistoryEnable,
+                onAutoRecordToggle = {viewModel.setAutoDrivingRecordEnable(it)},)
+
             Spacer(modifier = Modifier.height(12.dp))
             BluetoothControl(
                 bluetoothState = bluetoothState,
@@ -100,13 +104,13 @@ fun HomeScreen(
                 deviceList = devices
             )
             Spacer(modifier = Modifier.height(12.dp))
-            DrivingRecordControl(
+            /*DrivingRecordControl(
                 recordState = recordState,
                 onRecordToggle = { viewModel.setManualDrivingRecordToggle() },
                 isAutoRecordEnabled = driveHistoryEnable,
                 onAutoRecordToggle = {viewModel.setAutoDrivingRecordEnable(it)},
                 bluetoothState = bluetoothState
-            )
+            )*/
         }
     }
 }
@@ -304,8 +308,11 @@ fun DrivingRecordControl(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DrivingStatsContent(
-    stats: MonthlyStats
+fun DrivingStatsContent(
+    stats: MonthlyStats,
+    recordState: RecordState,
+    isAutoRecordEnabled: Boolean,
+    onAutoRecordToggle: (Boolean) -> Unit
 ) {
 
     val currentMonth: Int = remember {
@@ -346,13 +353,28 @@ private fun DrivingStatsContent(
                 modifier = Modifier
                     .padding(16.dp)
             ) {
+
+                DrivingRecordControl2(
+                    recordState = recordState,
+                    isAutoRecordEnabled = isAutoRecordEnabled,
+                    onAutoRecordToggle = onAutoRecordToggle
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 3.dp
+                )
+
                 // 총 주행 거리
                 StatRow(
                     label = "총 주행 거리",
                     value = "${numberFormatter.format(stats.totalDistanceKm)} km"
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 1.dp
+                )
 
                 // 평균 연비
                 StatRow(
@@ -360,7 +382,10 @@ private fun DrivingStatsContent(
                     value = "${"%.2f".format(stats.averageKPL)} km/L"
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 1.dp
+                )
 
                 // 총 연료비
                 StatRow(

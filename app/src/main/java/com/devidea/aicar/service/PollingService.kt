@@ -43,6 +43,7 @@ import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -81,6 +82,7 @@ class PollingService : Service() {
 
     private var summaryAccumulator: SessionSummaryAccumulator? = null
     private var locationJob: Job? = null
+    private var fuelPricePerLiter: Int = 0
 
     @Inject
     lateinit var sppClient: SppClient
@@ -98,7 +100,7 @@ class PollingService : Service() {
     lateinit var notificationRepository: NotificationRepository
 
     @Inject
-    lateinit var repository: DataStoreRepository
+    lateinit var dataStoreRepository: DataStoreRepository
 
     @Inject
     lateinit var recordStateHolder: RecordStateHolder
@@ -111,7 +113,7 @@ class PollingService : Service() {
 
             if (action == Intent.ACTION_POWER_CONNECTED && currentState == ConnectionEvent.Idle) {
                 serviceScope.launch {
-                    val isAutoConnect = repository.isAutoConnectOnCharge.first()
+                    val isAutoConnect = dataStoreRepository.isAutoConnectOnCharge.first()
                     if (isAutoConnect) {
                         Log.d(TAG, "[PowerReceiver] Auto connect 조건 충족, 연결 시도")
                         sppClient.requestAutoConnect()
@@ -130,6 +132,11 @@ class PollingService : Service() {
         super.onCreate()
         startForegroundService()
         registerPowerReceiver()
+        serviceScope.launch {
+            dataStoreRepository.fuelCostFlow.collect { cost ->
+                fuelPricePerLiter = cost
+            }
+        }
     }
 
     private fun registerPowerReceiver() {
@@ -142,7 +149,7 @@ class PollingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val mode = intent?.getStringExtra(PollingServiceCommand.EXTRA_MODE)
-        startForegroundService()
+        //startForegroundService()
         when (mode) {
             PollingServiceCommand.MODE_MANUAL_START -> {
                 serviceScope.launch {
@@ -167,9 +174,24 @@ class PollingService : Service() {
     }
 
     override fun onDestroy() {
-        stopRecording()
-        unregisterReceiver(powerReceiver)
-        serviceScope.cancel()
+        // 1) 서비스를 위한 별도 스코프 (여기서는 Dispatchers.IO)
+        val cleanupScope = CoroutineScope(Dispatchers.IO)
+
+        // 2) cleanupScope.launch로 stopRecordingSuspend()를 순차 실행하게 하고,
+        //    끝난 뒤에만 serviceScope.cancel()과 super.onDestroy()를 호출
+        runBlocking {
+            cleanupScope.launch {
+                stopRecording() // suspend 함수
+            }.join()  // launch된 코루틴이 끝날 때까지 블록킹
+
+            // 완료되면 리시버 해제 및 스코프 취소
+            try {
+                unregisterReceiver(powerReceiver)
+            } catch (_: Exception) {
+            }
+
+            serviceScope.cancel()
+        }
         super.onDestroy()
     }
 
@@ -177,7 +199,7 @@ class PollingService : Service() {
 
     private fun monitorRecordingConditions() {
         serviceScope.launch {
-            val autoRecordFlow = repository.getDrivingRecodeSetDate().distinctUntilChanged()
+            val autoRecordFlow = dataStoreRepository.getDrivingRecodeSetDate().distinctUntilChanged()
 
             val connectedFlow = sppClient.connectionEvents
                 .map { it is ConnectionEvent.Connected }
@@ -216,16 +238,16 @@ class PollingService : Service() {
         if (sessionId != null) return // 이미 기록 중이면 무시
 
         serviceScope.launch {
-            sessionId = if (drivingRepository.getOngoingSession() != null) {
-                drivingRepository.getOngoingSession()!!.sessionId
-            } else {
-                drivingRepository.startSession()
+            drivingRepository.getOngoingSessionId()?.let {
+                sessionId = it
+            } ?: run {
+                sessionId = drivingRepository.startSession()
             }
             Log.d(TAG, "[Record] 세션 시작: ID = $sessionId")
 
             notify("주행 기록 시작", "세션 $sessionId 이 시작되었습니다.")
 
-            summaryAccumulator = SessionSummaryAccumulator()
+            summaryAccumulator = SessionSummaryAccumulator(fuelPricePerLiter)
 
             // OBD 수집 시작
             pollingManager.startPall(PollingSource.SERVICE)
@@ -240,19 +262,21 @@ class PollingService : Service() {
         }
     }
 
-    private fun stopRecording() {
-        serviceScope.launch {
-            locationProvider.stopLocationUpdates()
-            locationJob?.cancel()
-            locationJob = null
-            pollingManager.stopAll(PollingSource.SERVICE)
+    private suspend fun stopRecording() {
+        locationProvider.stopLocationUpdates()
+        locationJob?.cancel()
+        locationJob = null
+        pollingManager.stopAll(PollingSource.SERVICE)
 
-            sessionId?.let {
-                Log.d(TAG, "[Record] 세션 종료: ID = $it")
+        sessionId?.let {
+            Log.d(TAG, "[Record] 세션 종료: ID = $it")
+            drivingRepository.stopSession(it)
+
+            notify("주행 기록 종료", "세션 $it 이 종료되었습니다.")
+            sessionId = null
+        } ?: run {
+            drivingRepository.getOngoingSessionId()?.let {
                 drivingRepository.stopSession(it)
-
-                notify("주행 기록 종료", "세션 $it 이 종료되었습니다.")
-                sessionId = null
             }
         }
     }
@@ -276,8 +300,8 @@ class PollingService : Service() {
             )
 
             drivingRepository.saveDataPoint(dataPoint)
-            Log.d(TAG, "[Record] 데이터 저장: $dataPoint")
 
+            // summaryAccumulator가 null이 아니라면 add() 호출
             summaryAccumulator?.let { acc ->
                 val summary = acc.add(dataPoint)
                 drivingRepository.saveSessionSummary(
@@ -292,7 +316,6 @@ class PollingService : Service() {
                     )
                 )
             }
-
         } catch (e: Exception) {
             Log.e(TAG, "[Record] 데이터 저장 실패", e)
         }

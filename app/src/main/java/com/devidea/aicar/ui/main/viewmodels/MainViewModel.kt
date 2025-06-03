@@ -237,12 +237,7 @@ class MainViewModel @Inject constructor(
                     _lastConnectDate.value = if (diff.isBlank()) "-" else diff
                 }
             }
-            // 최근 주행 거리(Km) 관찰
-            launch {
-                repository.getMileageDate().collect { km ->
-                    _recentMileage.value = if (km < 0) "-" else "$km Km"
-                }
-            }
+
             // 주행 기록 저장 여부 관찰
             launch {
                 repository.getDrivingRecodeSetDate().collect { enabled ->

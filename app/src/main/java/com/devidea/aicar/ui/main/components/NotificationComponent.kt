@@ -115,10 +115,10 @@ fun NotificationScreen(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
-                .padding(innerPadding)
+                .padding(top = paddingValues.calculateTopPadding())
                 .fillMaxSize()
         ) {
             // ───────── Select All 헤더 ─────────

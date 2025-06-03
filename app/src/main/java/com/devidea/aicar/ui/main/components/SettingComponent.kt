@@ -1,11 +1,16 @@
 package com.devidea.aicar.ui.main.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.R
@@ -19,13 +24,21 @@ fun SettingsScreen(
 ) {
     val lastDevice by viewModel.lastSavedDevice.collectAsState(initial = null)
     val autoOnCharge by viewModel.autoConnectOnCharge.collectAsState(initial = false)
+    val fuelCost by viewModel.fuelCost.collectAsState(initial = 0)
     var showConfirm by remember { mutableStateOf<ResetTarget?>(null) }
+    var showFuelDialog by remember { mutableStateOf(false) }
+    var newFuelCostText by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.title_setting), style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        stringResource(R.string.title_setting),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -33,25 +46,33 @@ fun SettingsScreen(
         }
     ) { paddingValues ->
         Column(
-            modifier = modifier.padding(paddingValues),
+            modifier = modifier
+                .padding(top = paddingValues.calculateTopPadding())
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // ───────────── 연결 설정 ─────────────
+            Text("연결 설정", style = MaterialTheme.typography.titleLarge)
+
             // 마지막 연결된 기기 정보
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = "마지막 기기", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
                     if (lastDevice != null) {
-                        Text(text = lastDevice!!.name)
-                        Text(text = lastDevice!!.address)
+                        Text(text = lastDevice!!.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = lastDevice!!.address, style = MaterialTheme.typography.bodyLarge)
                     } else {
-                        Text(text = "저장된 기기가 없습니다.")
+                        Text(text = "저장된 기기가 없습니다.", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -67,10 +88,11 @@ fun SettingsScreen(
                 Column {
                     Text(text = "충전 시 자동 연결", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "기기를 충전기에 연결하면 마지막 기기로 자동 연결합니다.",
+                        text = "기기 충전시 마지막 기기로 자동 연결합니다.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+                Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = autoOnCharge,
                     onCheckedChange = { enabled ->
@@ -79,7 +101,45 @@ fun SettingsScreen(
                 )
             }
 
+            Divider()
+
+            // ───────────── 주행 기록 설정 ─────────────
+            Text("주행 기록 설정", style = MaterialTheme.typography.titleLarge)
+
+            // 유류비 설정 카드
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "유류비 설정", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "현재 유류비: ${fuelCost}원",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Button(
+                        onClick = {
+                            newFuelCostText = fuelCost.toString()
+                            showFuelDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("유류비 수정")
+                    }
+                }
+            }
+
+            Divider()
+
+            // ───────────── 초기화 ─────────────
             Text("초기화", style = MaterialTheme.typography.titleLarge)
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = { showConfirm = ResetTarget.SAVED_DEVICE },
@@ -99,7 +159,7 @@ fun SettingsScreen(
                 ) {
                     Text("위젯 설정 초기화")
                 }
-                Divider()
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
                 Button(
                     onClick = { showConfirm = ResetTarget.ALL },
                     modifier = Modifier.fillMaxWidth(),
@@ -122,7 +182,8 @@ fun SettingsScreen(
                             ResetTarget.DRIVING_RECORD -> "모든 주행 기록을 정말 삭제하시겠습니까?"
                             ResetTarget.WIDGET_SETTINGS -> "위젯 순서를 기본값으로 되돌리시겠습니까?"
                             ResetTarget.ALL -> "모든 설정을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-                        }
+                        },
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 confirmButton = {
@@ -134,10 +195,56 @@ fun SettingsScreen(
                             ResetTarget.ALL -> viewModel.resetAll()
                         }
                         showConfirm = null
-                    }) { Text("초기화") }
+                    }) {
+                        Text("초기화", style = MaterialTheme.typography.bodyMedium)
+                    }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showConfirm = null }) { Text("취소") }
+                    TextButton(onClick = { showConfirm = null }) {
+                        Text("취소", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            )
+        }
+
+        // 유류비 수정 다이얼로그
+        if (showFuelDialog) {
+            AlertDialog(
+                onDismissRequest = { showFuelDialog = false },
+                title = { Text("유류비 수정", style = MaterialTheme.typography.titleMedium) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "유류비를 입력하세요 (최대 4자리):",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextField(
+                            value = newFuelCostText,
+                            onValueChange = { input ->
+                                // 숫자만 허용, 최대 4자리
+                                if (input.all { it.isDigit() } && input.length <= 4) {
+                                    newFuelCostText = input
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val cost = newFuelCostText.toIntOrNull() ?: 0
+                        viewModel.setFuelCost(cost)
+                        showFuelDialog = false
+                    }) {
+                        Text("저장", style = MaterialTheme.typography.bodyMedium)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFuelDialog = false }) {
+                        Text("취소", style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             )
         }
