@@ -2,6 +2,7 @@ package com.devidea.aicar.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -40,6 +41,7 @@ import android.content.IntentFilter
 import com.devidea.aicar.drive.PollingManager.PollingSource
 import com.devidea.aicar.drive.SessionSummaryAccumulator
 import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
+import com.devidea.aicar.ui.main.MainActivity
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.sample
@@ -77,6 +79,7 @@ class PollingService : Service() {
     companion object {
         private const val TAG = "[PollingService]"
         private const val NOTIF_ID = 101
+        private const val RECORDING_NOTIF_ID = 102
         private const val CHANNEL_ID = "record_channel"
     }
 
@@ -149,7 +152,7 @@ class PollingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val mode = intent?.getStringExtra(PollingServiceCommand.EXTRA_MODE)
+        /*val mode = intent?.getStringExtra(PollingServiceCommand.EXTRA_MODE)
         //startForegroundService()
         when (mode) {
             PollingServiceCommand.MODE_MANUAL_START -> {
@@ -170,7 +173,7 @@ class PollingService : Service() {
                 monitorRecordingConditions()
             }
         }
-
+*/
         return START_STICKY
     }
 
@@ -219,7 +222,10 @@ class PollingService : Service() {
                     recordStateHolder.update(newState)
 
                     when (newState) {
-                        is RecordState.Recording -> startRecording()
+                        is RecordState.Recording -> {
+                            showOneTimeRecordingNotification()
+                            startRecording()
+                        }
                         is RecordState.Stopped -> {
                             stopRecording()
                             stopSelf() // 서비스 종료
@@ -334,21 +340,57 @@ class PollingService : Service() {
         }
     }
 
+    private fun showOneTimeRecordingNotification() {
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setContentTitle("주행 기록 시작됨")
+            .setContentText("실시간으로 주행 데이터를 저장합니다.")
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(pendingIntent)
+
+        manager.notify(RECORDING_NOTIF_ID, builder.build())
+    }
+
     private fun startForegroundService() {
         val channel = NotificationChannel(
-            CHANNEL_ID, "자동 주행 기록", NotificationManager.IMPORTANCE_LOW
+            CHANNEL_ID,
+            "자동 주행 기록",
+            NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "차량 상태 기록을 위한 백그라운드 서비스"
         }
-
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle("자동 주행 기록 활성화됨")
             .setContentText("차량 상태 기록을 위한 서비스를 실행 중입니다.")
             .setOngoing(true)
+            .setContentIntent(pendingIntent)
             .build()
 
         startForeground(NOTIF_ID, notification)
