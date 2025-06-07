@@ -32,8 +32,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.devidea.aicar.R
+import com.devidea.aicar.ui.main.components.CarTabScreen
 import com.devidea.aicar.ui.main.components.HomeScreen
 import com.devidea.aicar.ui.main.components.DashboardScreen
+import com.devidea.aicar.ui.main.components.DtcScreen
 import com.devidea.aicar.ui.main.components.NotificationScreen
 import com.devidea.aicar.ui.main.components.SettingsScreen
 import com.devidea.aicar.ui.main.components.history.SessionListScreen
@@ -131,7 +133,9 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
             }
 
             composable(NavItem.Car.route) {
-                DashboardScreen(modifier)
+                CarTabScreen()
+            //DashboardScreen(modifier)
+                //DtcScreen()
             }
 
             composable(NavItem.Settings.route) {

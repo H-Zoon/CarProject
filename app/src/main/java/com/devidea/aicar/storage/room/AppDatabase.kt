@@ -7,11 +7,13 @@ import com.devidea.aicar.storage.room.drive.DrivingDao
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingSession
 import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
+import com.devidea.aicar.storage.room.dtc.DtcInfoDao
+import com.devidea.aicar.storage.room.dtc.DtcInfoEntity
 import com.devidea.aicar.storage.room.notification.NotificationDao
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 
 @Database(
-    entities = [DrivingSession::class, DrivingDataPoint::class, DrivingSessionSummary::class, NotificationEntity::class ],
+    entities = [DrivingSession::class, DrivingDataPoint::class, DrivingSessionSummary::class, NotificationEntity::class, DtcInfoEntity::class],
     version = 1,
     exportSchema = false
 )
@@ -19,4 +21,5 @@ import com.devidea.aicar.storage.room.notification.NotificationEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun driveDAO(): DrivingDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun dtcInfoDao(): DtcInfoDao
 }

@@ -68,6 +68,8 @@ class DataStoreRepository @Inject constructor(
     // 허용 가능한 게이지 ID 모음. 외부에서 사용되는 gaugeItems 리스트를 id만 모아서 Set으로 만듦.
     private val gaugeIdPool = gaugeItems.map { it.id }.toSet()
 
+    private val DTC_DB_INITIALIZED_KEY = booleanPreferencesKey("dtc_db_initialized")
+
     // 동시성 제어를 위한 뮤텍스. 여러 코루틴에서 동시에 데이터 편집 시 충돌을 막기 위함
     private val mutex = Mutex()
 
@@ -305,4 +307,15 @@ class DataStoreRepository @Inject constructor(
         .map { prefs ->
             prefs[FUEL_COST_KEY] ?: 1500
         }
+
+    val isDtcDbInitialized: Flow<Boolean> = dataStore.data
+        .map { prefs -> prefs[DTC_DB_INITIALIZED_KEY] ?: false }
+
+    suspend fun setDtcDbInitialized(value: Boolean) {
+        mutex.withLock {
+            dataStore.edit { prefs ->
+                prefs[DTC_DB_INITIALIZED_KEY] = value
+            }
+        }
+    }
 }

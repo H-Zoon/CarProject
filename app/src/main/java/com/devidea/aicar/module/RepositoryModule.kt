@@ -6,6 +6,9 @@ import com.devidea.aicar.storage.room.AppDatabase
 import com.devidea.aicar.storage.room.drive.DrivingDao
 import com.devidea.aicar.storage.room.drive.DrivingRepository
 import com.devidea.aicar.storage.room.drive.DrivingRepositoryImpl
+import com.devidea.aicar.storage.room.dtc.DtcInfoDao
+import com.devidea.aicar.storage.room.dtc.DtcInfoRepository
+import com.devidea.aicar.storage.room.dtc.DtcInfoRepositoryImpl
 import com.devidea.aicar.storage.room.notification.NotificationDao
 import com.devidea.aicar.storage.room.notification.NotificationRepository
 import com.devidea.aicar.storage.room.notification.NotificationRepositoryImpl
@@ -32,15 +35,15 @@ class RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideDrivingDao(database: AppDatabase): DrivingDao {
-        return database.driveDAO()
-    }
+    fun provideDrivingDao(database: AppDatabase): DrivingDao = database.driveDAO()
 
     @Provides
     @Singleton
-    fun provideNotificationDao(database: AppDatabase): NotificationDao {
-        return database.notificationDao()
-    }
+    fun provideNotificationDao(database: AppDatabase): NotificationDao = database.notificationDao()
+
+    @Provides
+    @Singleton
+    fun provideDtcInfoRepository(database: AppDatabase): DtcInfoDao = database.dtcInfoDao()
 
     @Module
     @InstallIn(SingletonComponent::class)
@@ -57,5 +60,11 @@ class RepositoryModule {
         abstract fun bindNotificationRepository(
             impl: NotificationRepositoryImpl
         ): NotificationRepository
+
+        @Binds
+        @Singleton
+        abstract fun bindDtcRepository(
+            impl: DtcInfoRepositoryImpl
+        ): DtcInfoRepository
     }
 }

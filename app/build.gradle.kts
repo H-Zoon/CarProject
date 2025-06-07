@@ -92,6 +92,8 @@ dependencies {
     implementation(libs.reorderable)
     implementation (libs.maps.compose)
 
+    implementation ("com.google.code.gson:gson:2.8.5")
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.tooling.preview)

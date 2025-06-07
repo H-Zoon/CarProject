@@ -380,32 +380,16 @@ fun DashboardScreen(
         }
     )
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.title_manage),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-    ) { paddingValues ->
         // 1) 툴바 높이만큼의 top padding을 기억해 둡니다.
         val topBarPaddingPx = with(LocalDensity.current) {
-            paddingValues.calculateTopPadding().toPx()
+            300f//paddingValues.calculateTopPadding().toPx()
         }
 
         Box(
             modifier = modifier
                 .fillMaxSize()
                 // 툴바 높이만큼 아래로 내려놓음
-                .padding(top = paddingValues.calculateTopPadding())
+                //.padding(top = paddingValues.calculateTopPadding())
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
@@ -506,7 +490,7 @@ fun DashboardScreen(
             }
         }
     }
-}
+
 
 
 @Composable

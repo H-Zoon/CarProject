@@ -33,6 +33,9 @@ class PollingManager @Inject constructor(
     private var pollJob: Job? = null
     private var pollPeriodMs = 500L
 
+    val isPolling: Boolean
+        get() = pollJob?.isActive == true
+    private var isPaused = false
 
     // — 백잉 프로퍼티 선언 —
     private val _sFuelTrim = MutableStateFlow(0f)
@@ -113,6 +116,7 @@ class PollingManager @Inject constructor(
             Log.d(TAG, "[poll] already polling, ignore startPolling()")
             return
         }
+        isPaused = false
 
         val chunks = defaultPidFlow.keys.chunked(MultiPidUtils.MAX_PIDS)
         val extChunks = extendPidFlow.keys.chunked(ExtendedPidUtils.MAX_PIDS)
@@ -186,6 +190,49 @@ class PollingManager @Inject constructor(
             }
         }
     }
+
+    /**
+     *  현재 폴링 중이라면 일시정지.
+     *  activeSources를 유지한 채로 pollJob만 cancel함.
+     */
+    fun pausePolling() {
+        synchronized(activeSources) {
+            // 이미 일시정지 상태이거나 폴링이 꺼져 있다면 아무것도 안 함
+            if (isPaused || pollJob?.isActive != true) {
+                Log.d(TAG, "[obs] cannot pause: isPaused=$isPaused, pollActive=${pollJob?.isActive}")
+                return
+            }
+
+            pollJob?.cancel()
+            pollJob = null
+            isPaused = true
+            Log.d(TAG, "[obs] polling paused (sources still=$activeSources)")
+        }
+    }
+
+    /**
+     *  일시정지 상태에서 재개.
+     *  activeSources가 남아 있으면 startPolling() 호출.
+     */
+    fun resumePolling() {
+        synchronized(activeSources) {
+            if (!isPaused) {
+                Log.d(TAG, "[obs] cannot resume: isPaused=false")
+                return
+            }
+            if (activeSources.isEmpty()) {
+                Log.d(TAG, "[obs] cannot resume: no active sources")
+                isPaused = false
+                return
+            }
+            // pollJob이 없거나 종료된 상태여야 재시작 가능
+            if (pollJob?.isActive != true) {
+                startPolling()
+                Log.d(TAG, "[obs] polling resumed")
+            }
+        }
+    }
+
 
     suspend fun querySingle(pid: PIDs): Number {
         val command = pid.code

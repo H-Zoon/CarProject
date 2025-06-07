@@ -402,7 +402,7 @@ class SppService : Service() {
     suspend fun query(header: String? = null, cmd: String, timeoutMs: Long = 1000): String =
         coroutineScope {
             val normalized = cmd.replace("\\s".toRegex(), "").lowercase()
-            val key = normalized.substring(0, 4)
+            val key = normalized.take(4)
             //val key = cmd.lowercase()
             Log.d(TAG, "[Query] start ▶ key=$key, header=$header, cmd=$cmd, timeout=${timeoutMs}ms")
             val promise = CompletableDeferred<String>()
