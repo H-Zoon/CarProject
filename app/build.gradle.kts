@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.google.dagger.hilt)
     alias(libs.plugins.compose.compiler)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -93,6 +94,8 @@ dependencies {
     implementation (libs.maps.compose)
 
     implementation ("com.google.code.gson:gson:2.8.5")
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
