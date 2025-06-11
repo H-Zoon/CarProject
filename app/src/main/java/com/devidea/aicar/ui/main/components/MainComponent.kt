@@ -4,16 +4,45 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.AutoMode
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.BluetoothSearching
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeviceHub
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.runtime.getValue
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Pending
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -26,10 +55,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devidea.aicar.service.ConnectionEvent
@@ -42,6 +75,10 @@ import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
 import androidx.core.net.toUri
+import com.devidea.aicar.service.ScannedDevice
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 
 const val TAG = "MainViewComponent"
 
@@ -60,57 +97,85 @@ fun HomeScreen(
     val stats by viewModel.monthlyStats.collectAsState()
 
     LaunchedEffect(bluetoothState) {
-        if(bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
+        if (bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
     }
 
-    val scrollState = rememberScrollState()
-
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        MaterialTheme.colorScheme.surface
+                    )
+                )
+            )
+    )
 
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("My Car", style = MaterialTheme.typography.titleLarge) },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "AiCar",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 actions = {
-                    IconButton(onClick = onNotificationClick) {
-                        Icon(Icons.Filled.Notifications, contentDescription = "Notifications")
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        IconButton(onClick = onNotificationClick) {
+                            Icon(
+                                Icons.Filled.Notifications,
+                                contentDescription = "Notifications",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = Color.Transparent
                 )
             )
         },
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .verticalScroll(scrollState)
-                .padding(top = paddingValues.calculateTopPadding())
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(
+                top = paddingValues.calculateTopPadding() + 8.dp,
+                bottom = 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DrivingStatsContent(stats = stats,
-                recordState = recordState,
-                isAutoRecordEnabled = driveHistoryEnable,
-                onAutoRecordToggle = {viewModel.setAutoDrivingRecordEnable(it)},)
+            item {
+                DrivingStatsContent(
+                    stats = stats,
+                    recordState = recordState,
+                    isAutoRecordEnabled = driveHistoryEnable,
+                    onAutoRecordToggle = { viewModel.setAutoDrivingRecordEnable(it) }
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            BluetoothControl(
-                bluetoothState = bluetoothState,
-                lastConnectionTime  = lastConnection,
-                onStartScan = { viewModel.startScan() },
-                onConnect = { viewModel.connectTo(it) },
-                onDisconnect = { viewModel.disconnect() },
-                savedDevice = viewModel.savedDevice.collectAsState().value,
-                onSaveDevice = { viewModel.saveDevice() },
-                deviceList = devices
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            /*DrivingRecordControl(
-                recordState = recordState,
-                onRecordToggle = { viewModel.setManualDrivingRecordToggle() },
-                isAutoRecordEnabled = driveHistoryEnable,
-                onAutoRecordToggle = {viewModel.setAutoDrivingRecordEnable(it)},
-                bluetoothState = bluetoothState
-            )*/
+            item {
+                BluetoothControl(
+                    bluetoothState = bluetoothState,
+                    lastConnectionTime = lastConnection,
+                    onStartScan = { viewModel.startScan() },
+                    onConnect = { viewModel.connectTo(it) },
+                    onDisconnect = { viewModel.disconnect() },
+                    savedDevice = viewModel.savedDevice.collectAsState().value,
+                    onSaveDevice = { viewModel.saveDevice() },
+                    deviceList = devices
+                )
+            }
         }
     }
 }
@@ -121,191 +186,6 @@ fun Context.isIgnoringBatteryOptimizations(): Boolean {
     return pm.isIgnoringBatteryOptimizations(packageName)
 }
 
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-fun DrivingRecordControl(
-    recordState: RecordState,
-    onRecordToggle: () -> Unit,
-    isAutoRecordEnabled: Boolean,
-    onAutoRecordToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    bluetoothState: ConnectionEvent
-) {
-    val context = LocalContext.current
-
-    // 0) 배터리 최적화 예외 상태 확인
-    val isIgnoringBatteryOpt by remember {
-        // Compose 재구성(recompose) 시에 원한다면 다시 체크하고 싶다면 rememberUpdatedState 등으로 바꿔도 됩니다.
-        mutableStateOf(context.isIgnoringBatteryOptimizations())
-    }
-
-    // 1) 알림 권한 요청은 기존처럼 PermissionHandler에 위임
-    PermissionHandler(
-        permissions = listOf(Manifest.permission.POST_NOTIFICATIONS),
-        rationaleTitle = "알림 권한 필요",
-        rationaleMessage = "포그라운드 알림을 보내려면 알림 권한이 필요합니다.",
-        permanentlyDeniedTitle = "권한 영구 거절됨",
-        permanentlyDeniedMessage = "알림 기능을 사용하려면 설정에서 권한을 허용해야 합니다."
-    ) { allGranted, requestPermission ->
-        // 2) 배터리 최적화 다이얼로그 상태
-        var showBatteryOptDialog by rememberSaveable { mutableStateOf(false) }
-
-        // 3) 만약 자동 또는 수동 주행 기록을 시작할 때, 배터리 최적화가 걸려있으면 우선 안내 다이얼로그부터 띄워야 한다고 가정
-        //    > 실제 앱 로직에 따라 다르게 배치할 수 있습니다(예: 화면 진입 시 바로 확인 or 토글 시점에 확인).
-
-        // 예시: 사용자가 “자동 토글” 또는 “수동 기록 시작” 버튼을 누를 때 배터리 최적화 상태가 true(켜져있음)이면 dialog를 띄우도록.
-        // -> UI 내 버튼 onCheckedChange / onClick 시점에 아래 코드를 추가
-
-        Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                // 기존 “주행 기록 상태” Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "주행 기록 상태",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(
-                                    color = if (recordState == RecordState.Recording) Color.Red else Color.Gray,
-                                    shape = CircleShape
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = when (recordState) {
-                                is RecordState.Recording -> "주행 기록중"
-                                is RecordState.Pending   -> "기록 대기중"
-                                is RecordState.Stopped   -> "주행 기록 취소"
-                            },
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-
-                // 자동 주행 기록 토글 Row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "자동 기록 설정",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = isAutoRecordEnabled,
-                        onCheckedChange = { newValue ->
-                            if (!allGranted) {
-                                // 알림 권한이 없으면 권한 요청 먼저
-                                requestPermission()
-                                return@Switch
-                            }
-                            // 알림 권한이 있으면, 배터리 최적화 상태를 확인
-                            if (!context.isIgnoringBatteryOptimizations()) {
-                                // 배터리 최적화가 켜져있다면(즉, 예외되지 않은 상태),
-                                // 토글 로직을 실행하기 전에 다이얼로그를 띄움
-                                showBatteryOptDialog = true
-                            } else {
-                                // 배터리 최적화 예외 상태이면 바로 자동 토글 로직 실행
-                                onAutoRecordToggle(newValue)
-                            }
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 수동 주행 기록 버튼
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isAutoRecordEnabled && bluetoothState == ConnectionEvent.Connected,
-                    onClick = {
-                        if (!allGranted) {
-                            // 알림 권한이 없으면 먼저 권한 요청
-                            requestPermission()
-                            return@Button
-                        }
-                        // 알림 권한이 있으면, 배터리 최적화 상태 확인
-                        if (!context.isIgnoringBatteryOptimizations()) {
-                            // 배터리 최적화 켜져있으면 다이얼로그 띄움
-                            showBatteryOptDialog = true
-                        } else {
-                            // 이미 예외 상태이면 바로 수동 토글 로직 수행
-                            onRecordToggle()
-                        }
-                    }
-                ) {
-                    Text(
-                        text = when (recordState) {
-                            is RecordState.Recording, is RecordState.Pending -> "수동기록 중지"
-                            else -> "수동기록 시작"
-                        }
-                    )
-                }
-
-                // --- 4) “배터리 최적화 해제 요청” 다이얼로그 ---
-                if (showBatteryOptDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showBatteryOptDialog = false },
-                        title = { Text(text = "배터리 최적화 예외 필요") },
-                        text = {
-                            Text(
-                                text = "백그라운드에서 주행 기록 기능이 정상 작동하려면, 시스템의 배터리 최적화(Doze 모드)에서 예외로 설정해야 합니다.\n\n" +
-                                        "지금 설정 화면으로 이동하시겠습니까?"
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showBatteryOptDialog = false
-                                // 5) 배터리 최적화 예외 요청 인텐트 시작
-                                val intentRequest = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(intentRequest)
-                            }) {
-                                Text(text = "설정으로 이동")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showBatteryOptDialog = false }) {
-                                Text(text = "취소")
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrivingStatsContent(
@@ -314,111 +194,918 @@ fun DrivingStatsContent(
     isAutoRecordEnabled: Boolean,
     onAutoRecordToggle: (Boolean) -> Unit
 ) {
-
     val currentMonth: Int = remember {
         Calendar.getInstance().get(Calendar.MONTH) + 1
     }
 
-    // 숫자를 천 단위로 콤마 찍거나 통화 포맷으로 보여주기 위한 포맷터
     val numberFormatter = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
     val currencyFormatter = remember {
         NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
-            // Local currency가 KRW(₩)가 아니면 Locale("ko", "KR") 식으로 바꿔도 됩니다.
-            // 예: NumberFormat.getCurrencyInstance(Locale("ko", "KR"))
-            maximumFractionDigits = 0 // 소수점 없는 원단위
+            maximumFractionDigits = 0
         }
     }
 
-    // 메인 화면을 Column으로 감싸고, 중앙 정렬 + 패딩 적용
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 24.dp),
-    ) {
-        Text(
-            text = "${currentMonth}월 주행 통계",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 카드 형태로 통계 데이터를 그룹화
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = MaterialTheme.shapes.medium
+    Column {
+        // Header with month info
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
+            Column {
+                Text(
+                    text = "${currentMonth}월 주행 통계",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "이번 달 주행 데이터를 확인하세요",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {
-
-                DrivingRecordControl2(
-                    recordState = recordState,
-                    isAutoRecordEnabled = isAutoRecordEnabled,
-                    onAutoRecordToggle = onAutoRecordToggle
+                Icon(
+                    imageVector = Icons.Default.BarChart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .size(28.dp)
                 )
+            }
+        }
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    thickness = 3.dp
-                )
+        Spacer(modifier = Modifier.height(20.dp))
 
-                // 총 주행 거리
-                StatRow(
+        // Stats cards in a grid layout
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(1),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.height(320.dp) // Fixed height to prevent scrolling issues
+        ) {
+            item {
+                StatCard(
+                    icon = Icons.Default.Route,
                     label = "총 주행 거리",
-                    value = "${numberFormatter.format(stats.totalDistanceKm)} km"
+                    value = "${numberFormatter.format(stats.totalDistanceKm)} km",
+                    backgroundColor = Color(0xFFE3F2FD),
+                    iconColor = Color(0xFF1976D2)
                 )
+            }
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    thickness = 1.dp
-                )
-
-                // 평균 연비
-                StatRow(
+            item {
+                StatCard(
+                    icon = Icons.Default.LocalGasStation,
                     label = "평균 연비",
-                    value = "${"%.2f".format(stats.averageKPL)} km/L"
+                    value = "${"%.1f".format(stats.averageKPL)} km/L",
+                    backgroundColor = Color(0xFFE8F5E8),
+                    iconColor = Color(0xFF388E3C)
                 )
+            }
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    thickness = 1.dp
-                )
-
-                // 총 연료비
-                StatRow(
+            item {
+                StatCard(
+                    icon = Icons.Default.AttachMoney,
                     label = "총 연료비",
-                    // currencyFormatter가 예: "₩1,234,000" 형태로 만들어줌
-                    value = currencyFormatter.format(stats.totalFuelCost)
+                    value = currencyFormatter.format(stats.totalFuelCost),
+                    backgroundColor = Color(0xFFFFF3E0),
+                    iconColor = Color(0xFFF57C00)
+                )
+            }
+        }
+
+        // Recording control section
+        DrivingRecordControl(
+            recordState = recordState,
+            isAutoRecordEnabled = isAutoRecordEnabled,
+            onAutoRecordToggle = onAutoRecordToggle
+        )
+    }
+}
+
+@Composable
+private fun StatCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    backgroundColor: Color,
+    iconColor: Color,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = backgroundColor
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun StatRow(
-    label: String,
-    value: String
+fun BluetoothControl(
+    bluetoothState: ConnectionEvent,
+    lastConnectionTime: String,
+    savedDevice: ScannedDevice?,
+    deviceList: List<ScannedDevice>,
+    onStartScan: () -> Unit,
+    onConnect: (ScannedDevice) -> Unit,
+    onDisconnect: () -> Unit,
+    onSaveDevice: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
-        )
+    PermissionHandler(
+        permissions = listOf(
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ),
+        rationaleTitle = "권한 필요",
+        rationaleMessage = "블루투스 스캔 및 연결을 위해 권한이 필요합니다.",
+        permanentlyDeniedTitle = "권한 영구 거절됨",
+        permanentlyDeniedMessage = "블루투스 기능을 사용하려면 설정에서 권한을 허용해야 합니다."
+    ) { allGranted, requestPermission ->
+        var showDeviceList by rememberSaveable { mutableStateOf(false) }
+
+        LaunchedEffect(bluetoothState) {
+            showDeviceList = (bluetoothState == ConnectionEvent.Scanning)
+            if (bluetoothState == ConnectionEvent.Connected) {
+                onSaveDevice()
+            }
+        }
+
+        if (showDeviceList) {
+            BleDeviceListModal(
+                deviceList = deviceList,
+                savedDevice = savedDevice,
+                requestConnect = { onConnect(it) },
+                onBack = onDisconnect
+            )
+        }
+
+        ElevatedCard(
+            modifier = modifier.fillMaxWidth(),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                // Header with Bluetooth icon
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bluetooth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "블루투스 연결",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Connection status indicator
+                    ConnectionStatusBadge(bluetoothState)
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Connection details card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        // Device info
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "연결된 기기",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = savedDevice?.name ?: "연결된 기기가 없습니다",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (savedDevice != null) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+
+                            if (savedDevice != null) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (bluetoothState == ConnectionEvent.Connected)
+                                        Color(0xFFE8F5E8) else Color(0xFFF5F5F5)
+                                ) {
+                                    Icon(
+                                        imageVector = if (bluetoothState == ConnectionEvent.Connected)
+                                            Icons.Default.CheckCircle else Icons.Default.DeviceHub,
+                                        contentDescription = null,
+                                        tint = if (bluetoothState == ConnectionEvent.Connected)
+                                            Color(0xFF4CAF50) else Color(0xFF9E9E9E),
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        if (lastConnectionTime.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "마지막 연결: $lastConnectionTime",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Action button
+                Button(
+                    onClick = {
+                        if (allGranted) {
+                            if (bluetoothState == ConnectionEvent.Connected) {
+                                onDisconnect()
+                            } else {
+                                onStartScan()
+                            }
+                        } else {
+                            requestPermission()
+                        }
+                    },
+                    enabled = bluetoothState != ConnectionEvent.Connecting,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = when (bluetoothState) {
+                            ConnectionEvent.Connected -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    ),
+                    contentPadding = PaddingValues(vertical = 14.dp)
+                ) {
+                    Icon(
+                        imageVector = when (bluetoothState) {
+                            ConnectionEvent.Connected -> Icons.Default.BluetoothDisabled
+                            ConnectionEvent.Scanning -> Icons.Default.BluetoothSearching
+                            ConnectionEvent.Connecting -> Icons.Default.Bluetooth
+                            else -> Icons.Default.BluetoothSearching
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = when (bluetoothState) {
+                            ConnectionEvent.Connected -> "연결 해제"
+                            ConnectionEvent.Connecting -> "연결중..."
+                            ConnectionEvent.Scanning -> "검색중..."
+                            ConnectionEvent.Error -> "재시도"
+                            else -> "기기 검색"
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // Status message
+                if (bluetoothState == ConnectionEvent.Error) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "연결에 실패했습니다. 다시 시도해주세요.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
+@Composable
+private fun ConnectionStatusBadge(bluetoothState: ConnectionEvent) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = when (bluetoothState) {
+            ConnectionEvent.Connected -> Color(0xFFE8F5E8)
+            ConnectionEvent.Connecting -> Color(0xFFFFF3E0)
+            ConnectionEvent.Scanning -> Color(0xFFE3F2FD)
+            ConnectionEvent.Error -> Color(0xFFFFEBEE)
+            else -> Color(0xFFF5F5F5)
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .background(
+                        color = when (bluetoothState) {
+                            ConnectionEvent.Connected -> Color(0xFF4CAF50)
+                            ConnectionEvent.Connecting -> Color(0xFFFF9800)
+                            ConnectionEvent.Scanning -> Color(0xFF2196F3)
+                            ConnectionEvent.Error -> Color(0xFFF44336)
+                            else -> Color(0xFF9E9E9E)
+                        },
+                        shape = CircleShape
+                    )
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = when (bluetoothState) {
+                    ConnectionEvent.Connected -> "연결됨"
+                    ConnectionEvent.Connecting -> "연결중"
+                    ConnectionEvent.Scanning -> "검색중"
+                    ConnectionEvent.Error -> "오류"
+                    else -> "대기중"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = when (bluetoothState) {
+                    ConnectionEvent.Connected -> Color(0xFF2E7D32)
+                    ConnectionEvent.Connecting -> Color(0xFFE65100)
+                    ConnectionEvent.Scanning -> Color(0xFF1565C0)
+                    ConnectionEvent.Error -> Color(0xFFC62828)
+                    else -> Color(0xFF616161)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun BleDeviceListModal(
+    requestConnect: (ScannedDevice) -> Unit,
+    savedDevice: ScannedDevice?,
+    deviceList: List<ScannedDevice>,
+    onBack: () -> Unit
+) {
+    Dialog(onDismissRequest = onBack) {
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight(),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            val sortedDevices = remember(deviceList, savedDevice) {
+                if (savedDevice != null) {
+                    val matched = deviceList.find { it.address == savedDevice.address }
+                    if (matched != null) {
+                        val others = deviceList.filter { it.address != matched.address }
+                        listOf(matched) + others
+                    } else {
+                        deviceList
+                    }
+                } else {
+                    deviceList
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BluetoothSearching,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "기기 선택",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "닫기",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Device list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sortedDevices.size) { device ->
+                        DeviceListItem(
+                            device = sortedDevices[device],
+                            isSelected = savedDevice?.address == sortedDevices[device].address,
+                            onClick = { requestConnect(sortedDevices[device]) }
+                        )
+                    }
+
+                    if (sortedDevices.isEmpty()) {
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.BluetoothDisabled,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "검색된 기기가 없습니다",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        text = "기기를 검색 가능 모드로 설정하고\n다시 시도해주세요",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceListItem(
+    device: ScannedDevice,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        ),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Devices,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = device.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = device.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            if (isSelected) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "선택됨",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(14.dp)
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun DrivingRecordControl(
+    recordState: RecordState,
+    isAutoRecordEnabled: Boolean,
+    onAutoRecordToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    // 포그라운드 권한 상태
+    val fgPermissionsState = rememberMultiplePermissionsState(
+        permissions = listOf(
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    )
+    // 백그라운드 위치 권한 상태 (Android Q 이상)
+    val bgLocationState = rememberPermissionState(
+        permission = Manifest.permission.ACCESS_BACKGROUND_LOCATION
+    )
+
+    // 다이얼로그 상태
+    var showFgRationaleDialog by rememberSaveable { mutableStateOf(false) }
+    var showFgPermanentlyDeniedDialog by rememberSaveable { mutableStateOf(false) }
+    var showBgPermissionDialog by rememberSaveable { mutableStateOf(false) }
+    var showBatteryOptDialog by rememberSaveable { mutableStateOf(false) }
+
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "주행 기록 설정",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Status display
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = when (recordState) {
+                    is RecordState.Recording -> Color(0xFFE8F5E8)
+                    is RecordState.Pending -> Color(0xFFFFF3E0)
+                    is RecordState.Stopped -> Color(0xFFF5F5F5)
+                }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = when (recordState) {
+                            is RecordState.Recording -> Icons.Default.FiberManualRecord
+                            is RecordState.Pending -> Icons.Default.Pending
+                            is RecordState.Stopped -> Icons.Default.Stop
+                        },
+                        contentDescription = null,
+                        tint = when (recordState) {
+                            is RecordState.Recording -> Color(0xFF4CAF50)
+                            is RecordState.Pending -> Color(0xFFFF9800)
+                            is RecordState.Stopped -> Color(0xFF9E9E9E)
+                        },
+                        modifier = Modifier.size(20.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = when (recordState) {
+                            is RecordState.Recording -> "주행 기록 중"
+                            is RecordState.Pending -> "기록 대기 중"
+                            is RecordState.Stopped -> "주행 기록 중지됨"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when (recordState) {
+                            is RecordState.Recording -> Color(0xFF2E7D32)
+                            is RecordState.Pending -> Color(0xFFE65100)
+                            is RecordState.Stopped -> Color(0xFF616161)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Auto record toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "자동 기록 활성화",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "블루투스 연결 시 자동 시작",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+
+                Switch(
+                    checked = isAutoRecordEnabled,
+                    onCheckedChange = {
+                        // 1) 포그라운드 권한 처리
+                        if (!fgPermissionsState.allPermissionsGranted) {
+                            val anyShouldRationale = fgPermissionsState.permissions.any {
+                                !it.status.isGranted && it.status.shouldShowRationale
+                            }
+                            val anyPermanentlyDenied = fgPermissionsState.permissions.any {
+                                !it.status.isGranted && !it.status.shouldShowRationale
+                            }
+                            when {
+                                //anyPermanentlyDenied -> showFgPermanentlyDeniedDialog = true
+                                anyShouldRationale -> showFgRationaleDialog = true
+                                else -> fgPermissionsState.launchMultiplePermissionRequest()
+                            }
+                            return@Switch
+                        }
+
+                        // 2) 백그라운드 위치 권한 처리 (Android Q 이상)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !bgLocationState.status.isGranted) {
+                            // 설명 다이얼로그 노출 후 설정 화면으로 이동
+                            showBgPermissionDialog = true
+                            return@Switch
+                        }
+
+                        // 3) 배터리 최적화 예외 확인
+                        if (!context.isIgnoringBatteryOptimizations()) {
+                            showBatteryOptDialog = true
+                        } else {
+                            onAutoRecordToggle(it)
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
+        }
+
+
+        // 포그라운드 권한: 이유 설명
+        if (showFgRationaleDialog) {
+            AlertDialog(
+                onDismissRequest = { showFgRationaleDialog = false },
+                title = { Text(text = "권한 필요") },
+                text = { Text(text = "앱 기능을 위해 알림 및 위치 권한이 필요합니다.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showFgRationaleDialog = false
+                        fgPermissionsState.launchMultiplePermissionRequest()
+                    }) { Text(text = "다시 요청") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFgRationaleDialog = false }) { Text(text = "취소") }
+                }
+            )
+        }
+
+        // 포그라운드 권한: 영구 거부
+        if (showFgPermanentlyDeniedDialog) {
+            AlertDialog(
+                onDismissRequest = { showFgPermanentlyDeniedDialog = false },
+                title = { Text(text = "권한 영구 거절됨") },
+                text = { Text(text = "앱 설정에서 권한을 허용해야 합니다.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showFgPermanentlyDeniedDialog = false
+                        val intent = Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                        context.startActivity(intent)
+                    }) { Text(text = "설정으로 이동") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showFgPermanentlyDeniedDialog = false
+                    }) { Text(text = "취소") }
+                }
+            )
+        }
+
+        // 백그라운드 위치 권한: 설정 유도
+        if (showBgPermissionDialog) {
+            AlertDialog(
+                onDismissRequest = { showBgPermissionDialog = false },
+                title = { Text(text = "백그라운드 위치 권한 필요") },
+                text = { Text(text = "Android 최신 버전에서는 설정에서 백그라운드 위치 권한을 직접 허용해야 합니다.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showBgPermissionDialog = false
+                        val intent = Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                        context.startActivity(intent)
+                    }) { Text(text = "설정으로 이동") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBgPermissionDialog = false }) { Text(text = "취소") }
+                }
+            )
+        }
+
+        // 배터리 최적화 예외 다이얼로그
+        if (showBatteryOptDialog) {
+            AlertDialog(
+                onDismissRequest = { showBatteryOptDialog = false },
+                title = { Text(text = "배터리 최적화 예외 필요") },
+                text = {
+                    Text(
+                        text = "백그라운드에서 주행 기록 기능이 정상 작동하려면, 시스템의 배터리 최적화에서 예외로 설정해야 합니다."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showBatteryOptDialog = false
+                        val intent =
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        context.startActivity(intent)
+                    }) { Text(text = "설정으로 이동") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBatteryOptDialog = false }) { Text(text = "취소") }
+                }
+            )
+        }
+    }
+}

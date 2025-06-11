@@ -1,3 +1,4 @@
+/*
 package com.devidea.aicar.ui.main.components
 
 import android.Manifest
@@ -328,4 +329,4 @@ fun BleDeviceListModal(
             }
         }
     }
-}
+}*/
