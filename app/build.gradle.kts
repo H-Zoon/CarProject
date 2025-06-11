@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -93,9 +94,11 @@ dependencies {
     implementation(libs.reorderable)
     implementation (libs.maps.compose)
 
+    implementation ("com.google.android.material:material:1.10.0")
     implementation ("com.google.code.gson:gson:2.8.5")
     implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)

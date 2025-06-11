@@ -3,6 +3,7 @@ package com.devidea.aicar.module
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.os.Build
 import com.devidea.aicar.LocationProvider
 import dagger.Module
 import dagger.Provides
@@ -46,9 +47,15 @@ class AppModule {
     fun provideBluetoothAdapter(
         @ApplicationContext context: Context
     ): BluetoothAdapter {
-        // Android 12+ 에서는 BluetoothManager 로부터 얻는 것이 권장됩니다.
-        val manager = context.getSystemService(BluetoothManager::class.java)
-            ?: throw IllegalStateException("BluetoothManager not available")
-        return manager.adapter
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ 에서는 BluetoothManager 로부터 얻는 것이 권장됩니다.
+            val manager = context.getSystemService(BluetoothManager::class.java)
+                ?: throw IllegalStateException("BluetoothManager not available")
+            manager.adapter
+        } else {
+            // Android 12 미만에서는 getDefaultAdapter() 사용
+            BluetoothAdapter.getDefaultAdapter()
+                ?: throw IllegalStateException("BluetoothAdapter not available")
+        }
     }
 }

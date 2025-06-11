@@ -1,5 +1,9 @@
 package com.devidea.aicar.ui.main.components
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,12 +13,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.R
 import com.devidea.aicar.ui.main.viewmodels.SettingsViewModel
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +28,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val lastDevice by viewModel.lastSavedDevice.collectAsState(initial = null)
     val autoOnCharge by viewModel.autoConnectOnCharge.collectAsState(initial = false)
     val fuelCost by viewModel.fuelCost.collectAsState(initial = 0)
@@ -159,7 +166,6 @@ fun SettingsScreen(
                 ) {
                     Text("위젯 설정 초기화")
                 }
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
                 Button(
                     onClick = { showConfirm = ResetTarget.ALL },
                     modifier = Modifier.fillMaxWidth(),
@@ -167,6 +173,29 @@ fun SettingsScreen(
                 ) {
                     Text("전체 설정 초기화", color = MaterialTheme.colorScheme.onErrorContainer)
                 }
+            }
+
+            Divider()
+            // ───────────── 초기화 ─────────────
+            Text("도움", style = MaterialTheme.typography.titleLarge)
+            Button(
+                onClick = {
+                    val email = "developsidea@gmail.com"
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:$email")
+                        putExtra(Intent.EXTRA_SUBJECT, "앱 건의하기")
+                        putExtra(Intent.EXTRA_TEXT, "AICAR")
+                    }
+                    val chooser = Intent.createChooser(intent, "앱 건의하기")
+                    try {
+                        context.startActivity(chooser)
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(context, "이메일 앱이 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("건의하기")
             }
         }
 
@@ -221,7 +250,6 @@ fun SettingsScreen(
                         TextField(
                             value = newFuelCostText,
                             onValueChange = { input ->
-                                // 숫자만 허용, 최대 4자리
                                 if (input.all { it.isDigit() } && input.length <= 4) {
                                     newFuelCostText = input
                                 }

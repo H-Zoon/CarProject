@@ -133,8 +133,8 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
             }
 
             composable(NavItem.Car.route) {
-                CarTabScreen()
-            //DashboardScreen(modifier)
+                //CarTabScreen()
+                DashboardScreen(modifier)
                 //DtcScreen()
             }
 

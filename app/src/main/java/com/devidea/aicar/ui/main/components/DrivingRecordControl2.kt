@@ -121,7 +121,7 @@ fun DrivingRecordControl2(
                             !it.status.isGranted && !it.status.shouldShowRationale
                         }
                         when {
-                            anyPermanentlyDenied -> showFgPermanentlyDeniedDialog = true
+                            //anyPermanentlyDenied -> showFgPermanentlyDeniedDialog = true
                             anyShouldRationale -> showFgRationaleDialog = true
                             else -> fgPermissionsState.launchMultiplePermissionRequest()
                         }
