@@ -1,7 +1,15 @@
 package com.devidea.aicar.ui.main.components
 
+import android.R.attr.alpha
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -40,10 +49,12 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TransitEnterexit
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -54,6 +65,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,9 +75,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
@@ -73,6 +89,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.devidea.aicar.R
@@ -81,56 +98,134 @@ import com.devidea.aicar.ui.main.viewmodels.DashBoardViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
-
 /* ---------- 공통 포맷터 ---------- */
 private fun Int.toDashString() = if (this == 0) "--" else toString()
 private fun Float.toDashString(decimals: Int = 1): String =
     if (this == 0f) "--" else "%.${decimals}f".format(this)
 
 /**
- * 공통 게이지 카드.
+ * 현대적인 게이지 카드 - 글래스모피즘과 그라데이션 효과 적용
  *
  * @param title    카드 상단 라벨 (e.g. "RPM", "Speed")
- * @param iconRes  아이콘 리소스 ID
+ * @param icon     아이콘 ImageVector
  * @param value    표시할 값 (문자열)
  * @param unit      단위 문자열 (예: "km/h", "°C", "%", "L/h"), 필요 없으면 빈 문자열
+ * @param color    테마 색상
  */
-
 @Composable
 fun GaugeCard(
     title: String,
     icon: ImageVector,
     value: String,
-    unit: String = ""
+    unit: String = "",
+    color: Color = MaterialTheme.colorScheme.primary
 ) {
     Card(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier
-            .padding(4.dp)
-            .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .padding(6.dp)
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        )
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            color.copy(alpha = 0.1f),
+                            color.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                        )
+                    )
+                )
+                .padding(16.dp)
         ) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = title, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                if (unit.isNotEmpty()) {
-                    Spacer(Modifier.width(4.dp))
-                    Text(unit, fontSize = 16.sp)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 타이틀
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    letterSpacing = 0.5.sp
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // 아이콘과 값을 담는 Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 아이콘 배경 원형
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        color.copy(alpha = 0.2f),
+                                        color.copy(alpha = 0.1f)
+                                    )
+                                ),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = title,
+                            modifier = Modifier
+                                .size(24.dp),
+                            tint = color
+                        )
+                    }
+
+                    Spacer(Modifier.width(16.dp))
+
+                    // 값과 단위
+                    Column(
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = value,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+
+                        )
+
+                        if (unit.isNotEmpty()) {
+                            Text(
+                                text = unit,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+// 개별 게이지들 - 각각에 고유한 색상 적용
 @Composable
 fun RpmGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val rpm by viewModel.rpm.collectAsStateWithLifecycle(initialValue = 0)
@@ -138,7 +233,8 @@ fun RpmGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "RPM",
         icon = Icons.Default.Speed,
         value = rpm.toDashString(),
-        unit = "r/min"
+        unit = "r/min",
+        color = Color(0xFF6366F1) // Indigo
     )
 }
 
@@ -149,7 +245,8 @@ fun SpeedGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Speed",
         icon = Icons.Default.DirectionsCar,
         value = speed.toDashString(),
-        unit = "km/h"
+        unit = "km/h",
+        color = Color(0xFF06B6D4) // Cyan
     )
 }
 
@@ -160,7 +257,8 @@ fun EctGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Coolant Temp",
         icon = Icons.Default.Thermostat,
         value = ect.toDashString(),
-        unit = "°C"
+        unit = "°C",
+        color = Color(0xFF3B82F6) // Blue
     )
 }
 
@@ -171,7 +269,8 @@ fun ThrottleGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Throttle",
         icon = Icons.Default.Tune,
         value = thr.toDashString(1),
-        unit = "%"
+        unit = "%",
+        color = Color(0xFF10B981) // Emerald
     )
 }
 
@@ -182,7 +281,8 @@ fun LoadGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Engine Load",
         icon = Icons.Default.BarChart,
         value = load.toDashString(),
-        unit = "%"
+        unit = "%",
+        color = Color(0xFF8B5CF6) // Violet
     )
 }
 
@@ -193,7 +293,8 @@ fun IATGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Intake Temp",
         icon = Icons.Default.DeviceThermostat,
         value = iat.toDashString(),
-        unit = "°C"
+        unit = "°C",
+        color = Color(0xFFF59E0B) // Amber
     )
 }
 
@@ -204,7 +305,8 @@ fun MAFGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Mass Air Flow",
         icon = Icons.Default.Air,
         value = maf.toDashString(1),
-        unit = "g/s"
+        unit = "g/s",
+        color = Color(0xFF06B6D4) // Cyan
     )
 }
 
@@ -215,7 +317,8 @@ fun BatteryGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Battery V",
         icon = Icons.Default.BatteryFull,
         value = batt.toDashString(2),
-        unit = "V"
+        unit = "V",
+        color = Color(0xFF22C55E) // Green
     )
 }
 
@@ -226,7 +329,8 @@ fun FuelRateGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Fuel Rate",
         icon = Icons.Default.LocalGasStation,
         value = fr.toDashString(1),
-        unit = "L/h"
+        unit = "L/h",
+        color = Color(0xFFEF4444) // Red
     )
 }
 
@@ -235,9 +339,10 @@ fun CurrentGearGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
     val gear by viewModel.currentGear.collectAsStateWithLifecycle(initialValue = 0)
     GaugeCard(
         title = "Gear",
-        icon = Icons.Default.TransitEnterexit, // 적절한 기어 아이콘으로 교체하세요
+        icon = Icons.Default.TransitEnterexit,
         value = if (gear in 1..6) gear.toString() else "N",
-        unit = ""
+        unit = "",
+        color = Color(0xFF8B5CF6) // Violet
     )
 }
 
@@ -248,7 +353,8 @@ fun OilPressureGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Oil Pressure",
         icon = Icons.Default.LocalGasStation,
         value = psi.toDashString(),
-        unit = "psi"
+        unit = "psi",
+        color = Color(0xFFF97316) // Orange
     )
 }
 
@@ -259,7 +365,8 @@ fun OilTempGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Oil Temp",
         icon = Icons.Default.Thermostat,
         value = temp.toDashString(),
-        unit = "°C"
+        unit = "°C",
+        color = Color(0xFFDC2626) // Red
     )
 }
 
@@ -270,7 +377,8 @@ fun TransFluidTempGauge(viewModel: DashBoardViewModel = hiltViewModel()) {
         title = "Trans Fluid Temp",
         icon = Icons.Default.Thermostat,
         value = tft.toDashString(),
-        unit = "°C"
+        unit = "°C",
+        color = Color(0xFF7C3AED) // Purple
     )
 }
 
@@ -280,75 +388,74 @@ data class GaugeItem(
     val id: String,
     val icon: ImageVector,
     val content: GaugeComposable,
-
-    )
+)
 
 val gaugeItems: List<GaugeItem> = listOf(
     GaugeItem(
         id = PIDs.RPM.name,
-        icon = Icons.Filled.Speed,     // RPM용 예시 아이콘
+        icon = Icons.Filled.Speed,
         content = { RpmGauge() }
     ),
     GaugeItem(
         id = PIDs.SPEED.name,
-        icon = Icons.Filled.Speed,     // Speed용 아이콘 (원한다면 다른 아이콘으로 교체)
+        icon = Icons.Filled.Speed,
         content = { SpeedGauge() }
     ),
     GaugeItem(
         id = PIDs.ECT.name,
-        icon = Icons.Filled.Thermostat, // ECT(엔진 냉각수 온도)용 예시 아이콘
+        icon = Icons.Filled.Thermostat,
         content = { EctGauge() }
     ),
     GaugeItem(
         id = PIDs.THROTTLE.name,
-        icon = Icons.Filled.GasMeter,  // 스로틀 위치용 아이콘
+        icon = Icons.Filled.GasMeter,
         content = { ThrottleGauge() }
     ),
     GaugeItem(
         id = PIDs.ENGIN_LOAD.name,
-        icon = Icons.Filled.Speed,     // Engine Load용 아이콘 (원한다면 로드 아이콘으로 교체)
+        icon = Icons.Filled.Speed,
         content = { LoadGauge() }
     ),
     GaugeItem(
         id = PIDs.INTAKE_TEMP.name,
-        icon = Icons.Filled.Thermostat, // IAT(Intake Air Temp)용 아이콘
+        icon = Icons.Filled.Thermostat,
         content = { IATGauge() }
     ),
     GaugeItem(
         id = PIDs.MAF.name,
-        icon = Icons.Filled.Speed,     // MAF용 아이콘 (예시)
+        icon = Icons.Filled.Speed,
         content = { MAFGauge() }
     ),
     GaugeItem(
         id = PIDs.BATT.name,
-        icon = Icons.Filled.BatteryChargingFull, // 배터리 전압용 아이콘
+        icon = Icons.Filled.BatteryChargingFull,
         content = { BatteryGauge() }
     ),
     GaugeItem(
         id = PIDs.CURRENT_GEAR.name,
-        icon = Icons.Filled.Speed,     // 기어 표시용 아이콘 (원한다면 기어 아이콘으로 교체)
+        icon = Icons.Filled.Speed,
         content = { CurrentGearGauge() }
     ),
     GaugeItem(
         id = PIDs.OIL_PRESSURE.name,
-        icon = Icons.Filled.Speed,     // 오일 압력용 아이콘 (예시)
+        icon = Icons.Filled.Speed,
         content = { OilPressureGauge() }
     ),
     GaugeItem(
         id = PIDs.OIL_TEMP.name,
-        icon = Icons.Filled.Thermostat, // 오일 온도용 아이콘
+        icon = Icons.Filled.Thermostat,
         content = { OilTempGauge() }
     ),
     GaugeItem(
         id = PIDs.TRANS_FLUID_TEMP.name,
-        icon = Icons.Filled.Thermostat, // 변속기 오일 온도용 아이콘
+        icon = Icons.Filled.Thermostat,
         content = { TransFluidTempGauge() }
     )
 )
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(
+fun DashboardScreenCard(
     modifier: Modifier = Modifier,
     viewModel: DashBoardViewModel = hiltViewModel()
 ) {
@@ -364,7 +471,7 @@ fun DashboardScreen(
     var list by remember(gauges) { mutableStateOf(gauges) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // 윈도우 좌표 기준 마지막 포인터 위치 (로컬 y → 윈도우 y로 변환해줄 예정)
+    // 윈도우 좌표 기준 마지막 포인터 위치
     var lastPointer by remember { mutableStateOf(Offset.Zero) }
     // 윈도우 좌표 기준 삭제 영역 Rect
     val deleteZoneRect = remember { mutableStateOf<Rect?>(null) }
@@ -379,6 +486,7 @@ fun DashboardScreen(
             viewModel.swap(from = from.index, to = to.index)
         }
     )
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -386,16 +494,24 @@ fun DashboardScreen(
                 title = {
                     Text(
                         stringResource(R.string.title_manage),
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                ),
+                modifier = Modifier.shadow(
+                    elevation = 4.dp,
+                    shape = RectangleShape,
+                    clip = false
                 )
             )
         }
     ) { paddingValues ->
-        // 1) 툴바 높이만큼의 top padding을 기억해 둡니다.
         val topBarPaddingPx = with(LocalDensity.current) {
             paddingValues.calculateTopPadding().toPx()
         }
@@ -403,14 +519,19 @@ fun DashboardScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                // 툴바 높이만큼 아래로 내려놓음
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                        )
+                    )
+                )
                 .padding(top = paddingValues.calculateTopPadding())
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
-                            // 2) event.changes.first().position 은 Box 내부 로컬 좌표
-                            //    이를 윈도우 좌표로 바꾸려면 y에 topBarPaddingPx를 더해주면 된다.
                             val local = event.changes.first().position
                             lastPointer = Offset(local.x, local.y + topBarPaddingPx)
                         }
@@ -422,25 +543,38 @@ fun DashboardScreen(
                 state = gridState,
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    top = 16.dp,
-                    end = 16.dp,
-                    // 하단에 삭제 영역 높이(100.dp) + 16.dp 패딩 포함
-                    bottom = 16.dp + 100.dp
+                    start = 12.dp,
+                    top = 12.dp,
+                    end = 12.dp,
+                    bottom = 12.dp + 100.dp
                 ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 itemsIndexed(list, key = { _, it -> it.id }) { _, gauge ->
                     ReorderableItem(state = reorderState, key = gauge.id) { isDragging ->
-                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp)
-                        Surface(shadowElevation = elevation) {
+                        val elevation by animateDpAsState(
+                            if (isDragging) 16.dp else 0.dp,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                        )
+                        val scale by animateFloatAsState(
+                            if (isDragging) 1.05f else 1f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                        )
+
+                        Surface(
+                            shadowElevation = elevation,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .longPressDraggableHandle(
                                         onDragStarted = { /*...*/ },
                                         onDragStopped = {
-                                            // deleteZoneRect와 비교할 때, lastPointer는 이미 윈도우 좌표가 됨
                                             deleteZoneRect.value
                                                 ?.takeIf { it.contains(lastPointer) }
                                                 ?.let { viewModel.onGaugeToggle(gauge.id) }
@@ -454,40 +588,68 @@ fun DashboardScreen(
                 }
             }
 
-            // FAB을 우측 하단에 배치
+            // Modern FAB with gradient
             FloatingActionButton(
                 onClick = { showAddDialog = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(20.dp)
+                    .size(64.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 12.dp
+                )
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Gauge")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Gauge",
+                    modifier = Modifier.size(28.dp)
+                )
             }
 
-            // 드래그 중일 때만 보이는 삭제 영역
+            // 모던한 삭제 영역
             if (reorderState.isAnyItemDragging) {
+                val deleteZoneAlpha by animateFloatAsState(
+                    if (deleteZoneRect.value?.contains(lastPointer) == true) 0.9f else 0.6f
+                )
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(120.dp)
                         .background(
-                            Color.Red.copy(
-                                alpha = if (deleteZoneRect.value?.contains(lastPointer) == true) 0.8f else 0.4f
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Red.copy(alpha = deleteZoneAlpha)
+                                )
                             )
                         )
                         .onGloballyPositioned { coords ->
-                            // 3) 여기는 윈도우 좌표로 저장됨
                             deleteZoneRect.value = coords.boundsInWindow()
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Drag here to delete",
-                        modifier = Modifier.size(36.dp),
-                        tint = Color.White
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Drag here to delete",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Drop to Remove",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -507,7 +669,6 @@ fun DashboardScreen(
     }
 }
 
-
 @Composable
 fun AddGaugeDialog(
     modifier: Modifier = Modifier,
@@ -522,26 +683,25 @@ fun AddGaugeDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        // 플랫폼 기본 너비 제한 해제
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        // 외부 modifier는 여기만 사용
         modifier = modifier
-            .widthIn(min = 300.dp, max = 360.dp)
+            .widthIn(min = 320.dp, max = 400.dp)
             .padding(horizontal = 24.dp),
-
         title = {
             Text(
                 text = "Add Gauge",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            // ➌ 내부 전용 Modifier는 항상 새로 생성
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp),
+                    .padding(vertical = 16.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 content = {
                     items(
@@ -549,32 +709,72 @@ fun AddGaugeDialog(
                         key = { index -> available[index].id }
                     ) { idx ->
                         val item = available[idx]
+                        val cardColors = listOf(
+                            Color(0xFF6366F1), Color(0xFF06B6D4), Color(0xFF3B82F6),
+                            Color(0xFF10B981), Color(0xFF8B5CF6), Color(0xFFF59E0B),
+                            Color(0xFF22C55E), Color(0xFFEF4444), Color(0xFFF97316),
+                            Color(0xFFDC2626), Color(0xFF7C3AED)
+                        )
+                        val cardColor = cardColors[idx % cardColors.size]
+
                         Card(
                             modifier = Modifier
-                                .size(120.dp)
+                                .size(140.dp)
                                 .clickable {
                                     onAdd(item)
                                     onDismiss()
                                 },
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
                         ) {
-                            Column(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                cardColor.copy(alpha = 0.15f),
+                                                cardColor.copy(alpha = 0.05f)
+                                            )
+                                        )
+                                    )
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = "${item.id} icon",
-                                    modifier = Modifier.size(30.dp)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = item.id.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(
+                                                cardColor.copy(alpha = 0.2f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = item.icon,
+                                            contentDescription = "${item.id} icon",
+                                            modifier = Modifier.size(24.dp),
+                                            tint = cardColor
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = item.id.replace("_", " "),
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2
+                                    )
+                                }
                             }
                         }
                     }
@@ -582,10 +782,19 @@ fun AddGaugeDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    "Cancel",
+                    fontWeight = FontWeight.Medium
+                )
             }
         },
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
     )
 }

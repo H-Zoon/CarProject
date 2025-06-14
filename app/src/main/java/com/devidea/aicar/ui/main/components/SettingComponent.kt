@@ -82,7 +82,7 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(vertical = 24.dp)
@@ -223,10 +223,7 @@ private fun SettingSectionHeader(
 private fun LastDeviceCard(lastDevice: ScannedDevice?) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        )
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -572,7 +569,7 @@ private fun SupportCard(
                 }
             }
 
-            FilledIconButton(
+            Button(
                 onClick = onSuggestionClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
