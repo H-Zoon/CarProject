@@ -1,21 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.AICar" parent="Theme.AppCompat.Light.NoActionBar">
-        <!-- 스플래시 아이콘(로고) 지정 -->
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/animated_vector</item>
-
-        <!-- 스플래시 배경색 설정 -->
-        <item name="android:windowSplashScreenBackground">@color/white</item>
-
-        <!-- 스플래시 아이콘 자동 애니메이션 사용 여부 (기본값: true) -->
-        <item name="android:windowSplashScreenAnimationDuration">500</item>
-
-        <!-- 스플래시 아이콘 문턱(여백) 조정 (아이콘 확대 축소 영역) -->
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/white</item>
-
-        <!-- 필요에 따라 상태바/내비게이션바 색도 지정 가능 -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
+    <style name="Theme.AICar" parent="Theme.AppCompat.Light.NoActionBar"/>
 </resources>
