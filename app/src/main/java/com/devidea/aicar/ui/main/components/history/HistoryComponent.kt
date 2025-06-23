@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.with
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,17 +44,48 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
-import com.devidea.aicar.R
 import com.devidea.aicar.storage.room.drive.DrivingSession
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+
+// HistoryViewModel을 사용하는 실제 앱의 진입점(Entry-point) 컴포저블
+@Composable
+fun HistoryRoute(
+    // ViewModel은 Hilt를 통해 주입받습니다.
+    viewModel: HistoryViewModel = hiltViewModel(),
+    // 세션 클릭 시 화면 이동을 위한 콜백 함수
+    onSessionClick: (Long) -> Unit
+) {
+    // ViewModel에서 StateFlow로 관리되는 상태들을 수집합니다.
+    val sessions by viewModel.sessions.collectAsState()
+    val markedDates by viewModel.markedDates.collectAsState()
+    val selectedDate by viewModel.selectedDate.collectAsState()
+
+    // 상태가 없는(stateless) SessionListScreen을 호출합니다.
+    // 상태와 이벤트 핸들러(람다)를 모두 ViewModel과 연결해줍니다.
+    SessionListScreen(
+        sessions = sessions,
+        markedDates = markedDates,
+        selectedDate = selectedDate,
+        onSessionClick = onSessionClick, // 네비게이션 처리를 위해 상위에서 받은 람다를 그대로 전달
+        onDateSelected = { date -> viewModel.selectDate(date) },
+        onMonthChanged = { month -> viewModel.changeMonth(month.toInt()) },
+        onDeleteSessions = { sessionIds ->
+            sessionIds.forEach { viewModel.deleteSession(it) }
+        },
+        onRestoreSessions = { sessionsToRestore ->
+            viewModel.restoreAllSessions(sessionsToRestore)
+        }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,8 +137,8 @@ fun SessionOverviewScreen(
             }
 
             when (selectedTab) {
-                0 -> SessionSummaryScreen(sessionId)
-                1 -> SessionDetailScreen(sessionId = sessionId, onBack = { /* not used */ })
+                0 -> SessionSummaryRoute(sessionId = sessionId)
+                1 -> SessionDetailRoute(sessionId = sessionId)
             }
         }
     }
@@ -115,11 +147,16 @@ fun SessionOverviewScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun SessionListScreen(
-    viewModel: HistoryViewModel = hiltViewModel(),
-    onSessionClick: (Long) -> Unit
+    // viewModel: HistoryViewModel = hiltViewModel(), // 프리뷰에서는 ViewModel을 직접 주입하지 않습니다.
+    sessions: List<DrivingSession>, // 프리뷰를 위해 파라미터로 세션 리스트를 받도록 수정
+    markedDates: Set<LocalDate>,
+    selectedDate: LocalDate,
+    onSessionClick: (Long) -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
+    onMonthChanged: (Int) -> Unit,
+    onDeleteSessions: (List<Long>) -> Unit,
+    onRestoreSessions: (List<DrivingSession>) -> Unit
 ) {
-    val selectedDate by viewModel.selectedDate.collectAsState(initial = LocalDate.now())
-    val sessions by viewModel.sessions.collectAsState()
     val hapticFeedback = LocalHapticFeedback.current
 
     val titleFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
@@ -128,13 +165,20 @@ fun SessionListScreen(
         .withZone(ZoneId.systemDefault())
 
     var showCalendar by remember { mutableStateOf(false) }
-    val month by viewModel.month.collectAsState()
-    val markedDates by viewModel.markedDates.collectAsState()
+    val month = YearMonth.from(selectedDate) // selectedDate로부터 YearMonth를 계산
     var selectionMode by remember { mutableStateOf(false) }
     val selectedSessions = remember { mutableStateListOf<Long>() }
     var recentlyDeletedSessions by remember { mutableStateOf<List<DrivingSession>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 선택 모드가 비활성화될 때 선택된 목록 초기화
+    LaunchedEffect(selectionMode) {
+        if (!selectionMode) {
+            selectedSessions.clear()
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -157,12 +201,12 @@ fun SessionListScreen(
                 } else ({}),
                 title = {
                     AnimatedContent(
-                        targetState = if (selectionMode) "${selectedSessions.size} selected"
-                        else stringResource(R.string.title_history),
+                        targetState = if (selectionMode) "${selectedSessions.size}개 선택됨"
+                        else "주행 기록",
                         transitionSpec = {
                             slideInVertically { -it } + fadeIn() with
                                     slideOutVertically { it } + fadeOut()
-                        }
+                        }, label = ""
                     ) { title ->
                         Text(
                             text = title,
@@ -200,7 +244,7 @@ fun SessionListScreen(
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         coroutineScope.launch {
                             recentlyDeletedSessions = sessions.filter { selectedSessions.contains(it.sessionId) }
-                            selectedSessions.forEach { viewModel.deleteSession(it) }
+                            onDeleteSessions(selectedSessions.toList()) // 삭제 콜백 호출
                             val count = recentlyDeletedSessions.size
                             selectedSessions.clear()
                             selectionMode = false
@@ -211,7 +255,7 @@ fun SessionListScreen(
                                 duration = SnackbarDuration.Long
                             )
                             if (result == SnackbarResult.ActionPerformed) {
-                                viewModel.restoreAllSessions(recentlyDeletedSessions)
+                                onRestoreSessions(recentlyDeletedSessions)
                             }
                         }
                     },
@@ -327,7 +371,7 @@ fun SessionListScreen(
                         },
                         onClick = {
                             if (!selectionMode) {
-                                viewModel.markAsRead(session.sessionId)
+                                // viewModel.markAsRead(session.sessionId)
                                 onSessionClick(session.sessionId)
                             } else {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -365,7 +409,7 @@ fun SessionListScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            IconButton(onClick = { viewModel.changeMonth(-1) }) {
+                            IconButton(onClick = { onMonthChanged(-1) }) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Previous month")
                             }
                             Text(
@@ -373,7 +417,7 @@ fun SessionListScreen(
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold
                             )
-                            IconButton(onClick = { viewModel.changeMonth(1) }) {
+                            IconButton(onClick = { onMonthChanged(1) }) {
                                 Icon(Icons.Default.ArrowForward, contentDescription = "Next month")
                             }
                         }
@@ -384,7 +428,7 @@ fun SessionListScreen(
                             markedDates = markedDates,
                             onDateClick = { date ->
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                viewModel.selectDate(date)
+                                onDateSelected(date)
                                 showCalendar = false
                             }
                         )
@@ -394,6 +438,7 @@ fun SessionListScreen(
         }
     }
 }
+
 
 @Composable
 fun ImprovedSessionCard(
@@ -417,9 +462,6 @@ fun ImprovedSessionCard(
                 else Modifier
             )
             .animateContentSize(),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 12.dp else 4.dp
-        ),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -429,7 +471,7 @@ fun ImprovedSessionCard(
             }
         ),
         border = if (isSelected) {
-            androidx.compose.foundation.BorderStroke(
+            BorderStroke(
                 2.dp,
                 MaterialTheme.colorScheme.primary
             )
@@ -658,6 +700,171 @@ fun ImprovedCalendarGrid(
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }
+            }
+        }
+    }
+}
+
+// --- 제공된 코드 종료 ---
+
+
+// =================================================================================================
+// --- 프리뷰 코드 시작 ---
+// =================================================================================================
+
+// 프리뷰에서 사용할 더미 데이터
+private val sampleDateTimeFormatter = DateTimeFormatter
+    .ofLocalizedDateTime(FormatStyle.SHORT)
+    .withZone(ZoneId.systemDefault())
+
+private val sampleSessions = listOf(
+    DrivingSession(101, Instant.now().minusSeconds(3600), Instant.now().minusSeconds(1800), false), // 새로운 세션
+    DrivingSession(100, Instant.now().minusSeconds(86400), Instant.now().minusSeconds(85000), true), // 읽은 세션
+    DrivingSession(102, Instant.now(), null, false), // 진행중인 세션
+)
+
+@Preview(showBackground = true, name = "SessionOverviewScreen")
+@Composable
+fun SessionOverviewScreenPreview() {
+    MaterialTheme {
+        SessionOverviewScreen(sessionId = 101, onBack = {})
+    }
+}
+
+@Preview(showBackground = true, name = "SessionListScreen - 데이터 있음")
+@Composable
+fun SessionListScreenWithDataPreview() {
+    var sessions by remember { mutableStateOf(sampleSessions) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    val markedDates = sessions.map { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }.toSet()
+
+    MaterialTheme {
+        SessionListScreen(
+            sessions = sessions,
+            markedDates = markedDates,
+            selectedDate = selectedDate,
+            onSessionClick = {},
+            onDateSelected = { selectedDate = it },
+            onMonthChanged = { selectedDate = selectedDate.plusMonths(it.toLong()) },
+            onDeleteSessions = { idsToDelete ->
+                sessions = sessions.filterNot { idsToDelete.contains(it.sessionId) }
+            },
+            onRestoreSessions = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "SessionListScreen - 데이터 없음")
+@Composable
+fun SessionListScreenEmptyPreview() {
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+
+    MaterialTheme {
+        SessionListScreen(
+            sessions = emptyList(),
+            markedDates = emptySet(),
+            selectedDate = selectedDate,
+            onSessionClick = {},
+            onDateSelected = { selectedDate = it },
+            onMonthChanged = { selectedDate = selectedDate.plusMonths(it.toLong()) },
+            onDeleteSessions = {},
+            onRestoreSessions = {}
+        )
+    }
+}
+
+@Preview(name = "ImprovedSessionCard - 읽음")
+@Composable
+fun ImprovedSessionCardReadPreview() {
+    MaterialTheme {
+        Box(Modifier.padding(8.dp)) {
+            ImprovedSessionCard(
+                session = DrivingSession(1, Instant.now().minusSeconds(3600), Instant.now(), true),
+                dateTimeFormatter = sampleDateTimeFormatter,
+                selecting = false,
+                isSelected = false,
+                onSelect = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "ImprovedSessionCard - 새로움")
+@Composable
+fun ImprovedSessionCardNewPreview() {
+    MaterialTheme {
+        Box(Modifier.padding(8.dp)) {
+            ImprovedSessionCard(
+                session = DrivingSession(2, Instant.now().minusSeconds(3600), Instant.now(), false),
+                dateTimeFormatter = sampleDateTimeFormatter,
+                selecting = false,
+                isSelected = false,
+                onSelect = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "ImprovedSessionCard - 진행중")
+@Composable
+fun ImprovedSessionCardOngoingPreview() {
+    MaterialTheme {
+        Box(Modifier.padding(8.dp)) {
+            ImprovedSessionCard(
+                session = DrivingSession(3, Instant.now(), null, false),
+                dateTimeFormatter = sampleDateTimeFormatter,
+                selecting = false,
+                isSelected = false,
+                onSelect = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "ImprovedSessionCard - 선택됨")
+@Composable
+fun ImprovedSessionCardSelectedPreview() {
+    MaterialTheme {
+        Box(Modifier.padding(8.dp)) {
+            ImprovedSessionCard(
+                session = DrivingSession(4, Instant.now().minusSeconds(3600), Instant.now(), true),
+                dateTimeFormatter = sampleDateTimeFormatter,
+                selecting = true,
+                isSelected = true,
+                onSelect = {},
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "EmptyStateCard")
+@Composable
+fun EmptyStateCardPreview() {
+    MaterialTheme {
+        Box(Modifier.padding(8.dp)) {
+            EmptyStateCard()
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "ImprovedCalendarGrid")
+@Composable
+fun ImprovedCalendarGridPreview() {
+    val today = LocalDate.now()
+    val markedDates = setOf(today.minusDays(3), today.minusDays(5), today.plusDays(2))
+    MaterialTheme {
+        Surface {
+            Column(Modifier.padding(16.dp)) {
+                ImprovedCalendarGrid(
+                    month = YearMonth.from(today),
+                    selectedDate = today,
+                    markedDates = markedDates,
+                    onDateClick = {}
+                )
             }
         }
     }

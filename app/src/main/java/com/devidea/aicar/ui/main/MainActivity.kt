@@ -38,6 +38,7 @@ import com.devidea.aicar.ui.main.components.HomeScreen
 import com.devidea.aicar.ui.main.components.DtcScreen
 import com.devidea.aicar.ui.main.components.NotificationScreen
 import com.devidea.aicar.ui.main.components.SettingsScreen
+import com.devidea.aicar.ui.main.components.history.HistoryRoute
 import com.devidea.aicar.ui.main.components.history.SessionListScreen
 import com.devidea.aicar.ui.main.components.history.SessionOverviewScreen
 import com.devidea.aicar.ui.theme.CarProjectTheme
@@ -113,8 +114,9 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
             }
 
             composable(NavItem.History.route) {
-                SessionListScreen(
+                HistoryRoute(
                     onSessionClick = { sessionId ->
+                        // 세션 클릭 시의 화면 이동 로직은 그대로 유지됩니다.
                         navController.navigate("sessionOverview/$sessionId")
                     }
                 )

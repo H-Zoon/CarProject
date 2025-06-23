@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,33 +45,37 @@ import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.delay
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SessionDetailScreen(
+fun SessionDetailRoute(
     sessionId: Long,
-    onBack: () -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
+    // ViewModel에서 데이터를 가져옵니다.
     val dataPoints by viewModel.getSessionData(sessionId).collectAsState(initial = emptyList())
-
-    val speedSeries = dataPoints.map { it.speed.toInt() }
-    val rpmSeries = dataPoints.map { it.rpm.toInt() }
-    val tempSeries = dataPoints.map { it.engineTemp.toInt() }
-    val instantKPLSeries = dataPoints.map { it.instantKPL.toFloat() }
-    val path = remember(dataPoints) {
-        dataPoints.map { LatLng(it.latitude, it.longitude) }
-    }
-
     val sliderPosition by viewModel.sliderPosition.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
 
-    // Auto-play effect: advance slider while playing
+    // 데이터가 비어있을 경우 로딩 또는 빈 화면을 표시합니다.
+    if (dataPoints.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // UI에 전달할 데이터를 가공합니다.
+    val speedSeries = remember(dataPoints) { dataPoints.map { it.speed.toInt() } }
+    val rpmSeries = remember(dataPoints) { dataPoints.map { it.rpm.toInt() } }
+    val tempSeries = remember(dataPoints) { dataPoints.map { it.engineTemp.toInt() } }
+    val instantKPLSeries = remember(dataPoints) { dataPoints.map { it.instantKPL.toFloat() } }
+    val path = remember(dataPoints) { dataPoints.map { LatLng(it.latitude, it.longitude) } }
+    val sliderRange = 0f..(dataPoints.lastIndex.toFloat())
+
+    // 재생 로직을 처리하는 LaunchedEffect
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             while (viewModel.isPlaying.value) {
-                val next =
-                    (viewModel.sliderPosition.value + 1).coerceAtMost((dataPoints.lastIndex).toFloat())
+                val next = (viewModel.sliderPosition.value + 1).coerceAtMost(dataPoints.lastIndex.toFloat())
                 viewModel.updateSlider(next)
                 if (viewModel.sliderPosition.value >= dataPoints.lastIndex) {
                     viewModel.togglePlay()
@@ -80,10 +86,40 @@ fun SessionDetailScreen(
         }
     }
 
+    // 상태 없는 UI 컴포저블을 호출하며 필요한 데이터와 콜백을 전달합니다.
+    SessionDetailScreen(
+        speedSeries = speedSeries,
+        rpmSeries = rpmSeries,
+        tempSeries = tempSeries,
+        instantKPLSeries = instantKPLSeries,
+        path = path,
+        sliderPosition = sliderPosition,
+        sliderRange = sliderRange,
+        isPlaying = isPlaying,
+        onSliderChange = { viewModel.updateSlider(it) },
+        onPlayPause = { viewModel.togglePlay() }
+    )
+}
+
+@Composable
+fun SessionDetailScreen(
+    // ViewModel 대신 가공된 데이터와 콜백 함수를 파라미터로 받습니다.
+    speedSeries: List<Int>,
+    rpmSeries: List<Int>,
+    tempSeries: List<Int>,
+    instantKPLSeries: List<Float>,
+    path: List<LatLng>,
+    sliderPosition: Float,
+    sliderRange: ClosedFloatingPointRange<Float>,
+    isPlaying: Boolean,
+    onSliderChange: (Float) -> Unit,
+    onPlayPause: () -> Unit
+) {
     Column(Modifier.fillMaxSize()) {
         Box(modifier = Modifier
             .height(300.dp)
             .shadow(elevation = 10.dp)) {
+            // SessionTrackMap은 이미 상태가 없으므로 그대로 사용
             SessionTrackMap(
                 path = path,
                 sliderPosition = sliderPosition,
@@ -127,7 +163,6 @@ fun SessionDetailScreen(
                         .height(200.dp)
                 )
             }
-
             item {
                 InstantKPLChart(
                     data = instantKPLSeries,
@@ -148,14 +183,17 @@ fun SessionDetailScreen(
         ) {
             Slider(
                 value = sliderPosition,
-                onValueChange = { viewModel.updateSlider(it) },
-                valueRange = 0f..(dataPoints.lastIndex.coerceAtLeast(0)).toFloat(),
+                onValueChange = onSliderChange, // 콜백 함수 연결
+                valueRange = sliderRange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(16.dp)
             )
-            PlayControlRow(isPlaying = isPlaying, onPlayPause = viewModel::togglePlay)
+            PlayControlRow(
+                isPlaying = isPlaying,
+                onPlayPause = onPlayPause // 콜백 함수 연결
+            )
         }
     }
 }
@@ -372,5 +410,47 @@ fun PlayControlRow(
                 tint = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "SessionDetailScreen Preview")
+@Composable
+fun SessionDetailScreenPreview() {
+    // 프리뷰에서 사용할 가짜 데이터 생성
+    val sampleData = List(100) { (it * 1.2f).toInt() }
+    val sampleFloatData = List(100) { (it * 0.2f) }
+    val samplePath = listOf(LatLng(37.5665, 126.9780), LatLng(37.5670, 126.9790))
+
+    MaterialTheme {
+        SessionDetailScreen(
+            speedSeries = sampleData.map { (it + 20).coerceAtMost(120) },
+            rpmSeries = sampleData.map { (it * 20 + 800).coerceAtMost(4000) },
+            tempSeries = sampleData.map { (it / 2 + 70).coerceAtMost(95) },
+            instantKPLSeries = sampleFloatData.map { (20f - it).coerceAtLeast(5f) },
+            path = samplePath,
+            sliderPosition = 50f,
+            sliderRange = 0f..99f,
+            isPlaying = false,
+            onSliderChange = {},
+            onPlayPause = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 300, heightDp = 150)
+@Composable
+fun SpeedLineChartPreview() {
+    val sampleData = List(50) { (Math.random() * 80 + 20).toInt() }
+    MaterialTheme {
+        SpeedLineChart(data = sampleData, markerPosition = 25, modifier = Modifier.padding(16.dp))
+    }
+}
+
+@Preview(showBackground = true, widthDp = 300, heightDp = 150)
+@Composable
+fun RpmLineChartPreview() {
+    val sampleData = List(50) { (Math.random() * 2000 + 800).toInt() }
+    MaterialTheme {
+        RpmLineChart(data = sampleData, markerPosition = 25, modifier = Modifier.padding(16.dp))
     }
 }

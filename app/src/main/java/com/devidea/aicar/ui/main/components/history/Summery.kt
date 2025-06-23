@@ -4,18 +4,24 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalGasStation
@@ -40,6 +46,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import com.devidea.aicar.ui.main.components.GaugeCard
 
 /** 요약 결과를 담는 DTO */
 data class SessionSummary(
@@ -54,24 +63,31 @@ data class SessionSummary(
 data class SummaryItem(
     val icon: ImageVector,
     val title: String,
-    val value: String
+    val value: String,
+    val unit: String
 )
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SessionSummaryScreen(
+fun SessionSummaryRoute(
     sessionId: Long,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
-    // 데이터 로드 및 요약 계산
-    val dataPoints by viewModel.getSessionData(sessionId)
-        .collectAsState(initial = emptyList())
+    // 데이터 로드 및 요약 계산 (기존 로직을 그대로 가져옵니다)
+    // val dataPoints by viewModel.getSessionData(sessionId).collectAsState(initial = emptyList()) // 지도 등에 필요 없다면 생략 가능
 
     val summary by viewModel
         .getSessionSummery(sessionId)
         .collectAsState(initial = null)
 
-    // 주행 점수 계산 (효율성 50%, 부드러움 50%)
+    // 로딩 중이거나 데이터가 없을 경우 처리
+    if (summary == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator() // 또는 "데이터 없음" 메시지
+        }
+        return
+    }
+
+    // 주행 점수 계산
     val drivingFeedback = remember(summary) {
         getDrivingFeedback(
             avgKPL = summary?.averageKPL,
@@ -81,126 +97,103 @@ fun SessionSummaryScreen(
         )
     }
 
+    // UI에 전달할 리스트 데이터 생성
     val summaryList = listOf(
         SummaryItem(
             icon = Icons.Default.DirectionsCar,
             title = "운행 거리",
-            value = String.format("%.2f km", summary?.totalDistanceKm)
+            value = String.format("%.2f", summary?.totalDistanceKm),
+            unit = "Km"
         ),
         SummaryItem(
             icon = Icons.Default.Speed,
             title = "평균 속도",
-            value = String.format("%.1f km/h", summary?.averageSpeedKmh)
+            value = String.format("%.1f", summary?.averageSpeedKmh),
+            unit = "km/h"
         ),
         SummaryItem(
             icon = Icons.Default.LocalGasStation,
             title = "평균 연비",
-            value = String.format("%.2f km/L", summary?.averageKPL)
+            value = String.format("%.2f", summary?.averageKPL),
+            unit = " km/L"
         ),
         SummaryItem(
             icon = Icons.Default.Wallet,
             title = "유류비",
-            value = "${summary?.fuelCost} 원"
+            value = "${summary?.fuelCost}",
+            unit = "원"
         ),
         SummaryItem(
             icon = Icons.Default.Timeline,
             title = "급가속",
-            value = "${summary?.accelEvent} 회"
+            value = "${summary?.accelEvent}",
+            unit = "회"
         ),
         SummaryItem(
             icon = Icons.Default.TrendingDown,
             title = "급감속",
-            value = "${summary?.brakeEvent} 회"
+            value = "${summary?.brakeEvent}",
+            unit = "회"
         )
     )
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 10.dp, end = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        item {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                DrivingScoreIndicator(drivingFeedback.driveScore)
-                DrivingFeedbackView(drivingFeedback)
-            }
-        }
-
-        items(summaryList.chunked(2)) { rowList ->
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowList.forEach { summary ->
-                    SummaryCard(
-                        icon = summary.icon,
-                        title = summary.title,
-                        value = summary.value,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (rowList.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
+    // 상태 없는 UI 컴포저블 호출
+    SessionSummaryScreen(
+        drivingFeedback = drivingFeedback,
+        summaryList = summaryList
+    )
 }
-
-/**
- * 세션 요약 데이터 계산
- */
 
 
 @Composable
-fun SummaryCard(
-    icon: ImageVector,
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
+fun SessionSummaryScreen(
+    drivingFeedback: DrivingFeedback,
+    summaryList: List<SummaryItem>
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(100.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    // LazyColumn을 LazyVerticalGrid로 교체합니다.
+    LazyVerticalGrid(
+        // 1. 컬럼(열)의 개수를 2개로 고정합니다.
+        columns = GridCells.Fixed(2),
+        modifier = Modifier
+            .fillMaxSize(),
+        // 2. 그리드 전체의 좌우/상하 패딩을 설정합니다.
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+        // 3. 아이템 사이의 수직(세로) 간격을 설정합니다.
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        // 4. 아이템 사이의 수평(가로) 간격을 설정합니다.
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // 5. 헤더 아이템: 그리드의 최상단에 전체 너비를 차지하도록 설정합니다.
+        item(
+            // span을 사용하여 이 아이템이 차지할 칸 수를 지정합니다.
+            // maxLineSpan은 현재 행의 최대 칸 수(여기서는 2)를 의미합니다.
+            span = { GridItemSpan(maxLineSpan) }
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Box(modifier = Modifier.weight(0.4f)) {
+                    DrivingScoreIndicator(drivingFeedback.driveScore)
+                }
+                Column(modifier = Modifier.weight(0.6f)) {
+                    DrivingFeedbackView(drivingFeedback)
+                }
             }
+        }
 
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall
+        // 6. 나머지 summaryList 아이템들을 그리드에 배치합니다.
+        // chunked, Row, Spacer 로직이 모두 필요 없어집니다.
+        items(summaryList.size) { summary ->
+            GaugeCard(
+                title = summaryList[summary].title,
+                icon = summaryList[summary].icon,
+                value = summaryList[summary].value,
             )
         }
     }
 }
-
 @Composable
 fun DrivingScoreIndicator(
     score: Int,
@@ -294,5 +287,27 @@ fun DrivingFeedbackView(feedback: DrivingFeedback) {
 
         Text("🛣️ 운전 부드러움", style = MaterialTheme.typography.titleMedium)
         Text(feedback.smoothnessMsg, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SessionSummaryScreenPreview() {
+    // 프리뷰에서 사용할 가짜 데이터 생성
+    val previewFeedback = DrivingFeedback(driveScore = 95, efficiencyMsg = "급가속·급감속을 줄이면 더 좋아집니다.", smoothnessMsg = "급가속·급감속을 줄이면 더 좋아집니다.")
+    val previewList = listOf(
+        SummaryItem(Icons.Default.DirectionsCar, "운행 거리", "123.4", "km"),
+        SummaryItem(Icons.Default.Speed, "평균 속도", "88.8", "km/h"),
+        SummaryItem(Icons.Default.LocalGasStation, "평균 연비", "15.2", "km/L"),
+        SummaryItem(Icons.Default.Wallet, "유류비", "9,870", "원"),
+        SummaryItem(Icons.Default.Timeline, "급가속", "1", "회"),
+        SummaryItem(Icons.Default.TrendingDown, "급감속", "0", "회")
+    )
+
+    MaterialTheme {
+        SessionSummaryScreen(
+            drivingFeedback = previewFeedback,
+            summaryList = previewList
+        )
     }
 }
