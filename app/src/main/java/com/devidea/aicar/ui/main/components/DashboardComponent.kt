@@ -504,11 +504,11 @@ fun DashboardScreenCard(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                 ),
-                modifier = Modifier.shadow(
+               /* modifier = Modifier.shadow(
                     elevation = 4.dp,
                     shape = RectangleShape,
                     clip = false
-                )
+                )*/
             )
         }
     ) { paddingValues ->

@@ -55,8 +55,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -100,7 +102,7 @@ fun HomeScreen(
         if (bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
     }
 
-    Box(
+    /*Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -111,7 +113,7 @@ fun HomeScreen(
                     )
                 )
             )
-    )
+    )*/
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -139,9 +141,14 @@ fun HomeScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+          /*      modifier = Modifier.shadow(
+                    elevation = 4.dp,
+                    shape = RectangleShape,
+                    clip = false
+                )*/
+                /*colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent
-                )
+                )*/
             )
         },
     ) { paddingValues ->
