@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.bluetooth)
     implementation(libs.androidx.constraintlayout)
+    debugImplementation(libs.androidx.ui.tooling)
 
     //hilt
     ksp(libs.hilt.compiler)

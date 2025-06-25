@@ -44,9 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.devidea.aicar.ui.main.viewmodels.HistoryViewModel
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Wallet
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.devidea.aicar.ui.main.components.GaugeCard
 
@@ -157,11 +155,11 @@ fun SessionSummaryScreen(
         modifier = Modifier
             .fillMaxSize(),
         // 2. 그리드 전체의 좌우/상하 패딩을 설정합니다.
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 24.dp),
         // 3. 아이템 사이의 수직(세로) 간격을 설정합니다.
         verticalArrangement = Arrangement.spacedBy(16.dp),
         // 4. 아이템 사이의 수평(가로) 간격을 설정합니다.
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // 5. 헤더 아이템: 그리드의 최상단에 전체 너비를 차지하도록 설정합니다.
         item(

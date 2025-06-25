@@ -456,7 +456,7 @@ fun ImprovedSessionCard(
     val start = dateTimeFormatter.format(session.startTime)
     val end = session.endTime?.let { dateTimeFormatter.format(it) } ?: "--"
     val isOngoing = session.endTime == null
-    val isNew = !session.isRead && !selecting && session.endTime != null
+    val isNew = !session.isRead  && session.endTime != null
 
     Card(
         modifier = Modifier
@@ -794,7 +794,7 @@ fun ImprovedSessionCardReadPreview() {
     MaterialTheme {
         Box(Modifier.padding(8.dp)) {
             ImprovedSessionCard(
-                session = DrivingSession(1, Instant.now().minusSeconds(3600), Instant.now(), true),
+                session = DrivingSession(1, Instant.now().minusSeconds(3600), Instant.now(), isRead = true),
                 dateTimeFormatter = sampleDateTimeFormatter,
                 selecting = false,
                 isSelected = false,
@@ -811,7 +811,7 @@ fun ImprovedSessionCardNewPreview() {
     MaterialTheme {
         Box(Modifier.padding(8.dp)) {
             ImprovedSessionCard(
-                session = DrivingSession(2, Instant.now().minusSeconds(3600), Instant.now(), false),
+                session = DrivingSession(2, Instant.now().minusSeconds(3600), Instant.now(), isRead = false),
                 dateTimeFormatter = sampleDateTimeFormatter,
                 selecting = false,
                 isSelected = false,
@@ -828,7 +828,7 @@ fun ImprovedSessionCardOngoingPreview() {
     MaterialTheme {
         Box(Modifier.padding(8.dp)) {
             ImprovedSessionCard(
-                session = DrivingSession(3, Instant.now(), null, false),
+                session = DrivingSession(3, Instant.now(), null, isRead = false),
                 dateTimeFormatter = sampleDateTimeFormatter,
                 selecting = false,
                 isSelected = false,
@@ -845,7 +845,7 @@ fun ImprovedSessionCardSelectedPreview() {
     MaterialTheme {
         Box(Modifier.padding(8.dp)) {
             ImprovedSessionCard(
-                session = DrivingSession(4, Instant.now().minusSeconds(3600), Instant.now(), true),
+                session = DrivingSession(4, Instant.now().minusSeconds(3600), Instant.now(), isRead = true),
                 dateTimeFormatter = sampleDateTimeFormatter,
                 selecting = true,
                 isSelected = true,
