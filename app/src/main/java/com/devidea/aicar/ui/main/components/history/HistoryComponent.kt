@@ -75,7 +75,10 @@ fun HistoryRoute(
         sessions = sessions,
         markedDates = markedDates,
         selectedDate = selectedDate,
-        onSessionClick = onSessionClick, // 네비게이션 처리를 위해 상위에서 받은 람다를 그대로 전달
+        onSessionClick = { id ->
+            viewModel.markAsRead(id)
+            onSessionClick
+        },
         onDateSelected = { date -> viewModel.selectDate(date) },
         onMonthChanged = { month -> viewModel.changeMonth(month.toInt()) },
         onDeleteSessions = { sessionIds ->
@@ -243,7 +246,8 @@ fun SessionListScreen(
                     onClick = {
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         coroutineScope.launch {
-                            recentlyDeletedSessions = sessions.filter { selectedSessions.contains(it.sessionId) }
+                            recentlyDeletedSessions =
+                                sessions.filter { selectedSessions.contains(it.sessionId) }
                             onDeleteSessions(selectedSessions.toList()) // 삭제 콜백 호출
                             val count = recentlyDeletedSessions.size
                             selectedSessions.clear()
@@ -718,8 +722,18 @@ private val sampleDateTimeFormatter = DateTimeFormatter
     .withZone(ZoneId.systemDefault())
 
 private val sampleSessions = listOf(
-    DrivingSession(101, Instant.now().minusSeconds(3600), Instant.now().minusSeconds(1800), false), // 새로운 세션
-    DrivingSession(100, Instant.now().minusSeconds(86400), Instant.now().minusSeconds(85000), true), // 읽은 세션
+    DrivingSession(
+        101,
+        Instant.now().minusSeconds(3600),
+        Instant.now().minusSeconds(1800),
+        false
+    ), // 새로운 세션
+    DrivingSession(
+        100,
+        Instant.now().minusSeconds(86400),
+        Instant.now().minusSeconds(85000),
+        true
+    ), // 읽은 세션
     DrivingSession(102, Instant.now(), null, false), // 진행중인 세션
 )
 
@@ -736,7 +750,8 @@ fun SessionOverviewScreenPreview() {
 fun SessionListScreenWithDataPreview() {
     var sessions by remember { mutableStateOf(sampleSessions) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    val markedDates = sessions.map { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }.toSet()
+    val markedDates =
+        sessions.map { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }.toSet()
 
     MaterialTheme {
         SessionListScreen(
