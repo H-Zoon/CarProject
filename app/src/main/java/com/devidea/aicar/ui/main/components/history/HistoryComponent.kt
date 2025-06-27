@@ -77,7 +77,7 @@ fun HistoryRoute(
         selectedDate = selectedDate,
         onSessionClick = { id ->
             viewModel.markAsRead(id)
-            onSessionClick
+            onSessionClick(id)
         },
         onDateSelected = { date -> viewModel.selectDate(date) },
         onMonthChanged = { month -> viewModel.changeMonth(month.toInt()) },
