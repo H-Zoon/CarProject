@@ -13,16 +13,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.AutoMode
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.BluetoothSearching
@@ -98,26 +93,14 @@ fun HomeScreen(
     val devices by viewModel.devices.observeAsState(emptyList())
     val stats by viewModel.monthlyStats.collectAsState()
 
+    val notifications by viewModel.notifications.collectAsState(initial = emptyList())
+
     LaunchedEffect(bluetoothState) {
         if (bluetoothState == ConnectionEvent.Connected) viewModel.setConnectTime()
     }
 
-    /*Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
-    )*/
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -128,27 +111,25 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    // 1. BadgedBox를 사용하여 IconButton을 감쌉니다.
+                    BadgedBox(
+                        badge = {
+                            // 2. 읽지 않은 알림이 있으면 Badge를 표시합니다.
+                            if (notifications.any { !it.isRead }) {
+                                Badge() // 내용이 없으면 작은 점으로 표시됩니다.
+                            }
+                        }
                     ) {
+                        // 3. 기존 IconButton은 BadgedBox의 content가 됩니다.
                         IconButton(onClick = onNotificationClick) {
                             Icon(
-                                Icons.Filled.Notifications,
-                                contentDescription = "Notifications",
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = "알림",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 },
-          /*      modifier = Modifier.shadow(
-                    elevation = 4.dp,
-                    shape = RectangleShape,
-                    clip = false
-                )*/
-                /*colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent
-                )*/
             )
         },
     ) { paddingValues ->

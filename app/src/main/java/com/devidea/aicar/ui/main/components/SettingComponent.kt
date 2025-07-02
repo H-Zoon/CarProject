@@ -620,13 +620,13 @@ private fun ConfirmationDialog(
             )
         },
         confirmButton = {
-            FilledIconButton(
-                onClick = onConfirm
-            ) {
+            // FilledIconButton 대신 FilledButton 사용
+            FilledTonalButton (onClick = onConfirm) {
                 Text("초기화")
             }
         },
         dismissButton = {
+            // 취소 버튼은 TextButton을 올바르게 사용하고 있습니다.
             TextButton(onClick = onDismiss) {
                 Text("취소")
             }

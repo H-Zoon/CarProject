@@ -40,6 +40,7 @@ fun NotificationScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -60,7 +61,7 @@ fun NotificationScreen(
                 },
                 title = {
                     Text(
-                        text = if (selectionMode) "${selectedItems.size} selected" else "Notifications",
+                        text = if (selectionMode) "${selectedItems.size} selected" else "알림",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
