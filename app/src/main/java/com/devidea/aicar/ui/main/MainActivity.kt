@@ -1,10 +1,11 @@
 package com.devidea.aicar.ui.main
 
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -34,8 +35,6 @@ import androidx.navigation.navArgument
 import com.devidea.aicar.R
 import com.devidea.aicar.ui.main.components.DashboardScreenCard
 import com.devidea.aicar.ui.main.components.HomeScreen
-
-import com.devidea.aicar.ui.main.components.DtcScreen
 import com.devidea.aicar.ui.main.components.NotificationScreen
 import com.devidea.aicar.ui.main.components.SettingsScreen
 import com.devidea.aicar.ui.main.components.history.HistoryRoute
@@ -52,11 +51,11 @@ sealed class NavItem(val route: String, @StringRes val titleRes: Int, val icon: 
 }
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
         setContent {
             CarProjectTheme {
                 CarManagementMainScreen()

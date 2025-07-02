@@ -48,7 +48,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AICar">
+        android:theme="@style/Theme.CarProject">
 
         <!-- 충전 연결/앱 커스텀 브로드캐스트를 수신하는 리시버.
              exported=true: 외부에서 브로드캐스트 수신 가능(시스템 ACTION_POWER_CONNECTED 포함)
