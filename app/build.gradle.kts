@@ -1,6 +1,3 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -17,19 +14,12 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        ndk {
-            abiFilters.addAll(listOf("armeabi", "armeabi-v7a", "arm64-v8a"))
-        }
+        testInstrumentationRunner = "com.devidea.aicar.CustomTestRunner"
         applicationId = "com.devidea.aicar"
         minSdk = 26
         targetSdk = 35
         versionCode = 6
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
     }
 
     buildTypes {
@@ -52,9 +42,6 @@ android {
         compose = true
         viewBinding = true
     }
-    /*composeOptions {
-        kotlinCompilerExtensionVersion = "2.0.0"
-    }*/
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -64,43 +51,39 @@ android {
         propertiesFileName = "secrets.properties"
         defaultPropertiesFileName = "local.defaults.properties"
     }
-
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.core.splashscreen)
     implementation(libs.accompanist.permissions)
     implementation(libs.androidx.runtime.livedata)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.bluetooth)
-    implementation(libs.androidx.constraintlayout)
-    debugImplementation(libs.androidx.ui.tooling)
+    implementation (libs.androidx.datastore.preferences)
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
 
     //hilt
     ksp(libs.hilt.compiler)
-    implementation(libs.hilt.android)
+    implementation (libs.hilt.android)
+
     implementation (libs.androidx.hilt.navigation.compose)
-    implementation (libs.androidx.datastore.preferences)
 
-    implementation(libs.androidx.lifecycle.runtime.compose.android)
-
-    implementation (libs.kotlinx.coroutines.core)
-    implementation(libs.androidx.room.runtime)
+    //room
     ksp(libs.androidx.room.compiler)
-    implementation(libs.androidx.room.rxjava2)
-    implementation(libs.advanced.bottomsheet.material3)
+    //implementation(libs.androidx.room.rxjava2)
+    implementation(libs.androidx.room.runtime)
+
     implementation(libs.reorderable)
     implementation (libs.maps.compose)
 
-    implementation ("com.google.android.material:material:1.10.0")
-    implementation ("com.google.code.gson:gson:2.8.5")
-    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-crashlytics")
+    implementation (libs.material)
+    implementation (libs.gson)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
 
+    //compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.tooling.preview)
@@ -111,17 +94,16 @@ dependencies {
     implementation(libs.runtime.livedata)
     implementation(libs.androidx.runtime.rxjava2)
     implementation (libs.play.services.location)
-    runtimeOnly(libs.lifecycle.runtime.compose.android)
 
-    debugImplementation(libs.androidx.ui.test.manifest)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    testImplementation(libs.junit)
+    androidTestImplementation (libs.truth)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    //debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    androidTestImplementation(libs.hilt.android.testing)
+    //kspAndroidTest (libs.hilt.compiler)
+    //androidTestAnnotationProcessor (libs.hilt.compiler)
+
     debugImplementation(libs.androidx.ui.test.manifest)
+    debugImplementation(libs.androidx.ui.tooling)
 }
