@@ -80,7 +80,7 @@ fun HistoryRoute(
             onSessionClick(id)
         },
         onDateSelected = { date -> viewModel.selectDate(date) },
-        onMonthChanged = { month -> viewModel.changeMonth(month.toInt()) },
+        onMonthChanged = { month -> viewModel.changeMonth(month) },
         onDeleteSessions = { sessionIds ->
             sessionIds.forEach { viewModel.deleteSession(it) }
         },

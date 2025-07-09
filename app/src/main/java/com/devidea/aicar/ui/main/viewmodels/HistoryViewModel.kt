@@ -23,6 +23,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.launchIn
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,16 +37,6 @@ class HistoryViewModel @Inject constructor(
     /** 세션 조회를 위한 현재 선택된 날짜입니다. */
     val selectedDate: StateFlow<LocalDate> = _selectedDate
 
-    private val _month = MutableStateFlow(YearMonth.now())
-
-    /** 캘린더 UI를 위한 현재 월 정보입니다. */
-    val month: StateFlow<YearMonth> = _month
-
-    /** 캘린더 월을 오프셋만큼 변경합니다. */
-    fun changeMonth(delta: Int) {
-        _month.value = _month.value.plusMonths(delta.toLong())
-    }
-
     /** 선택된 날짜에 해당하는 세션 목록을 스트림으로 제공합니다. 날짜가 null이면 전체 세션을 반환합니다. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val sessions: StateFlow<List<DrivingSession>> = _selectedDate
@@ -57,13 +48,13 @@ class HistoryViewModel @Inject constructor(
 
     /** 현재 월에 세션이 있는 날짜들의 집합입니다. */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val markedDates: StateFlow<Set<LocalDate>> = _month
+    val markedDates: StateFlow<Set<LocalDate>> = _selectedDate
         .flatMapLatest { ym ->
             val startMillis =
-                ym.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                ym.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val endMillis =
-                ym.atEndOfMonth().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                    .toEpochMilli() - 1
+                ym.with(TemporalAdjusters.lastDayOfMonth()).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    .toEpochMilli()
             drivingRepository.getSessionsInRange(startMillis, endMillis)
                 .map { sessions ->
                     sessions.map { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }
@@ -130,5 +121,10 @@ class HistoryViewModel @Inject constructor(
     /** 캘린더에서 특정 날짜를 선택합니다. */
     fun selectDate(date: LocalDate?) {
         _selectedDate.value = date ?: LocalDate.now()
+    }
+
+    //** 캘린더 월을 오프셋만큼 변경합니다. *//*
+    fun changeMonth(delta: Int) {
+        _selectedDate.value = _selectedDate.value.plusMonths(delta.toLong())
     }
 }
