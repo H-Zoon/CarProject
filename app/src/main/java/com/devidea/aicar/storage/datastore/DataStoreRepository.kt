@@ -38,7 +38,7 @@ class DataStoreRepository @Inject constructor(
             dataStore.edit { prefs ->
                 // 만약 설정에 GAUGE_ORDER_KEY가 없으면 초기값으로 설정
                 if (!prefs.contains(GAUGE_ORDER_KEY)) {
-                    prefs[GAUGE_ORDER_KEY] = gaugeIdPool.joinToString(",")
+                    prefs[GAUGE_ORDER_KEY] = "RPM,SPEED,THROTTLE,ENGIN_LOAD"
                 }
             }
         }

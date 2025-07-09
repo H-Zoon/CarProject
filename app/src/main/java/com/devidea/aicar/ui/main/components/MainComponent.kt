@@ -638,8 +638,8 @@ fun BleDeviceListModal(
     Dialog(onDismissRequest = onBack) {
         ElevatedCard(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .wrapContentHeight(),
+                .fillMaxWidth(1f)
+                .fillMaxHeight(0.7f),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
             shape = RoundedCornerShape(20.dp)
         ) {
@@ -708,7 +708,7 @@ fun BleDeviceListModal(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 320.dp),
+                        .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(sortedDevices.size) { device ->
@@ -721,33 +721,38 @@ fun BleDeviceListModal(
 
                     if (sortedDevices.isEmpty()) {
                         item {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(), // LazyColumn의 전체 크기를 채움
+                                contentAlignment = Alignment.Center      // 내부 요소를 중앙에 정렬
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(32.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.BluetoothDisabled,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = "검색된 기기가 없습니다",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                    )
-                                    Text(
-                                        text = "기기를 검색 가능 모드로 설정하고\n다시 시도해주세요",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                        textAlign = TextAlign.Center
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.BluetoothDisabled,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "검색된 기기가 없습니다",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        Text(
+                                            text = "기기를 검색 가능 모드로 설정하고\n다시 시도해주세요",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -767,6 +772,7 @@ private fun DeviceListItem(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(bottom = 5.dp)
             .clickable(onClick = onClick),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isSelected) 6.dp else 2.dp
@@ -1052,7 +1058,13 @@ fun DrivingRecordControl(
             AlertDialog(
                 onDismissRequest = { showBgPermissionDialog = false },
                 title = { Text(text = "백그라운드 위치 권한 필요") },
-                text = { Text(text = "Android 최신 버전에서는 설정에서 백그라운드 위치 권한을 직접 허용해야 합니다.") },
+                // 사용자에게 어떤 행동을 해야하는지 구체적으로 안내
+                text = {
+                    Text(
+                        text = "정확한 기록을 위해 백그라운드 위치 권한이 필요합니다.\n\n" +
+                                "설정 화면으로 이동 후, [권한] > [위치] 메뉴에서 '항상 허용'을 선택해주세요."
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         showBgPermissionDialog = false
