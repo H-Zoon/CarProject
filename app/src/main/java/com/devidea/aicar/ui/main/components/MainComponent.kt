@@ -865,7 +865,9 @@ fun DrivingRecordControl(
     val fgPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN,
         )
     )
     // 백그라운드 위치 권한 상태 (Android Q 이상)
