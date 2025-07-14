@@ -98,4 +98,54 @@ class AppDaoTest {
         assertThat(monthlyStats.averageKPL).isEqualTo(14f)      // (15 + 13) / 2
         assertThat(monthlyStats.totalFuelCost).isEqualTo(6000)  // 2000 + 4000
     }
+
+    @Test
+    fun getOngoingSessionId_returnsNull_whenAllSessionsAreFinished() = runBlocking {
+        // given: 모든 세션이 종료 시간(endTime)을 가짐
+        val finishedSession = DrivingSession(sessionId = 1, startTime = Instant.now(), endTime = Instant.now())
+        dao.insertSession(finishedSession)
+
+        // when: 진행 중인 세션 조회를 요청
+        val ongoingSessionId = dao.getOngoingSessionId()
+
+        // then: null이 반환되어야 함
+        assertThat(ongoingSessionId).isNull()
+    }
+
+    @Test
+    fun getOngoingSessionId_returnsLatestSessionId_whenMultipleOngoingSessionsExist() = runBlocking {
+        // given: 여러 개의 진행 중 세션이 존재 (시간 순서가 다름)
+        val oldSession = DrivingSession(sessionId = 1, startTime = Instant.now().minusSeconds(100))
+        val latestSession = DrivingSession(sessionId = 2, startTime = Instant.now()) // 더 최신 세션
+        dao.insertSession(oldSession)
+        dao.insertSession(latestSession)
+
+        // when: 진행 중인 세션 조회를 요청
+        val ongoingSessionId = dao.getOngoingSessionId()
+
+        // then: 가장 최근에 시작된 세션의 ID가 반환되어야 함 (ORDER BY startTime DESC)
+        assertThat(ongoingSessionId).isEqualTo(2)
+    }
+
+    @Test
+    fun getAllSessions_emitsNewList_whenSessionIsAdded() = runBlocking {
+        // given: 초기에 세션이 하나 있음
+        val initialSession = DrivingSession(sessionId = 1, startTime = Instant.now())
+        dao.insertSession(initialSession)
+
+        val flow = dao.getAllSessions()
+
+        // then: 첫 번째 데이터는 세션 1개를 포함한 리스트여야 함
+        val firstEmission = flow.first()
+        assertThat(firstEmission).hasSize(1)
+        assertThat(firstEmission.first().sessionId).isEqualTo(1)
+
+        // when: 새로운 세션을 추가
+        val newSession = DrivingSession(sessionId = 2, startTime = Instant.now())
+        dao.insertSession(newSession)
+
+        // then: Flow가 새로운 데이터를 방출하고, 리스트 크기는 2가 되어야 함
+        val secondEmission = flow.first() // 다시 최신 값을 가져옴
+        assertThat(secondEmission).hasSize(2)
+    }
 }
