@@ -97,7 +97,7 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
         NavHost(
             navController = navController,
             startDestination = NavItem.Home.route,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             composable(NavItem.Home.route) {
                 HomeScreen(
@@ -115,7 +115,6 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
             composable(NavItem.History.route) {
                 HistoryRoute(
                     onSessionClick = { sessionId ->
-                        // 세션 클릭 시의 화면 이동 로직은 그대로 유지됩니다.
                         navController.navigate("sessionOverview/$sessionId")
                     }
                 )
