@@ -19,7 +19,5 @@ abstract class SppClientModule {
      */
     @Binds
     @Singleton
-    abstract fun bindSppClient(
-        impl: SppClientImpl
-    ): SppClient
+    abstract fun bindSppClient(impl: SppClientImpl): SppClient
 }

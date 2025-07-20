@@ -1,0 +1,20 @@
+# .editorconfig
+# 이 파일이 프로젝트의 최상위 설정 파일임을 나타냅니다.
+root = true
+
+# 모든 파일에 적용될 기본 규칙
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Kotlin, Java, XML 파일에 적용될 규칙
+[*.{kt,kts,java,xml}]
+indent_style = space
+indent_size = 4
+
+# ktlint 규칙: @Composable, @Preview 함수는 대문자 시작 허용
+[*.{kt,kts}]
+#ktlint_standard_function-naming_ignore-when-annotated-with = Composable,Preview
+ktlint_function_naming_ignore_when_annotated_with = Composable

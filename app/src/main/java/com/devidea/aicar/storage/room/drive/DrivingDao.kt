@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DrivingDao {
-
     /**
      * 새로운 DrivingSession 엔티티를 데이터베이스에 삽입합니다.
      *
@@ -48,7 +47,7 @@ interface DrivingDao {
         WHERE endTime IS NULL
         ORDER BY startTime DESC
         LIMIT 1
-        """
+        """,
     )
     fun getOngoingSessionId(): Long?
 
@@ -104,9 +103,12 @@ interface DrivingDao {
         FROM DrivingSession
         WHERE substr(startTime,1,4) = :yearStr
           AND substr(startTime,6,2) = :monthStr
-        """
+        """,
     )
-    fun getSessionDatesInMonth(yearStr: String, monthStr: String): Flow<List<String>>
+    fun getSessionDatesInMonth(
+        yearStr: String,
+        monthStr: String,
+    ): Flow<List<String>>
 
     /**
      * 단일 DrivingSession 엔티티를 ID로 조회합니다. (일회성 호출, suspend)
@@ -171,9 +173,12 @@ interface DrivingDao {
       SELECT * FROM DrivingSession
       WHERE startTime BETWEEN :startMillis AND :endMillis
       ORDER BY startTime DESC
-    """
+    """,
     )
-    fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
+    fun getSessionsInRange(
+        startMillis: Long,
+        endMillis: Long,
+    ): Flow<List<DrivingSession>>
 
     // --- DrivingSessionSummary 관련 메서드 추가 ---
 
@@ -216,18 +221,18 @@ interface DrivingDao {
           ON summary.sessionId = session.sessionId
         WHERE session.startTime BETWEEN :startMillis AND :endMillis
         ORDER BY session.startTime DESC
-    """
+    """,
     )
     fun getSummariesInRange(
         startMillis: Long,
-        endMillis: Long
+        endMillis: Long,
     ): Flow<List<DrivingSessionSummary>>
 
     // 월별 집계용 DTO
     data class MonthlyStats(
-        val totalDistanceKm: Float,    // 누적 주행거리 (해당 기간 내 합계)
-        val averageKPL: Float,         // 평균 연비 (세션별 평균 연비의 단순 평균)
-        val totalFuelCost: Int         // 누적 유류비 (해당 기간 내 합계)
+        val totalDistanceKm: Float, // 누적 주행거리 (해당 기간 내 합계)
+        val averageKPL: Float, // 평균 연비 (세션별 평균 연비의 단순 평균)
+        val totalFuelCost: Int, // 누적 유류비 (해당 기간 내 합계)
     )
 
     /**
@@ -252,11 +257,11 @@ interface DrivingDao {
         INNER JOIN DrivingSession   AS session
           ON s.sessionId = session.sessionId
         WHERE session.startTime BETWEEN :startMillis AND :endMillis
-    """
+    """,
     )
     fun getMonthlyStats(
         startMillis: Long,
-        endMillis: Long
+        endMillis: Long,
     ): Flow<MonthlyStats>
 
     /**

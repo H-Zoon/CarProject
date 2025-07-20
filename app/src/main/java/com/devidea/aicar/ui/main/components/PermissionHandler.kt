@@ -17,7 +17,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
 
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionHandler(
@@ -29,8 +28,8 @@ fun PermissionHandler(
     modifier: Modifier = Modifier,
     content: @Composable (
         allGranted: Boolean,
-        requestPermission: () -> Unit
-    ) -> Unit
+        requestPermission: () -> Unit,
+    ) -> Unit,
 ) {
     // 1) 권한 상태 관리 객체
     val permissionState = rememberMultiplePermissionsState(permissions = permissions)
@@ -45,15 +44,16 @@ fun PermissionHandler(
     val wrappedRequest: () -> Unit = {
         // 이미 모든 권한이 허용된 상태라면 따로 요청하지 않음
         if (permissionState.allPermissionsGranted) {
-            //return
+            // return
         }
 
         // 한 번 이상의 요청 후, 모든 권한이 거절된 상태이고 더 이상 권한 다이얼로그를 띄울 수 없는 경우
-        val anyPermanentlyDenied = permissionState.permissions.any { perm ->
-            // Accompanist PermissionState 에는 isPermanentlyDenied 확장 속성이 있음
-            //   true: “다시 묻지 않음” 옵션을 체크하거나, 시스템 설정에서 영구적으로 비활성화된 경우
-            perm.status.shouldShowRationale
-        }
+        val anyPermanentlyDenied =
+            permissionState.permissions.any { perm ->
+                // Accompanist PermissionState 에는 isPermanentlyDenied 확장 속성이 있음
+                //   true: “다시 묻지 않음” 옵션을 체크하거나, 시스템 설정에서 영구적으로 비활성화된 경우
+                perm.status.shouldShowRationale
+            }
 
         if (anyPermanentlyDenied) {
             // “영구 거절” 상태이므로 앱 설정으로 이동하라는 다이얼로그를 띄움
@@ -77,12 +77,13 @@ fun PermissionHandler(
                 TextButton(onClick = {
                     showPermanentlyDeniedDialog = false
                     // 앱 설정 화면으로 이동
-                    val intent = Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null)
-                    ).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
+                    val intent =
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        ).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
                     context.startActivity(intent)
                 }) {
                     Text(text = "설정으로 이동")
@@ -92,7 +93,7 @@ fun PermissionHandler(
                 TextButton(onClick = { showPermanentlyDeniedDialog = false }) {
                     Text(text = "취소")
                 }
-            }
+            },
         )
     }
 
@@ -115,13 +116,13 @@ fun PermissionHandler(
                 TextButton(onClick = { showRationaleDialog = false }) {
                     Text(text = "취소")
                 }
-            }
+            },
         )
     }
 
     // 6) 최종적으로, 실제 UI(버튼 등)를 그리면서 “현재 권한 상태”와 “wrappedRequest” 함수만 제공
     content(
         permissionState.allPermissionsGranted,
-        wrappedRequest
+        wrappedRequest,
     )
 }

@@ -2,7 +2,6 @@ package com.devidea.aicar.ui.main
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
@@ -38,21 +37,26 @@ import com.devidea.aicar.ui.main.components.HomeScreen
 import com.devidea.aicar.ui.main.components.NotificationScreen
 import com.devidea.aicar.ui.main.components.SettingsScreen
 import com.devidea.aicar.ui.main.components.history.HistoryRoute
-import com.devidea.aicar.ui.main.components.history.SessionListScreen
 import com.devidea.aicar.ui.main.components.history.SessionOverviewScreen
 import com.devidea.aicar.ui.theme.CarProjectTheme
 import dagger.hilt.android.AndroidEntryPoint
 
-sealed class NavItem(val route: String, @StringRes val titleRes: Int, val icon: ImageVector) {
+sealed class NavItem(
+    val route: String,
+    @StringRes val titleRes: Int,
+    val icon: ImageVector,
+) {
     object Home : NavItem("home", R.string.title_main, Icons.Filled.Home)
+
     object History : NavItem("history", R.string.title_history, Icons.Filled.Place)
+
     object Car : NavItem("car", R.string.title_manage, Icons.Filled.DirectionsCar)
+
     object Settings : NavItem("setting", R.string.title_setting, Icons.Filled.Settings)
 }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -89,26 +93,26 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
                             restoreState = true
                         }
                     }
-                }
+                },
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = NavItem.Home.route,
-            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
+            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding()),
         ) {
             composable(NavItem.Home.route) {
                 HomeScreen(
                     modifier,
-                    onNotificationClick = { navController.navigate("notification") }
+                    onNotificationClick = { navController.navigate("notification") },
                 )
             }
 
             composable("notification") {
                 NotificationScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -116,27 +120,24 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
                 HistoryRoute(
                     onSessionClick = { sessionId ->
                         navController.navigate("sessionOverview/$sessionId")
-                    }
+                    },
                 )
             }
 
             composable(
                 route = "sessionOverview/{sessionId}",
-                arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
+                arguments = listOf(navArgument("sessionId") { type = NavType.LongType }),
             ) { backStackEntry ->
                 val sessionId =
                     backStackEntry.arguments?.getLong("sessionId") ?: return@composable
                 SessionOverviewScreen(
                     sessionId = sessionId,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
                 )
             }
 
             composable(NavItem.Car.route) {
-                //CarTabScreen()
                 DashboardScreenCard(modifier)
-                //DtcScreen()
-                //DashboardScreen()
             }
 
             composable(NavItem.Settings.route) {
@@ -150,25 +151,25 @@ fun CarManagementMainScreen(modifier: Modifier = Modifier) {
 fun CarBottomNavBar(
     items: List<NavItem>,
     selected: NavItem,
-    onItemSelected: (NavItem) -> Unit
+    onItemSelected: (NavItem) -> Unit,
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
     ) {
         items.forEach { item ->
             NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
                 label = { Text(stringResource(item.titleRes)) },
                 selected = item == selected,
-                onClick = { onItemSelected(item) }
+                onClick = { onItemSelected(item) },
             )
         }
     }
 }
 
-fun resolveNavItemFromRoute(currentRoute: String?): NavItem {
-    return when {
+fun resolveNavItemFromRoute(currentRoute: String?): NavItem =
+    when {
         currentRoute == null -> NavItem.Home
         currentRoute.startsWith("sessionOverview") || currentRoute == NavItem.History.route -> NavItem.History
         currentRoute == NavItem.Home.route -> NavItem.Home
@@ -176,14 +177,13 @@ fun resolveNavItemFromRoute(currentRoute: String?): NavItem {
         currentRoute == NavItem.Settings.route -> NavItem.Settings
         else -> NavItem.Home
     }
-}
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewCarManagementMainScreen() {
     CarProjectTheme {
         CarManagementMainScreen(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -97,7 +96,7 @@ fun SessionDetailRoute(
         sliderRange = sliderRange,
         isPlaying = isPlaying,
         onSliderChange = { viewModel.updateSlider(it) },
-        onPlayPause = { viewModel.togglePlay() }
+        onPlayPause = { viewModel.togglePlay() },
     )
 }
 
@@ -113,86 +112,97 @@ fun SessionDetailScreen(
     sliderRange: ClosedFloatingPointRange<Float>,
     isPlaying: Boolean,
     onSliderChange: (Float) -> Unit,
-    onPlayPause: () -> Unit
+    onPlayPause: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Box(modifier = Modifier
-            .height(300.dp)
-            .shadow(elevation = 10.dp)) {
+        Box(
+            modifier =
+                Modifier
+                    .height(300.dp)
+                    .shadow(elevation = 10.dp),
+        ) {
             // SessionTrackMap은 이미 상태가 없으므로 그대로 사용
             SessionTrackMap(
                 path = path,
                 sliderPosition = sliderPosition,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
             )
         }
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
                 SpeedLineChart(
                     data = speedSeries,
                     markerPosition = sliderPosition.toInt(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
                 )
             }
             item {
                 RpmLineChart(
                     data = rpmSeries,
                     markerPosition = sliderPosition.toInt(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
                 )
             }
             item {
                 TempLineChart(
                     data = tempSeries,
                     markerPosition = sliderPosition.toInt(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
                 )
             }
             item {
                 InstantKPLChart(
                     data = instantKPLSeries,
                     markerPosition = sliderPosition.toInt(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
                 )
             }
         }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 4.dp, top = 4.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(end = 4.dp, top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Slider(
                 value = sliderPosition,
                 onValueChange = onSliderChange, // 콜백 함수 연결
                 valueRange = sliderRange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(16.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(16.dp),
             )
             PlayControlRow(
                 isPlaying = isPlaying,
-                onPlayPause = onPlayPause // 콜백 함수 연결
+                onPlayPause = onPlayPause, // 콜백 함수 연결
             )
         }
     }
@@ -208,46 +218,49 @@ private fun LineChart(
     modifier: Modifier = Modifier,
     gridLineCount: Int = 4,
     gridColor: Color = Color.LightGray,
-    gridStrokeWidth: Dp = 1.dp
+    gridStrokeWidth: Dp = 1.dp,
 ) {
     if (data.isEmpty()) return
     val density = LocalDensity.current
-    val paint = remember {
-        Paint().apply {
-            isAntiAlias = true
-            textSize = density.run { 12.dp.toPx() }
-            textAlign = Paint.Align.RIGHT
+    val paint =
+        remember {
+            Paint().apply {
+                isAntiAlias = true
+                textSize = density.run { 12.dp.toPx() }
+                textAlign = Paint.Align.RIGHT
+            }
         }
-    }
 
     // Column으로 단위 영역과 차트 영역 분리
     Column(modifier = modifier) {
         // 1) 차트 외부에 단위 표시
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 4.dp, top = 4.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(end = 4.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Black
+                color = Color.Black,
             )
 
             Text(
                 text = unit,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Black
+                color = Color.Black,
             )
         }
 
         // 2) 차트 그리기
         Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 4.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = 4.dp),
         ) {
             val leftMargin = with(density) { 40.dp.toPx() }
             val textHeight = paint.fontMetrics.run { descent - ascent }
@@ -270,7 +283,7 @@ private fun LineChart(
                     color = gridColor,
                     start = Offset(leftMargin, y),
                     end = Offset(size.width, y),
-                    strokeWidth = gridStrokeWidth.toPx()
+                    strokeWidth = gridStrokeWidth.toPx(),
                 )
                 if (i == 0 || i == gridLineCount / 2 || i == gridLineCount) {
                     val value = minVal + (range / gridLineCount) * i
@@ -278,7 +291,7 @@ private fun LineChart(
                         value.toInt().toString(),
                         leftMargin - 4.dp.toPx(),
                         y - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2,
-                        paint
+                        paint,
                     )
                 }
             }
@@ -286,26 +299,27 @@ private fun LineChart(
                 color = Color.Black,
                 start = Offset(leftMargin, topOffset),
                 end = Offset(leftMargin, size.height - bottomOffset),
-                strokeWidth = 2.dp.toPx()
+                strokeWidth = 2.dp.toPx(),
             )
 
             // 데이터 라인
-            val path = Path().apply {
-                moveTo(
-                    leftMargin,
-                    topOffset + (1f - (data[0] - minVal) / range) * plotHeight
-                )
-                data.drop(1).forEachIndexed { idx, v ->
-                    lineTo(
-                        leftMargin + (idx + 1) * spacing,
-                        topOffset + (1f - (v - minVal) / range) * plotHeight
+            val path =
+                Path().apply {
+                    moveTo(
+                        leftMargin,
+                        topOffset + (1f - (data[0] - minVal) / range) * plotHeight,
                     )
+                    data.drop(1).forEachIndexed { idx, v ->
+                        lineTo(
+                            leftMargin + (idx + 1) * spacing,
+                            topOffset + (1f - (v - minVal) / range) * plotHeight,
+                        )
+                    }
                 }
-            }
             drawPath(
                 path = path,
                 color = lineColor,
-                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
             )
 
             // 마커 라인
@@ -315,7 +329,7 @@ private fun LineChart(
                     color = Color.Red,
                     start = Offset(x, topOffset),
                     end = Offset(x, topOffset + plotHeight),
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 1.dp.toPx(),
                 )
             }
         }
@@ -328,7 +342,7 @@ fun SpeedLineChart(
     title: String = "속도",
     unit: String = "km/h",
     markerPosition: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LineChart(
         data = data,
@@ -336,7 +350,7 @@ fun SpeedLineChart(
         title = title,
         unit = unit,
         markerPosition = markerPosition,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -346,7 +360,7 @@ fun RpmLineChart(
     title: String = "rpm",
     unit: String = "r/min",
     markerPosition: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LineChart(
         data = data,
@@ -354,7 +368,7 @@ fun RpmLineChart(
         title = title,
         unit = unit,
         markerPosition = markerPosition,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -364,7 +378,7 @@ fun TempLineChart(
     title: String = "온도",
     unit: String = "°C",
     markerPosition: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LineChart(
         data = data,
@@ -372,7 +386,7 @@ fun TempLineChart(
         title = title,
         unit = unit,
         markerPosition = markerPosition,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -382,7 +396,7 @@ fun InstantKPLChart(
     title: String = "순간연비",
     unit: String = "KM/L",
     markerPosition: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val intList1: List<Int> = data.map { it.toInt() }
 
@@ -392,7 +406,7 @@ fun InstantKPLChart(
         title = title,
         unit = unit,
         markerPosition = markerPosition,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -400,14 +414,14 @@ fun InstantKPLChart(
 fun PlayControlRow(
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.padding(16.dp), horizontalArrangement = Arrangement.Center) {
         IconButton(onClick = { onPlayPause() }) {
             Icon(
                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
         }
     }
@@ -432,7 +446,7 @@ fun SessionDetailScreenPreview() {
             sliderRange = 0f..99f,
             isPlaying = false,
             onSliderChange = {},
-            onPlayPause = {}
+            onPlayPause = {},
         )
     }
 }
