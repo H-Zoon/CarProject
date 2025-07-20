@@ -83,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devidea.aicar.service.ConnectionEvent
@@ -98,7 +99,6 @@ import com.google.accompanist.permissions.shouldShowRationale
 import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
-import androidx.core.net.toUri
 
 const val TAG = "MainViewComponent"
 
