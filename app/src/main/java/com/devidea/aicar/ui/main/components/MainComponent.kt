@@ -28,11 +28,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
-import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
@@ -98,6 +98,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
+import androidx.core.net.toUri
 
 const val TAG = "MainViewComponent"
 
@@ -572,9 +573,9 @@ fun BluetoothControl(
                         imageVector =
                             when (bluetoothState) {
                                 ConnectionEvent.Connected -> Icons.Default.BluetoothDisabled
-                                ConnectionEvent.Scanning -> Icons.Default.BluetoothSearching
+                                ConnectionEvent.Scanning -> Icons.AutoMirrored.Filled.BluetoothSearching
                                 ConnectionEvent.Connecting -> Icons.Default.Bluetooth
-                                else -> Icons.Default.BluetoothSearching
+                                else -> Icons.AutoMirrored.Filled.BluetoothSearching
                             },
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
@@ -730,7 +731,7 @@ fun BleDeviceListModal(
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.BluetoothSearching,
+                                imageVector = Icons.AutoMirrored.Filled.BluetoothSearching,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier =
@@ -1065,10 +1066,9 @@ fun DrivingRecordControl(
                                 fgPermissionsState.permissions.any {
                                     !it.status.isGranted && it.status.shouldShowRationale
                                 }
-                            val anyPermanentlyDenied =
-                                fgPermissionsState.permissions.any {
-                                    !it.status.isGranted && !it.status.shouldShowRationale
-                                }
+                            fgPermissionsState.permissions.any {
+                                !it.status.isGranted && !it.status.shouldShowRationale
+                            }
                             when {
                                 // anyPermanentlyDenied -> showFgPermanentlyDeniedDialog = true
                                 anyShouldRationale -> showFgRationaleDialog = true
@@ -1188,7 +1188,7 @@ fun DrivingRecordControl(
                         showBatteryOptDialog = false
                         val intent =
                             Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                data = Uri.parse("package:${context.packageName}")
+                                data = "package:${context.packageName}".toUri()
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                         context.startActivity(intent)

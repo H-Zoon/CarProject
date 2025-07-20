@@ -34,8 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
@@ -481,7 +480,7 @@ fun SessionListScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             IconButton(onClick = { onMonthChanged(-1) }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Previous month")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous month")
                             }
                             Text(
                                 text = "${month.year}.${String.format("%02d", month.monthValue)}",
@@ -489,7 +488,7 @@ fun SessionListScreen(
                                 fontWeight = FontWeight.Bold,
                             )
                             IconButton(onClick = { onMonthChanged(1) }) {
-                                Icon(Icons.Default.ArrowForward, contentDescription = "Next month")
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next month")
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))

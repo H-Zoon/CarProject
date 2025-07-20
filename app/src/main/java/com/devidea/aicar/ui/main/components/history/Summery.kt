@@ -18,11 +18,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -122,7 +122,7 @@ fun SessionSummaryRoute(
                 unit = "회",
             ),
             SummaryItem(
-                icon = Icons.Default.TrendingDown,
+                icon = Icons.AutoMirrored.Filled.TrendingDown,
                 title = "급감속",
                 value = "${summary?.brakeEvent}",
                 unit = "회",
@@ -298,7 +298,7 @@ fun SessionSummaryScreenPreview() {
             SummaryItem(Icons.Default.LocalGasStation, "평균 연비", "15.2", "km/L"),
             SummaryItem(Icons.Default.Wallet, "유류비", "9,870", "원"),
             SummaryItem(Icons.Default.Timeline, "급가속", "1", "회"),
-            SummaryItem(Icons.Default.TrendingDown, "급감속", "0", "회"),
+            SummaryItem(Icons.AutoMirrored.Filled.TrendingDown, "급감속", "0", "회"),
         )
 
     MaterialTheme {

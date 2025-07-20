@@ -1,5 +1,6 @@
 package com.devidea.aicar.service
 
+import android.Manifest
 import android.app.Service
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -9,9 +10,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.RequiresPermission
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +66,10 @@ sealed class ConnectionEvent {
     object Connected : ConnectionEvent()
 
     object Error : ConnectionEvent()
+
+    data class PermissionError(
+        val missingPermissions: List<String>,
+    ) : ConnectionEvent()
 }
 
 class SppService : Service() {
@@ -106,6 +115,12 @@ class SppService : Service() {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
 
     // --- Discovery receiver ---
+    @RequiresPermission(
+        allOf = [
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ],
+    )
     private val discoveryReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(
@@ -114,26 +129,36 @@ class SppService : Service() {
             ) {
                 when (intent.action) {
                     BluetoothDevice.ACTION_FOUND -> {
-                        intent
-                            .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                            ?.let { bt ->
-                                val name = bt.name
-                                if (name.isNullOrEmpty()) return
-
-                                Log.d(TAG, "[Scan] Found device ${bt.name} @ ${bt.address}")
+                        val bt: BluetoothDevice? =
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                intent.getParcelableExtra(
+                                    BluetoothDevice.EXTRA_DEVICE,
+                                    BluetoothDevice::class.java,
+                                )
+                            } else {
+                                @Suppress("DEPRECATION")
+                                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                            }
+                        bt?.let { device ->
+                            if (ContextCompat.checkSelfPermission(
+                                    ctx,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                Log.w(
+                                    TAG,
+                                    "BLUETOOTH_CONNECT permission missing for device ${device.address}",
+                                )
                                 _scannedList.update { list ->
-                                    if (list.any { it.address == bt.address }) {
+                                    if (list.any { it.address == device.address }) {
                                         list
                                     } else {
-                                        list +
-                                            ScannedDevice(
-                                                bt.name.orEmpty(),
-                                                bt.address,
-                                                bt,
-                                            )
+                                        list + ScannedDevice("Unknown", device.address, device)
                                     }
                                 }
+                                return@let
                             }
+                        }
                     }
 
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
@@ -180,7 +205,13 @@ class SppService : Service() {
     }
 
     // --- Scan / Stop ---
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun requestScan() {
+        val missing = checkPermissions()
+        if (missing.isNotEmpty()) {
+            serviceScope.launch { _connectionEvents.emit(ConnectionEvent.PermissionError(missing)) }
+            return
+        }
         Log.d(TAG, "[Scan] requestScan called")
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Scanning)
@@ -203,6 +234,7 @@ class SppService : Service() {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun requestStop() {
         serviceScope.launch {
             _connectionEvents.emit(ConnectionEvent.Idle)
@@ -217,7 +249,19 @@ class SppService : Service() {
     }
 
     // --- Connect / Disconnect ---
+    @RequiresPermission(
+        allOf = [
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ],
+    )
     fun requestConnect(device: ScannedDevice) {
+        val missing = checkPermissions()
+        if (missing.isNotEmpty()) {
+            serviceScope.launch { _connectionEvents.emit(ConnectionEvent.PermissionError(missing)) }
+            return
+        }
+
         if (isConnecting.getAndSet(true)) return
 
         Log.d(TAG, "[Connect] requestConnect to ${device.address}")
@@ -247,6 +291,7 @@ class SppService : Service() {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun requestDisconnect() {
         Log.d(TAG, "[Disconnect] requestDisconnect called")
         if (isReceiverRegistered) {
@@ -281,6 +326,7 @@ class SppService : Service() {
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun getCurrentConnectedDevice(): ScannedDevice? {
         val btDevice = socket?.remoteDevice ?: return null
         return ScannedDevice(
@@ -290,6 +336,12 @@ class SppService : Service() {
         )
     }
 
+    @RequiresPermission(
+        allOf = [
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ],
+    )
     @Throws(IOException::class)
     private fun createSocket(device: BluetoothDevice): BluetoothSocket {
         bluetoothAdapter.cancelDiscovery()
@@ -298,6 +350,12 @@ class SppService : Service() {
     }
 
     // --- Streams setup ---
+    @RequiresPermission(
+        allOf = [
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+        ],
+    )
     @Throws(IOException::class)
     private fun setupStreams() {
         Log.d(TAG, "[Streams] setupStreams called")
@@ -344,6 +402,7 @@ class SppService : Service() {
         }
 
     // --- Raw byte reader ---
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     private fun launchRawReader(): Job {
         rawReaderJob =
             serviceScope.launch(Dispatchers.IO) {
@@ -480,5 +539,44 @@ class SppService : Service() {
             f.startsWith("43") -> "03"
             else -> f.take(6)
         }
+    }
+
+    private fun checkPermissions(): List<String> {
+        val missingPermissions = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12 이상
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                missingPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                missingPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+        } else {
+            // Android 11 이하
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                missingPermissions.add(Manifest.permission.BLUETOOTH)
+            }
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                missingPermissions.add(Manifest.permission.BLUETOOTH_ADMIN)
+            }
+        }
+        return missingPermissions
     }
 }

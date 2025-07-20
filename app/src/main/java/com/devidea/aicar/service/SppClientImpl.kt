@@ -1,11 +1,13 @@
 package com.devidea.aicar.service
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.annotation.RequiresPermission
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
@@ -105,23 +107,28 @@ class SppClientImpl
         }
 
         // ——— Control wrappers ———
+        @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
         override suspend fun requestStartScan() {
             ensureBoundService().requestScan()
         }
 
+        @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
         override suspend fun requestStopScan() {
             ensureBoundService().requestStop()
         }
 
+        @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
         override suspend fun requestConnect(device: ScannedDevice) {
             ensureBoundService().requestConnect(device)
         }
 
+        @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
         override suspend fun requestDisconnect() {
             ensureBoundService().requestDisconnect()
         }
         // override suspend fun requestUpdateNotification(message: String) { ensureBoundService().updateNotification(message) }
 
+        @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT])
         override suspend fun requestAutoConnect() {
             repository.getDevice.firstOrNull()?.let {
                 val btDevice = bluetoothAdapter.getRemoteDevice(it.address)
@@ -131,6 +138,7 @@ class SppClientImpl
             }
         }
 
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override suspend fun getCurrentConnectedDevice(): ScannedDevice? = ensureBoundService().getCurrentConnectedDevice()
 
         override suspend fun query(

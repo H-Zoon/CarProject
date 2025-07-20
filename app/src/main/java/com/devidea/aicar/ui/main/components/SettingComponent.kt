@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Help
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Bluetooth
@@ -27,11 +29,9 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Help
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.AlertDialog
@@ -165,7 +165,7 @@ fun SettingsScreen(
 
             // ───────────── 도움 ─────────────
             item {
-                SettingSectionHeader(title = "지원", icon = Icons.Outlined.Help)
+                SettingSectionHeader(title = "지원", icon = Icons.AutoMirrored.Outlined.Help)
             }
 
             item {
@@ -181,7 +181,7 @@ fun SettingsScreen(
                         val chooser = Intent.createChooser(intent, "앱 건의하기")
                         try {
                             context.startActivity(chooser)
-                        } catch (e: ActivityNotFoundException) {
+                        } catch (_: ActivityNotFoundException) {
                             Toast.makeText(context, "이메일 앱이 없습니다.", Toast.LENGTH_SHORT).show()
                         }
                     },
@@ -629,7 +629,7 @@ private fun SupportCard(onSuggestionClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Send,
+                    imageVector = Icons.AutoMirrored.Outlined.Send,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )

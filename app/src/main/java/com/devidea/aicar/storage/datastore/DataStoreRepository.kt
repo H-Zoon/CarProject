@@ -240,7 +240,7 @@ class DataStoreRepository
          */
         val isAutoConnectOnCharge: Flow<Boolean> =
             dataStore.data
-                .map { prefs -> prefs[AUTO_CONNECT_KEY] ?: false }
+                .map { prefs -> prefs[AUTO_CONNECT_KEY] == true }
 
         // ---------- Connect Date(마지막 연결 날짜) 관련 ----------
 
