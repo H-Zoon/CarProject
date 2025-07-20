@@ -16,7 +16,7 @@ object ExtendedPidUtils {
         // PIDs.code == "22XXXX" 에서 앞 두글자 잘라낸 "XXXX"들
         val bodies = pids.map { it.code.substring(2) }
         val raw = (MODE + bodies.joinToString("")).chunked(2).joinToString(" ")
-        return raw  // ex: "22 19 9A 11 5C"
+        return raw // ex: "22 19 9A 11 5C"
     }
 
     /** 확장 응답 파싱: 전체 문자열에서 Mode22 응답만 떼어내고, 2바이트 식별자+1바이트 데이터로 분리 */
@@ -25,19 +25,19 @@ object ExtendedPidUtils {
         require(compact.startsWith("62")) { "Mode22 응답 아님: ${compact.take(2)}" }
 
         val result = mutableMapOf<PIDs, Number>()
-        var offset = 2  // "62" 이후 바로
+        var offset = 2 // "62" 이후 바로
         while (offset + 6 <= compact.length) {
             // 2바이트 PID 식별자
-            val pidKey = compact.substring(offset, offset + 4)  // ex: "199A"
+            val pidKey = compact.substring(offset, offset + 4) // ex: "199A"
             val pid = PIDs.fromCode(MODE + pidKey) ?: break
 
             // 1바이트(2hex) 데이터
             val dataHex = compact.substring(offset + 4, offset + 6)
-            val frame = MODE + pidKey + dataHex  // "62 19 9A 0F" 형태
+            val frame = MODE + pidKey + dataHex // "62 19 9A 0F" 형태
             val value = Decoders.parsers[pid]!!.invoke(frame)
 
             result[pid] = value
-            offset += 6  // PID(4chars) + 데이터(2chars)
+            offset += 6 // PID(4chars) + 데이터(2chars)
         }
         return result
     }

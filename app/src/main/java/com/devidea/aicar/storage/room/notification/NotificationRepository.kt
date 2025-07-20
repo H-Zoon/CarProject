@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.Flow
  * 알림 관련 데이터를 제공하는 인터페이스
  */
 interface NotificationRepository {
-
     /** 전체 알림을 시간 내림차순으로 Flow 로 관찰 */
     fun observeAllNotifications(): Flow<List<NotificationEntity>>
 

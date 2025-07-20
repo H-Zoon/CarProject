@@ -20,16 +20,18 @@ fun SessionTrackMap(
     sliderPosition: Float,
     modifier: Modifier = Modifier,
     initialZoom: Float = 15f,
-    animationDurationMs: Int = 500
+    animationDurationMs: Int = 500,
 ) {
     // 1) 카메라 상태 기억
-    val cameraPositionState = rememberCameraPositionState {
-        // 초기 위치: 경로 첫 번째 포인트(없으면 (0,0))
-        position = CameraPosition.fromLatLngZoom(
-            path.firstOrNull() ?: LatLng(0.0, 0.0),
-            initialZoom
-        )
-    }
+    val cameraPositionState =
+        rememberCameraPositionState {
+            // 초기 위치: 경로 첫 번째 포인트(없으면 (0,0))
+            position =
+                CameraPosition.fromLatLngZoom(
+                    path.firstOrNull() ?: LatLng(0.0, 0.0),
+                    initialZoom,
+                )
+        }
 
     // 2) 슬라이더 위치 변화 시 카메라 애니메이션
     LaunchedEffect(sliderPosition, path) {
@@ -37,7 +39,7 @@ fun SessionTrackMap(
         path.getOrNull(sliderPosition.toInt())?.let { target ->
             cameraPositionState.animate(
                 update = CameraUpdateFactory.newLatLng(target),
-                durationMs = animationDurationMs
+                durationMs = animationDurationMs,
             )
         }
     }
@@ -46,21 +48,21 @@ fun SessionTrackMap(
     GoogleMap(
         modifier = modifier,
         cameraPositionState = cameraPositionState,
-        uiSettings = MapUiSettings(zoomControlsEnabled = false)
+        uiSettings = MapUiSettings(zoomControlsEnabled = false),
     ) {
         // 경로 폴리라인
         if (path.size >= 2) {
             Polyline(
                 points = path,
                 color = MaterialTheme.colorScheme.primary,
-                width = 5f
+                width = 5f,
             )
         }
         // 현재 위치 마커
         path.getOrNull(sliderPosition.toInt())?.let { current ->
             Marker(
                 state = MarkerState(position = current),
-                title = "현재 위치"
+                title = "현재 위치",
             )
         }
     }

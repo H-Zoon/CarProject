@@ -11,12 +11,11 @@ import java.time.Duration
  * @param fuelPricePerLiter: 리터당 유류비 (int, 단위: 원)
  */
 class SessionSummaryAccumulator(
-    private var fuelPricePerLiter: Int
+    private var fuelPricePerLiter: Int,
 ) {
-
     companion object {
-        private const val accelThreshold: Double = 3.0
-        private const val decelThreshold: Double = -3.0
+        private const val ACCEL_THRESHOLD: Double = 3.0
+        private const val DEACCEL_THRESHOLD: Double = -3.0
     }
 
     private var prevPoint: DrivingDataPoint? = null
@@ -43,36 +42,39 @@ class SessionSummaryAccumulator(
 
         // 2) 거리 적분 및 가감속 이벤트 카운트
         prevPoint?.let { prev ->
-            val vPrev = prev.speed * 1000.0 / 3600.0   // m/s
-            val vCurr = curr.speed * 1000.0 / 3600.0   // m/s
+            val vPrev = prev.speed * 1000.0 / 3600.0 // m/s
+            val vCurr = curr.speed * 1000.0 / 3600.0 // m/s
             val dt = Duration.between(prev.timestamp, curr.timestamp).toMillis() / 1000.0
             if (dt > 0) {
                 distanceMeters += (vPrev + vCurr) / 2 * dt
                 val accel = (vCurr - vPrev) / dt
-                if (accel >= accelThreshold) accelEvents++
-                if (accel <= decelThreshold) brakeEvents++
+                if (accel >= ACCEL_THRESHOLD) accelEvents++
+                if (accel <= DEACCEL_THRESHOLD) brakeEvents++
             }
         }
         prevPoint = curr
 
         // 3) 최종 요약 생성
         val distanceKm = (distanceMeters / 1000).toFloat()
-        val avgSpeed   = (speedSum.toDouble() / pointCount).toFloat()
-        val avgKPL     = if (fuelConsumptionSum > 0) {
-            (distanceKm / fuelConsumptionSum).toFloat()
-        } else 0f
+        val avgSpeed = (speedSum.toDouble() / pointCount).toFloat()
+        val avgKPL =
+            if (fuelConsumptionSum > 0) {
+                (distanceKm / fuelConsumptionSum).toFloat()
+            } else {
+                0f
+            }
 
         // 리터당 유류비(fuelPricePerLiter)를 기준으로 사용한 연료비 계산
-        val fuelUsed  = if (avgKPL > 0) distanceKm / avgKPL else 0f
+        val fuelUsed = if (avgKPL > 0) distanceKm / avgKPL else 0f
         val fuelPrice = (fuelUsed * fuelPricePerLiter).toInt()
 
         return SessionSummary(
-            distance   = distanceKm,
-            avgSpeed   = avgSpeed,
-            avgKPL     = avgKPL,
-            fuelPrice  = fuelPrice,
+            distance = distanceKm,
+            avgSpeed = avgSpeed,
+            avgKPL = avgKPL,
+            fuelPrice = fuelPrice,
             accelEvent = accelEvents,
-            brakeEvent = brakeEvents
+            brakeEvent = brakeEvents,
         )
     }
 

@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.location.Location
 import android.os.IBinder
 import android.util.Log
@@ -14,16 +15,20 @@ import androidx.core.app.NotificationCompat
 import com.devidea.aicar.LocationProvider
 import com.devidea.aicar.drive.FuelEconomyUtil.calculateInstantFuelEconomy
 import com.devidea.aicar.drive.PollingManager
+import com.devidea.aicar.drive.PollingManager.PollingSource
+import com.devidea.aicar.drive.SessionSummaryAccumulator
 import com.devidea.aicar.storage.datastore.DataStoreRepository
 import com.devidea.aicar.storage.room.drive.DrivingDataPoint
 import com.devidea.aicar.storage.room.drive.DrivingRepository
+import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
 import com.devidea.aicar.storage.room.notification.NotificationEntity
 import com.devidea.aicar.storage.room.notification.NotificationRepository
+import com.devidea.aicar.ui.main.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,25 +38,22 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.launch
-import java.time.Instant
-import android.content.IntentFilter
-import com.devidea.aicar.drive.PollingManager.PollingSource
-import com.devidea.aicar.drive.SessionSummaryAccumulator
-import com.devidea.aicar.storage.room.drive.DrivingSessionSummary
-import com.devidea.aicar.ui.main.MainActivity
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed class RecordState {
     object Recording : RecordState()
+
     object Stopped : RecordState()
+
     object Pending : RecordState()
 }
 
@@ -64,18 +66,19 @@ object PollingServiceCommand {
 }
 
 @Singleton
-class RecordStateHolder @Inject constructor() {
-    private val _recordState = MutableStateFlow<RecordState>(RecordState.Stopped)
-    val recordState: StateFlow<RecordState> = _recordState.asStateFlow()
+class RecordStateHolder
+    @Inject
+    constructor() {
+        private val _recordState = MutableStateFlow<RecordState>(RecordState.Stopped)
+        val recordState: StateFlow<RecordState> = _recordState.asStateFlow()
 
-    fun update(state: RecordState) {
-        _recordState.value = state
+        fun update(state: RecordState) {
+            _recordState.value = state
+        }
     }
-}
 
 @AndroidEntryPoint
 class PollingService : Service() {
-
     companion object {
         private const val TAG = "[PollingService]"
         private const val NOTIF_ID = 101
@@ -108,25 +111,29 @@ class PollingService : Service() {
     @Inject
     lateinit var recordStateHolder: RecordStateHolder
 
-    private val powerReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val action = intent?.action ?: return
-            val currentState = sppClient.connectionEvents.value
-            Log.d(TAG, "[PowerReceiver] Received action=$action")
+    private val powerReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?,
+            ) {
+                val action = intent?.action ?: return
+                val currentState = sppClient.connectionEvents.value
+                Log.d(TAG, "[PowerReceiver] Received action=$action")
 
-            if (action == Intent.ACTION_POWER_CONNECTED && currentState == ConnectionEvent.Idle) {
-                serviceScope.launch {
-                    val isAutoConnect = dataStoreRepository.isAutoConnectOnCharge.first()
-                    if (isAutoConnect) {
-                        Log.d(TAG, "[PowerReceiver] Auto connect 조건 충족, 연결 시도")
-                        sppClient.requestAutoConnect()
-                    } else {
-                        Log.d(TAG, "[PowerReceiver] 자동 연결 설정이 꺼져 있음")
+                if (action == Intent.ACTION_POWER_CONNECTED && currentState == ConnectionEvent.Idle) {
+                    serviceScope.launch {
+                        val isAutoConnect = dataStoreRepository.isAutoConnectOnCharge.first()
+                        if (isAutoConnect) {
+                            Log.d(TAG, "[PowerReceiver] Auto connect 조건 충족, 연결 시도")
+                            sppClient.requestAutoConnect()
+                        } else {
+                            Log.d(TAG, "[PowerReceiver] 자동 연결 설정이 꺼져 있음")
+                        }
                     }
                 }
             }
         }
-    }
 
     private val serviceScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sessionId: Long? = null
@@ -144,14 +151,19 @@ class PollingService : Service() {
     }
 
     private fun registerPowerReceiver() {
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_POWER_CONNECTED)
-        }
+        val filter =
+            IntentFilter().apply {
+                addAction(Intent.ACTION_POWER_CONNECTED)
+            }
         registerReceiver(powerReceiver, filter)
         Log.d(TAG, "[PollingService] PowerReceiver registered")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         /*val mode = intent?.getStringExtra(PollingServiceCommand.EXTRA_MODE)
         //startForegroundService()
         when (mode) {
@@ -184,9 +196,10 @@ class PollingService : Service() {
         // 2) cleanupScope.launch로 stopRecordingSuspend()를 순차 실행하게 하고,
         //    끝난 뒤에만 serviceScope.cancel()과 super.onDestroy()를 호출
         runBlocking {
-            cleanupScope.launch {
-                stopRecording() // suspend 함수
-            }.join()  // launch된 코루틴이 끝날 때까지 블록킹
+            cleanupScope
+                .launch {
+                    stopRecording() // suspend 함수
+                }.join() // launch된 코루틴이 끝날 때까지 블록킹
 
             // 완료되면 리시버 해제 및 스코프 취소
             try {
@@ -205,10 +218,11 @@ class PollingService : Service() {
         serviceScope.launch {
             val autoRecordFlow = dataStoreRepository.getDrivingRecodeSetDate().distinctUntilChanged()
 
-            val connectedFlow = sppClient.connectionEvents
-                .map { it is ConnectionEvent.Connected }
-                .onStart { emit(false) }
-                .distinctUntilChanged()
+            val connectedFlow =
+                sppClient.connectionEvents
+                    .map { it is ConnectionEvent.Connected }
+                    .onStart { emit(false) }
+                    .distinctUntilChanged()
 
             combine(autoRecordFlow, connectedFlow) { autoEnabled, connected ->
                 when {
@@ -261,11 +275,11 @@ class PollingService : Service() {
 
             locationProvider.startLocationUpdates()
             // 위치 수집 시작
-            locationJob = locationProvider.locationUpdates
-                .sample(1_000L)
-                .onEach { loc -> sessionId?.let { saveDataPoint(it, loc) } }
-                .launchIn(serviceScope)  // ← serviceScope를 직접 넘김
-
+            locationJob =
+                locationProvider.locationUpdates
+                    .sample(1_000L)
+                    .onEach { loc -> sessionId?.let { saveDataPoint(it, loc) } }
+                    .launchIn(serviceScope) // ← serviceScope를 직접 넘김
         }
     }
 
@@ -288,23 +302,28 @@ class PollingService : Service() {
         }
     }
 
-    private suspend fun saveDataPoint(sessionId: Long, location: Location) {
+    private suspend fun saveDataPoint(
+        sessionId: Long,
+        location: Location,
+    ) {
         try {
-            val dataPoint = DrivingDataPoint(
-                sessionOwnerId = sessionId,
-                timestamp = Instant.now(),
-                latitude = location.latitude,
-                longitude = location.longitude,
-                rpm = pollingManager.rpm.value,
-                speed = pollingManager.speed.value,
-                engineTemp = pollingManager.ect.value,
-                instantKPL = calculateInstantFuelEconomy(
-                    maf = pollingManager.maf.value,
-                    speedKmh = pollingManager.speed.value,
-                    stft = pollingManager.sFuelTrim.value,
-                    ltft = pollingManager.lFuelTrim.value
+            val dataPoint =
+                DrivingDataPoint(
+                    sessionOwnerId = sessionId,
+                    timestamp = Instant.now(),
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    rpm = pollingManager.rpm.value,
+                    speed = pollingManager.speed.value,
+                    engineTemp = pollingManager.ect.value,
+                    instantKPL =
+                        calculateInstantFuelEconomy(
+                            maf = pollingManager.maf.value,
+                            speedKmh = pollingManager.speed.value,
+                            stft = pollingManager.sFuelTrim.value,
+                            ltft = pollingManager.lFuelTrim.value,
+                        ),
                 )
-            )
 
             drivingRepository.saveDataPoint(dataPoint)
 
@@ -319,8 +338,8 @@ class PollingService : Service() {
                         averageKPL = summary.avgKPL,
                         fuelCost = summary.fuelPrice,
                         accelEvent = summary.accelEvent,
-                        brakeEvent = summary.brakeEvent
-                    )
+                        brakeEvent = summary.brakeEvent,
+                    ),
                 )
             }
         } catch (e: Exception) {
@@ -328,14 +347,17 @@ class PollingService : Service() {
         }
     }
 
-    private fun notify(title: String, body: String) {
+    private fun notify(
+        title: String,
+        body: String,
+    ) {
         serviceScope.launch {
             notificationRepository.insertNotification(
                 NotificationEntity(
                     title = title,
                     body = body,
-                    timestamp = Instant.now()
-                )
+                    timestamp = Instant.now(),
+                ),
             )
         }
     }
@@ -343,55 +365,64 @@ class PollingService : Service() {
     private fun showOneTimeRecordingNotification() {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+        val pendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
 
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle("주행 기록 시작됨")
-            .setContentText("실시간으로 주행 데이터를 저장합니다.")
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(pendingIntent)
+        val builder =
+            NotificationCompat
+                .Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("주행 기록 시작됨")
+                .setContentText("실시간으로 주행 데이터를 저장합니다.")
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(pendingIntent)
 
         manager.notify(RECORDING_NOTIF_ID, builder.build())
     }
 
     private fun startForegroundService() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "자동 주행 기록",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "차량 상태 기록을 위한 백그라운드 서비스"
-        }
+        val channel =
+            NotificationChannel(
+                CHANNEL_ID,
+                "자동 주행 기록",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "차량 상태 기록을 위한 백그라운드 서비스"
+            }
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val intent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+        val pendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("자동 주행 기록 활성화됨")
-            .setContentText("차량 상태 기록을 위한 서비스를 실행 중입니다.")
-            .setOngoing(true)
-            .setContentIntent(pendingIntent)
-            .build()
+        val notification =
+            NotificationCompat
+                .Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setContentTitle("자동 주행 기록 활성화됨")
+                .setContentText("차량 상태 기록을 위한 서비스를 실행 중입니다.")
+                .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .build()
 
         startForeground(NOTIF_ID, notification)
     }

@@ -16,22 +16,18 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 class DataStoreModule {
-
     private val Context.dataStore by preferencesDataStore(name = "settings")
 
     @Provides
     @Singleton
-    fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
-        return context.dataStore
-    }
+    fun provideDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> = context.dataStore
 
     @Provides
     @Singleton
     fun provideDataStoreRepository(
-        @ApplicationContext context: Context,
         dataStore: DataStore<Preferences>,
-        @AppModule.ApplicationScope appScope: CoroutineScope
-    ): DataStoreRepository {
-        return DataStoreRepository(context, dataStore, appScope)
-    }
+        @AppModule.ApplicationScope appScope: CoroutineScope,
+    ): DataStoreRepository = DataStoreRepository(dataStore, appScope)
 }

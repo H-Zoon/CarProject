@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NotificationDao {
-
     /** 전체 알림을 시간 내림차순으로 Flow 로 관찰 */
     @Query("SELECT * FROM notifications ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<NotificationEntity>>

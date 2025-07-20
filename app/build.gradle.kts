@@ -7,6 +7,17 @@ plugins {
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
+    id("org.jlleitschuh.gradle.ktlint")
+}
+
+ktlint {
+    version.set("1.3.1")
+    android.set(true)
+    ignoreFailures.set(false)
+    reporters {
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.PLAIN)
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.CHECKSTYLE)
+    }
 }
 
 android {
@@ -27,7 +38,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -60,30 +71,30 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.bluetooth)
-    implementation (libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
 
-    //hilt
+    // hilt
     ksp(libs.hilt.compiler)
-    implementation (libs.hilt.android)
+    implementation(libs.hilt.android)
 
-    implementation (libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
-    //room
+    // room
     ksp(libs.androidx.room.compiler)
-    //implementation(libs.androidx.room.rxjava2)
+    // implementation(libs.androidx.room.rxjava2)
     implementation(libs.androidx.room.runtime)
 
     implementation(libs.reorderable)
-    implementation (libs.maps.compose)
+    implementation(libs.maps.compose)
 
-    implementation (libs.material)
-    implementation (libs.gson)
+    implementation(libs.material)
+    implementation(libs.gson)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
 
-    //compose
+    // compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.tooling.preview)
@@ -93,16 +104,16 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.runtime.livedata)
     implementation(libs.androidx.runtime.rxjava2)
-    implementation (libs.play.services.location)
+    implementation(libs.play.services.location)
 
-    androidTestImplementation (libs.truth)
+    androidTestImplementation(libs.truth)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)
-    //kspAndroidTest (libs.hilt.compiler)
-    //androidTestAnnotationProcessor (libs.hilt.compiler)
+    // kspAndroidTest (libs.hilt.compiler)
+    // androidTestAnnotationProcessor (libs.hilt.compiler)
 
     debugImplementation(libs.androidx.ui.test.manifest)
     debugImplementation(libs.androidx.ui.tooling)

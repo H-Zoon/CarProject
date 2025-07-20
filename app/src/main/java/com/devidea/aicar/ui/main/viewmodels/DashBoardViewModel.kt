@@ -17,69 +17,74 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DashBoardViewModel @Inject constructor(
-    private val repository: DataStoreRepository,
-    private val pidManager: PollingManager
-) : ViewModel() {
+class DashBoardViewModel
+    @Inject
+    constructor(
+        private val repository: DataStoreRepository,
+        private val pidManager: PollingManager,
+    ) : ViewModel() {
+        //region 엔진 파라미터 스트림
 
-    //region 엔진 파라미터 스트림
+        val rpm: SharedFlow<Int> = pidManager.rpm
+        val speed: SharedFlow<Int> = pidManager.speed
+        val ect: SharedFlow<Int> = pidManager.ect
+        val throttle: SharedFlow<Float> = pidManager.throttle
+        val load: SharedFlow<Int> = pidManager.enginLoad
+        val iat: SharedFlow<Int> = pidManager.intakeTemp
 
-    val rpm: SharedFlow<Int> = pidManager.rpm
-    val speed: SharedFlow<Int> = pidManager.speed
-    val ect: SharedFlow<Int> = pidManager.ect
-    val throttle: SharedFlow<Float> = pidManager.throttle
-    val load: SharedFlow<Int> = pidManager.enginLoad
-    val iat: SharedFlow<Int> = pidManager.intakeTemp
+        val maf: SharedFlow<Float> = pidManager.maf
+        val batt: SharedFlow<Float> = pidManager.batt
+        val fuelRate: SharedFlow<Float> = pidManager.fuelLevel
 
-    val maf: SharedFlow<Float> = pidManager.maf
-    val batt: SharedFlow<Float> = pidManager.batt
-    val fuelRate: SharedFlow<Float> = pidManager.fuelLevel
+        val currentGear: SharedFlow<Int> = pidManager.currentGear
+        val oilPressure: SharedFlow<Float> = pidManager.oilPressure
+        val oilTemp: SharedFlow<Int> = pidManager.oilTemp
+        val transFluidTemp: SharedFlow<Int> = pidManager.transFluidTemp
 
-    val currentGear: SharedFlow<Int> = pidManager.currentGear
-    val oilPressure: SharedFlow<Float> = pidManager.oilPressure
-    val oilTemp: SharedFlow<Int> = pidManager.oilTemp
-    val transFluidTemp: SharedFlow<Int> = pidManager.transFluidTemp
-
-
-    /** 연속 PID 데이터 폴링을 시작합니다. */
-    fun startPalling(){
-        viewModelScope.launch {
-            pidManager.startPall(PollingSource.VIEWMODEL)
+        /** 연속 PID 데이터 폴링을 시작합니다. */
+        fun startPalling() {
+            viewModelScope.launch {
+                pidManager.startPall(PollingSource.VIEWMODEL)
+            }
         }
-    }
 
-    /** PID 데이터 폴링을 중지합니다. */
-    fun stopPalling() {
-        pidManager.stopAll(PollingSource.VIEWMODEL)
-    }
-
-    //endregion
-
-    //region 게이지 관리
-
-    /**
-     * 현재 선택된 게이지 항목 리스트 (표시 순서 유지)
-     */
-    val gauges: StateFlow<List<GaugeItem>> = repository.selectedGaugeIds
-        .map { ids ->
-            ids.mapNotNull { id -> gaugeItems.firstOrNull { it.id == id } }
+        /** PID 데이터 폴링을 중지합니다. */
+        fun stopPalling() {
+            pidManager.stopAll(PollingSource.VIEWMODEL)
         }
-        .stateIn(viewModelScope, SharingStarted.Companion.WhileSubscribed(5_000), emptyList())
 
-    /** 지정된 ID의 게이지를 토글합니다. */
-    fun onGaugeToggle(id: String) = viewModelScope.launch {
-        repository.toggleGauge(id)
+        //endregion
+
+        //region 게이지 관리
+
+        /**
+         * 현재 선택된 게이지 항목 리스트 (표시 순서 유지)
+         */
+        val gauges: StateFlow<List<GaugeItem>> =
+            repository.selectedGaugeIds
+                .map { ids ->
+                    ids.mapNotNull { id -> gaugeItems.firstOrNull { it.id == id } }
+                }.stateIn(viewModelScope, SharingStarted.Companion.WhileSubscribed(5_000), emptyList())
+
+        /** 지정된 ID의 게이지를 토글합니다. */
+        fun onGaugeToggle(id: String) =
+            viewModelScope.launch {
+                repository.toggleGauge(id)
+            }
+
+        /** 두 게이지 위치를 교체합니다. */
+        suspend fun swap(
+            from: Int,
+            to: Int,
+        ) {
+            repository.swapGauge(from = from, to = to)
+        }
+
+        /** 모든 게이지를 기본 상태로 초기화합니다. */
+        fun onReset() =
+            viewModelScope.launch {
+                repository.resetAllGauges()
+            }
+
+        //endregion
     }
-
-    /** 두 게이지 위치를 교체합니다. */
-    suspend fun swap(from: Int, to: Int) {
-        repository.swapGauge(from = from, to = to)
-    }
-
-    /** 모든 게이지를 기본 상태로 초기화합니다. */
-    fun onReset() = viewModelScope.launch {
-        repository.resetAllGauges()
-    }
-
-    //endregion
-}

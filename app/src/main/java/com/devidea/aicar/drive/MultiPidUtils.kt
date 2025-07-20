@@ -6,8 +6,8 @@ import java.util.Locale
  * MultiPID 요청/응답 유틸
  */
 object MultiPidUtils {
-    private const val MODE = "01"   // Mode 01만 지원
-    internal const val MAX_PIDS = 5  // CAN 페이로드 한계
+    private const val MODE = "01" // Mode 01만 지원
+    internal const val MAX_PIDS = 5 // CAN 페이로드 한계
 
     /**
      * 주어진 PID 리스트로 요청 문자열(“01 0C 0D 05 …”)을 만듭니다.
@@ -23,10 +23,10 @@ object MultiPidUtils {
         }
 
         // "01" + pidBytes.joinToString(" ")
-        val pidBytes = pids.map { it.code.substring(2) }  // e.g. "0C", "0D", "05"
+        val pidBytes = pids.map { it.code.substring(2) } // e.g. "0C", "0D", "05"
         return (MODE + pidBytes.joinToString("") { it })
             .chunked(2)
-            .joinToString(" ")  // e.g. "01 0C 0D 05"
+            .joinToString(" ") // e.g. "01 0C 0D 05"
     }
 
     /**
@@ -40,7 +40,7 @@ object MultiPidUtils {
         require(compact.startsWith("41")) { "Mode01 응답이 아닙니다: ${compact.substring(0, 2)}" }
 
         val result = mutableMapOf<PIDs, Number>()
-        var hexOffset = 2  // mode 바이트(2 hex chars) 바로 다음 위치
+        var hexOffset = 2 // mode 바이트(2 hex chars) 바로 다음 위치
 
         while (hexOffset < compact.length) {
             // 2) PID 코드 추출
@@ -48,15 +48,17 @@ object MultiPidUtils {
             val pid = PIDs.fromCode("01$pidHex") ?: break
 
             // 3) 해당 PID 데이터 길이 결정 (bytes)
-            val dataLen = when (pid) {
-                PIDs.RPM,
-                PIDs.MAF,
-                PIDs.BATT,
-                PIDs.CATALYST_TEMP_BANK1,
-                PIDs.COMMANDED_EQUIVALENCE_RATIO -> 2
+            val dataLen =
+                when (pid) {
+                    PIDs.RPM,
+                    PIDs.MAF,
+                    PIDs.BATT,
+                    PIDs.CATALYST_TEMP_BANK1,
+                    PIDs.COMMANDED_EQUIVALENCE_RATIO,
+                    -> 2
 
-                else -> 1
-            }
+                    else -> 1
+                }
 
             // 4) f-segment: mode+pid+데이터 부분만 잘라서 파서에 전달
             val segStart = hexOffset - 2

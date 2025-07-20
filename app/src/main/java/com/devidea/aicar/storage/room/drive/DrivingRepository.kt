@@ -1,20 +1,15 @@
 package com.devidea.aicar.storage.room.drive
 
 import com.devidea.aicar.storage.room.drive.DrivingDao.MonthlyStats
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import javax.inject.Inject
 
 /**
  * Repository interface for driving sessions and data points.
  * Handles both local database operations and background synchronization.
  */
 interface DrivingRepository {
-
     /**
      * Retrieves all driving sessions stored locally, ordered by start time.
      *
@@ -117,7 +112,10 @@ interface DrivingRepository {
      * @param endMillis 범위 끝 타임스탬프 (밀리초)
      * @return Flow<List<DrivingSession>> 해당 범위 내 세션 리스트를 포함하는 Flow
      */
-    fun getSessionsInRange(startMillis: Long, endMillis: Long): Flow<List<DrivingSession>>
+    fun getSessionsInRange(
+        startMillis: Long,
+        endMillis: Long,
+    ): Flow<List<DrivingSession>>
 
     /**
      * 지정한 날짜(00:00:00 ~ 23:59:59)에 해당하는 세션 목록을 구독 가능한 Flow로 반환합니다.
@@ -129,11 +127,17 @@ interface DrivingRepository {
      */
     fun getSessionsByDate(date: LocalDate): Flow<List<DrivingSession>> =
         getSessionsInRange(
-            startMillis = date.atStartOfDay(ZoneId.systemDefault())
-                .toInstant().toEpochMilli(),
-            endMillis   = date.plusDays(1)
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant().toEpochMilli() - 1
+            startMillis =
+                date
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli(),
+            endMillis =
+                date
+                    .plusDays(1)
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli() - 1,
         )
 
     /**
@@ -178,6 +182,6 @@ interface DrivingRepository {
      */
     fun getSessionSummariesInRange(
         startMillis: Long,
-        endMillis: Long
+        endMillis: Long,
     ): Flow<MonthlyStats>
 }
