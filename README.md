@@ -3,6 +3,7 @@
 AICar는 OBD-II 블루투스 스캐너를 통해 차량의 실시간 데이터를 확인하고, 주행 기록을 분석 및 관리할 수 있는 안드로이드 애플리케이션입니다.
 
 ## 스토어 링크
+
 <a href='https://play.google.com/store/apps/details?id=com.devidea.aicar'><img alt='Google Play에서 다운로드' src='https://play.google.com/intl/en_us/badges/static/images/badges/ko_badge_web_generic.png' width="200"/></a>
 
 ##  주요 기능
